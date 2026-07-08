@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Resources\Icons\bebb7fbb3f23d2157e1ecc8224686535.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="10.0.9" />
+    <PackageReference Include="System.Management" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Icons\bebb7fbb3f23d2157e1ecc8224686535.ico" />
+    <Resource Include="Resources\QRCodes\7f09a53bd669d32db250c8ead9e924d4.jpg" />
+    <Resource Include="Resources\QRCodes\24aeaa7d3f01dd052ae11d91cd29eac1.jpg" />
+    <Resource Include="Resources\Donate\1e47b632-4c23-4673-9a99-9e8ad3f0a8c1.png" />
+  </ItemGroup>
+
+</Project>

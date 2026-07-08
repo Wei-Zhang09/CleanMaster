@@ -1,0 +1,93 @@
+<Window x:Class="CleanMaster.Views.ActivationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="软件激活" Height="380" Width="460"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#0F172A">
+    <Window.Resources>
+        <Style x:Key="PrimaryBtn" TargetType="Button">
+            <Setter Property="Background" Value="#6366F1"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="24,12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#818CF8"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Bd" Property="Opacity" Value="0.5"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="GhostBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="24,12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8" BorderBrush="#334155" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="White"/><Setter TargetName="Bd" Property="BorderBrush" Value="#6366F1"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="40">
+        <!-- Title -->
+        <TextBlock Text="请输入激活密钥以解锁全部功能" FontSize="16" Foreground="#E2E8F0" HorizontalAlignment="Center" Margin="0,0,0,28"/>
+
+        <!-- Input Label -->
+        <TextBlock Text="激活密钥" FontSize="12" Foreground="#94A3B8" Margin="0,0,0,8"/>
+
+        <!-- Input Box -->
+        <Border CornerRadius="8" BorderBrush="#334155" BorderThickness="1" Background="#1E293B" Width="340">
+            <Grid>
+                <TextBlock x:Name="Placeholder" Text="CM-XXXXX-XXXXX-XXXXX-XXXXX" FontSize="14" FontFamily="Consolas" Foreground="#475569" VerticalAlignment="Center" Margin="12,0"/>
+                <TextBox x:Name="KeyCodeBox" Background="Transparent" Foreground="White" BorderThickness="0" FontSize="14" FontFamily="Consolas" Padding="12,10" CharacterCasing="Upper" MaxLength="30" TextChanged="KeyCodeBox_TextChanged"/>
+            </Grid>
+        </Border>
+
+        <!-- Hint -->
+        <TextBlock Text="输入完整密钥，系统自动绑定设备。一个密钥仅能绑定一台设备。" FontSize="11" Foreground="#475569" TextWrapping="Wrap" Width="340" Margin="0,8,0,0"/>
+
+        <!-- Status -->
+        <Border x:Name="StatusBorder" CornerRadius="8" Padding="12" Margin="0,20,0,0" Visibility="Collapsed" Width="340">
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" FontSize="13"/>
+        </Border>
+
+        <!-- Buttons -->
+        <Grid Margin="0,24,0,0" Width="340">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="稍后激活" Style="{StaticResource GhostBtn}" HorizontalAlignment="Stretch" Click="SkipButton_Click"/>
+            <Button Grid.Column="2" x:Name="ActivateButton" Content="激活" Style="{StaticResource PrimaryBtn}" HorizontalAlignment="Stretch" Click="ActivateButton_Click"/>
+        </Grid>
+
+        <!-- Hint -->
+        <TextBlock Margin="0,16,0,0" HorizontalAlignment="Center" MouseDown="OpenWebsite_MouseDown" Cursor="Hand">
+            <Run Text="没有密钥？" Foreground="#475569" FontSize="12"/>
+            <Run Text="请从官网获取" Foreground="#6366F1" FontSize="12" TextDecorations="Underline"/>
+        </TextBlock>
+    </StackPanel>
+</Window>

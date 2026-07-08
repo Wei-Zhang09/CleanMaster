@@ -1,0 +1,14 @@
+﻿<Application x:Class="CleanMaster.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:CleanMaster"
+             xmlns:conv="clr-namespace:CleanMaster.Converters"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <conv:ViewVisibilityConverter x:Key="ViewVisibilityConverter"/>
+        <conv:BoolVisibilityConverter x:Key="BoolVisibilityConverter"/>
+        <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <conv:NullVisibilityConverter x:Key="NullVisibilityConverter"/>
+        <conv:IconPathToImageSourceConverter x:Key="IconConverter"/>
+    </Application.Resources>
+</Application>

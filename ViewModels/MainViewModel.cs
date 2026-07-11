@@ -36,11 +36,15 @@ public class MainViewModel : INotifyPropertyChanged
 
     #region Navigation
     private string _currentView = "Clean";
+    private string _previousView = "";
+
     public string CurrentView
     {
         get => _currentView;
         set
         {
+            if (_currentView == value) return; // 避免重复导航
+            _previousView = _currentView;
             _currentView = value;
             OnPropertyChanged();
             OnNavigatedTo(value);

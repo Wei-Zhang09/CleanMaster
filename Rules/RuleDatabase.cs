@@ -185,6 +185,46 @@ public static class RuleDatabase
             Safety = CleanSafety.Safe,
             Category = CleanCategory.BrowserCache,
             Description = "Google Chrome code cache."
+        },
+        new()
+        {
+            Name = "Firefox Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Mozilla\Firefox\Profiles"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.BrowserCache,
+            Description = "Firefox browser cache. Pages will reload when visited."
+        },
+        new()
+        {
+            Name = "Brave Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"BraveSoftware\Brave-Browser\User Data\Default\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.BrowserCache,
+            Description = "Brave browser cache."
+        },
+        new()
+        {
+            Name = "Opera Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Opera Software\Opera Stable\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.BrowserCache,
+            Description = "Opera browser cache."
+        },
+        new()
+        {
+            Name = "Vivaldi Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Vivaldi\User Data\Default\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.BrowserCache,
+            Description = "Vivaldi browser cache."
         }
     ];
 
@@ -394,6 +434,326 @@ public static class RuleDatabase
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "WeGame platform cache."
+        },
+        new()
+        {
+            Name = "VS Code Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Code\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.DevToolCache,
+            Description = "Visual Studio Code cache."
+        },
+        new()
+        {
+            Name = "VS Code CachedData",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Code\CachedData"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.DevToolCache,
+            Description = "Visual Studio Code cached data."
+        },
+        new()
+        {
+            Name = "VS Code CachedExtensions",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                @".vscode\extensions\ms-vscode.cpptools-*\cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.DevToolCache,
+            Description = "VS Code C++ extension cache."
+        },
+        new()
+        {
+            Name = "Docker Logs",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Docker\log"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.DevToolCache,
+            Description = "Docker Desktop log files."
+        },
+        new()
+        {
+            Name = "Docker Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Docker\cache"),
+            Safety = CleanSafety.Caution,
+            Category = CleanCategory.DevToolCache,
+            Description = "Docker Desktop cache. May slow down next startup."
+        },
+        new()
+        {
+            Name = "Postman Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Postman\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "Postman API client cache."
+        },
+        new()
+        {
+            Name = "Notion Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Notion\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "Notion desktop app cache."
+        },
+        new()
+        {
+            Name = "Slack Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Slack\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "Slack desktop app cache."
+        },
+        new()
+        {
+            Name = "Discord Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"discord\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "Discord desktop app cache."
+        },
+        new()
+        {
+            Name = "WeChat Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Tencent\WeChat\Cache"),
+            Safety = CleanSafety.Caution,
+            Category = CleanCategory.AppCache,
+            Description = "微信缓存，可能包含聊天媒体文件。"
+        },
+        new()
+        {
+            Name = "WeChat Temp",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Tencent\WeChat\Temp"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "微信临时文件。"
+        },
+        new()
+        {
+            Name = "QQ Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Tencent\QQ\Cache"),
+            Safety = CleanSafety.Caution,
+            Category = CleanCategory.AppCache,
+            Description = "QQ缓存，可能包含聊天媒体文件。"
+        },
+        new()
+        {
+            Name = "QQ Temp",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Tencent\QQ\Temp"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "QQ临时文件。"
+        },
+        new()
+        {
+            Name = "Tencent Video Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Tencent\QQLive\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "腾讯视频缓存。"
+        },
+        new()
+        {
+            Name = "Tencent Video Temp",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Tencent\QQLive\Temp"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "腾讯视频临时文件。"
+        },
+        new()
+        {
+            Name = "iQiyi Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"iqiyi\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "爱奇艺缓存。"
+        },
+        new()
+        {
+            Name = "iQiyi Video Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"iqiyi\video\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "爱奇艺视频缓存。"
+        },
+        new()
+        {
+            Name = "Youku Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Youku\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "优酷缓存。"
+        },
+        new()
+        {
+            Name = "Bilibili Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"bilibili\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "哔哩哔哩缓存。"
+        },
+        new()
+        {
+            Name = "NetEase Music Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"NetEase\CloudMusic\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "网易云音乐缓存。"
+        },
+        new()
+        {
+            Name = "QQ Music Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Tencent\QQMusic\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "QQ音乐缓存。"
+        },
+        new()
+        {
+            Name = "Kuwo Music Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Kuwo\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "酷我音乐缓存。"
+        },
+        new()
+        {
+            Name = "Kugou Music Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Kugou\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "酷狗音乐缓存。"
+        },
+        new()
+        {
+            Name = "Douyin Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Douyin\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "抖音缓存。"
+        },
+        new()
+        {
+            Name = "Taobao Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Taobao\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "淘宝缓存。"
+        },
+        new()
+        {
+            Name = "JD Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"JD\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "京东缓存。"
+        },
+        new()
+        {
+            Name = "Meituan Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Meituan\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "美团缓存。"
+        },
+        new()
+        {
+            Name = "Eleme Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Eleme\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "饿了么缓存。"
+        },
+        new()
+        {
+            Name = "DingTalk Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"DingTalk\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "钉钉缓存。"
+        },
+        new()
+        {
+            Name = "Feishu Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Feishu\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "飞书缓存。"
+        },
+        new()
+        {
+            Name = "AliyunPan Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Alibaba\AliyunPan\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "阿里云盘缓存。"
+        },
+        new()
+        {
+            Name = "Baidu Netdisk Cache",
+            PathFactory = () => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"BaiduNetdisk\Cache"),
+            Safety = CleanSafety.Safe,
+            Category = CleanCategory.AppCache,
+            Description = "百度网盘缓存。"
         }
     ];
 

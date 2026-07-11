@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
 using CleanMaster.Models;
 using CleanMaster.Services;
@@ -24,6 +25,73 @@ public class DiskFilesViewModel : INotifyPropertyChanged
     #region Large Files
 
     public ObservableCollection<LargeFileItem> LargeFiles { get; } = new();
+
+    private ICollectionView? _largeFilesView;
+    public ICollectionView LargeFilesView
+    {
+        get
+        {
+            if (_largeFilesView == null)
+            {
+                _largeFilesView = CollectionViewSource.GetDefaultView(LargeFiles);
+                _largeFilesView.Filter = FilterLargeFile;
+            }
+            return _largeFilesView;
+        }
+    }
+
+    private string _largeFileSearchText = "";
+    public string LargeFileSearchText
+    {
+        get => _largeFileSearchText;
+        set { _largeFileSearchText = value; OnPropertyChanged(); LargeFilesView?.Refresh(); }
+    }
+
+    private string _selectedFileTypeFilter = "全部";
+    public string SelectedFileTypeFilter
+    {
+        get => _selectedFileTypeFilter;
+        set { _selectedFileTypeFilter = value; OnPropertyChanged(); LargeFilesView?.Refresh(); }
+    }
+
+    public ObservableCollection<string> FileTypeFilters { get; } = new()
+    {
+        "全部", "视频", "音频", "图片", "压缩包", "文档", "其他"
+    };
+
+    private bool FilterLargeFile(object item)
+    {
+        if (item is not LargeFileItem file) return false;
+
+        // Search text filter
+        if (!string.IsNullOrEmpty(LargeFileSearchText))
+        {
+            var search = LargeFileSearchText.ToLower();
+            if (!file.FileName.ToLower().Contains(search) &&
+                !file.FullPath.ToLower().Contains(search) &&
+                !file.FileType.ToLower().Contains(search))
+                return false;
+        }
+
+        // File type filter
+        if (SelectedFileTypeFilter != "全部")
+        {
+            return SelectedFileTypeFilter switch
+            {
+                "视频" => file.FileType.Contains("视频"),
+                "音频" => file.FileType.Contains("音频"),
+                "图片" => file.FileType.Contains("图片"),
+                "压缩包" => file.FileType.Contains("压缩"),
+                "文档" => file.FileType.Contains("文档") || file.FileType.Contains("表格") || file.FileType.Contains("演示"),
+                "其他" => !file.FileType.Contains("视频") && !file.FileType.Contains("音频") &&
+                          !file.FileType.Contains("图片") && !file.FileType.Contains("压缩") &&
+                          !file.FileType.Contains("文档") && !file.FileType.Contains("表格") && !file.FileType.Contains("演示"),
+                _ => true
+            };
+        }
+
+        return true;
+    }
 
     private bool _isFindingLargeFiles;
     public bool IsFindingLargeFiles { get => _isFindingLargeFiles; set { _isFindingLargeFiles = value; OnPropertyChanged(); } }

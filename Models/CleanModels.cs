@@ -56,6 +56,8 @@ public class CleanableItem
     public CleanSafety Safety { get; set; }
     public CleanCategory Category { get; set; }
     public string Description { get; set; } = "";
+    public string SoftwareName { get; set; } = "";  // 所属软件名称
+    public string FileType { get; set; } = "";       // 文件类型（缓存、日志、临时文件等）
     public bool IsSelected { get; set; } = true;
     public bool IsDirectory { get; set; }
     public DateTime LastModified { get; set; }
@@ -75,6 +77,10 @@ public class CleanableItem
         CleanSafety.Dangerous => "Dangerous",
         _ => "Unknown"
     };
+
+    public string SoftwareInfo => !string.IsNullOrEmpty(SoftwareName)
+        ? $"[{SoftwareName}] {FileType}"
+        : FileType;
 }
 
 public class ScanCategoryResult
@@ -86,6 +92,7 @@ public class ScanCategoryResult
     public long TotalSize => Items.Sum(i => i.SizeBytes);
     public int ItemCount => Items.Count;
     public bool IsSelected { get; set; } = true;
+    public bool IsExpanded { get; set; } = false;  // 是否展开显示详细文件
 
     public string TotalSizeText => TotalSize switch
     {
@@ -93,6 +100,8 @@ public class ScanCategoryResult
         >= 1_048_576 => $"{TotalSize / 1_048_576.0:F1} MB",
         _ => $"{TotalSize / 1024.0:F1} KB"
     };
+
+    public string ExpandButtonText => IsExpanded ? "收起" : "展开";
 }
 
 public class ScanProgress

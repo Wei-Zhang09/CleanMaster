@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Data;
 using CleanMaster.Services;
 using CleanMaster.Services.Interfaces;
 
@@ -16,6 +17,69 @@ public class SoftwareViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<InstalledSoftware> InstalledSoftware { get; } = new();
+
+    private ICollectionView? _softwareView;
+    public ICollectionView SoftwareView
+    {
+        get
+        {
+            if (_softwareView == null)
+            {
+                _softwareView = CollectionViewSource.GetDefaultView(InstalledSoftware);
+                _softwareView.Filter = FilterSoftware;
+            }
+            return _softwareView;
+        }
+    }
+
+    private string _softwareSearchText = "";
+    public string SoftwareSearchText
+    {
+        get => _softwareSearchText;
+        set { _softwareSearchText = value; OnPropertyChanged(); SoftwareView?.Refresh(); }
+    }
+
+    private string _selectedSizeFilter = "全部";
+    public string SelectedSizeFilter
+    {
+        get => _selectedSizeFilter;
+        set { _selectedSizeFilter = value; OnPropertyChanged(); SoftwareView?.Refresh(); }
+    }
+
+    public ObservableCollection<string> SizeFilters { get; } = new()
+    {
+        "全部", "> 1 GB", "> 100 MB", "> 10 MB", "< 10 MB"
+    };
+
+    private bool FilterSoftware(object item)
+    {
+        if (item is not InstalledSoftware software) return false;
+
+        // Search text filter
+        if (!string.IsNullOrEmpty(SoftwareSearchText))
+        {
+            var search = SoftwareSearchText.ToLower();
+            if (!software.Name.ToLower().Contains(search) &&
+                !software.Publisher.ToLower().Contains(search) &&
+                !software.Version.ToLower().Contains(search))
+                return false;
+        }
+
+        // Size filter
+        if (SelectedSizeFilter != "全部")
+        {
+            return SelectedSizeFilter switch
+            {
+                "> 1 GB" => software.EstimatedSize >= 1_073_741_824,
+                "> 100 MB" => software.EstimatedSize >= 104_857_600,
+                "> 10 MB" => software.EstimatedSize >= 10_485_760,
+                "< 10 MB" => software.EstimatedSize < 10_485_760,
+                _ => true
+            };
+        }
+
+        return true;
+    }
 
     private InstalledSoftware? _selectedSoftware;
     public InstalledSoftware? SelectedSoftware { get => _selectedSoftware; set { _selectedSoftware = value; OnPropertyChanged(); } }

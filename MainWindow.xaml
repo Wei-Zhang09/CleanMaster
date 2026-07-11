@@ -823,10 +823,12 @@
                         <TextBlock Text="- 回收站（安全）" FontSize="13" Foreground="#64748B"/>
                         <TextBlock Text="- Windows 临时文件（安全）" FontSize="13" Foreground="#64748B"/>
                         <TextBlock Text="- Windows 更新缓存（安全）" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="- 浏览器缓存（安全）" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="- 开发工具缓存（安全）" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="- 应用缓存（安全）" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="- 日志文件（安全）" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="- 浏览器缓存：Chrome、Edge、Firefox、Brave、Opera 等（安全）" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="- 开发工具缓存：VS Code、Docker、JetBrains、npm、pip 等（安全）" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="- 应用缓存：QQ、微信、腾讯视频、爱奇艺、哔哩哔哩、抖音等（安全）" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="- 日志文件、崩溃转储（安全）" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="" FontSize="8"/>
+                        <TextBlock Text="提示：点击分类右侧的箭头可展开查看详细文件列表" FontSize="12" Foreground="#3B82F6"/>
                     </StackPanel>
                 </Border>
 
@@ -836,6 +838,24 @@
                         <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="大文件查找"/>
                         <TextBlock Text="扫描磁盘中占用空间较大的文件，支持设置最小文件大小。" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
                         <TextBlock Text="每个文件都会显示类型和安全提示，帮助您判断是否可以删除。" FontSize="13" Foreground="#64748B"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Software Management -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="软件管理"/>
+                        <TextBlock Text="查看已安装的软件并卸载，自动清理残留文件和注册表。" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
+                        <TextBlock Text="卸载后会自动扫描残留文件夹和注册表项，推荐一并清理。" FontSize="13" Foreground="#64748B"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Startup Management -->
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="启动项管理"/>
+                        <TextBlock Text="管理开机自启动的程序，禁用不需要的启动项可加快开机速度。" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
+                        <TextBlock Text="支持从注册表和启动文件夹两个位置管理启动项。" FontSize="13" Foreground="#64748B"/>
                     </StackPanel>
                 </Border>
 
@@ -869,15 +889,8 @@
                         <TextBlock Text="- Windows 组件清理：删除旧版本更新文件（安全，1-5GB）" FontSize="13" Foreground="#64748B"/>
                         <TextBlock Text="- 系统文件修复：扫描修复损坏的系统文件（安全）" FontSize="13" Foreground="#64748B"/>
                         <TextBlock Text="- DNS 缓存清理：重置域名解析缓存（安全）" FontSize="13" Foreground="#64748B"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Software Uninstall -->
-                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
-                    <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="软件卸载"/>
-                        <TextBlock Text="查看已安装的软件并卸载，自动清理残留文件和注册表。" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="卸载后会自动扫描残留文件夹和注册表项，推荐一并清理。" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="" FontSize="8"/>
+                        <TextBlock Text="注意：系统清理功能需要管理员权限" FontSize="12" Foreground="#F59E0B"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

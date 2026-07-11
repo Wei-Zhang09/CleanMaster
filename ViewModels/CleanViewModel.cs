@@ -73,6 +73,7 @@ public class CleanViewModel : INotifyPropertyChanged
     public ICommand ScanCommand { get; }
     public ICommand CleanCommand { get; }
     public ICommand CancelCommand { get; }
+    public ICommand ToggleExpandCommand { get; }
 
     #endregion
 
@@ -85,6 +86,7 @@ public class CleanViewModel : INotifyPropertyChanged
         ScanCommand = new RelayCommand(async () => await StartScanAsync());
         CleanCommand = new RelayCommand(async () => await StartCleanAsync());
         CancelCommand = new RelayCommand(() => _cts?.Cancel());
+        ToggleExpandCommand = new RelayCommand<ScanCategoryResult>(ToggleExpand);
 
         StatusText = LangService.Instance["Ready"];
 
@@ -132,6 +134,24 @@ public class CleanViewModel : INotifyPropertyChanged
         var toClean = ScanResults.Where(c => c.IsSelected && c.Items.Any(i => i.IsSelected)).ToList();
         if (toClean.Count == 0) return;
 
+        // Preview confirmation
+        var totalSize = toClean.Sum(c => c.TotalSize);
+        var totalItems = toClean.Sum(c => c.Items.Count(i => i.IsSelected));
+
+        var previewMsg = "即将清理以下内容：\n\n";
+        foreach (var cat in toClean.Take(10))
+        {
+            previewMsg += $"• {cat.DisplayName}: {cat.ItemCount} 项 ({cat.TotalSizeText})\n";
+        }
+        if (toClean.Count > 10)
+            previewMsg += $"... 等 {toClean.Count} 个分类\n";
+
+        previewMsg += $"\n总计: {totalItems} 项，约 {FormatSize(totalSize)}";
+        previewMsg += "\n\n是否继续清理？";
+
+        var confirm = System.Windows.MessageBox.Show(previewMsg, "清理确认", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
         IsCleaning = true;
         IsCleanProgressVisible = true;
         CleanProgressPercent = 0;
@@ -153,6 +173,13 @@ public class CleanViewModel : INotifyPropertyChanged
     }
 
     #endregion
+
+    private void ToggleExpand(ScanCategoryResult? category)
+    {
+        if (category == null) return;
+        category.IsExpanded = !category.IsExpanded;
+        OnPropertyChanged(nameof(ScanResults));
+    }
 
     private static string FormatSize(long bytes) => bytes switch
     {

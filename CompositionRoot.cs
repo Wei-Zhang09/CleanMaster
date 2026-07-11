@@ -38,7 +38,13 @@ public static class CompositionRoot
         services.AddTransient<SoftwareViewModel>();
         services.AddTransient<StartupViewModel>();
         services.AddTransient<SystemCleanupViewModel>();
-        services.AddTransient<SettingsViewModel>();
+        services.AddTransient<SettingsViewModel>(sp =>
+        {
+            var settingsService = sp.GetRequiredService<ISettingsService>();
+            var licenseService = sp.GetRequiredService<ILicenseService>();
+            var scanService = sp.GetRequiredService<IScanService>();
+            return new SettingsViewModel(settingsService, licenseService, scanService);
+        });
 
         return services.BuildServiceProvider();
     }

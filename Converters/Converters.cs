@@ -60,3 +60,19 @@ public class PercentWidthConverter : IMultiValueConverter
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) => throw new NotImplementedException();
 }
+
+public class PercentToWidthConverter : IValueConverter
+{
+    public double TotalWidth { get; set; } = 400;
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is double percent)
+        {
+            return Math.Max(0, percent / 100.0 * TotalWidth);
+        }
+        return 0.0;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+}

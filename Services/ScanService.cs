@@ -58,9 +58,13 @@ public class ScanService : IScanService
                 if (string.IsNullOrEmpty(path) || !Directory.Exists(path) && !File.Exists(path))
                     continue;
 
+                // 从规则名称中提取软件信息
+                var softwareName = ExtractSoftwareName(rule.Name);
+                var fileType = ExtractFileType(rule.Name, rule.Description);
+
                 if (Directory.Exists(path))
                 {
-                    ScanDirectory(path, rule, result);
+                    ScanDirectory(path, rule, result, softwareName, fileType);
                 }
                 else if (File.Exists(path))
                 {
@@ -73,6 +77,8 @@ public class ScanService : IScanService
                         Safety = rule.Safety,
                         Category = category,
                         Description = rule.Description,
+                        SoftwareName = softwareName,
+                        FileType = fileType,
                         LastModified = fi.LastWriteTime,
                         IsDirectory = false
                     });
@@ -84,7 +90,7 @@ public class ScanService : IScanService
         return result;
     }
 
-    private void ScanDirectory(string path, CleanupRule rule, ScanCategoryResult result)
+    private void ScanDirectory(string path, CleanupRule rule, ScanCategoryResult result, string softwareName = "", string fileType = "")
     {
         try
         {
@@ -108,6 +114,8 @@ public class ScanService : IScanService
                                 Safety = rule.Safety,
                                 Category = rule.Category,
                                 Description = rule.Description,
+                                SoftwareName = softwareName,
+                                FileType = fileType,
                                 LastModified = Directory.GetLastWriteTime(subPath),
                                 IsDirectory = true
                             });
@@ -128,6 +136,8 @@ public class ScanService : IScanService
                         Safety = rule.Safety,
                         Category = rule.Category,
                         Description = rule.Description,
+                        SoftwareName = softwareName,
+                        FileType = fileType,
                         LastModified = Directory.GetLastWriteTime(path),
                         IsDirectory = true
                     });
@@ -139,6 +149,92 @@ public class ScanService : IScanService
 
     public static long GetDirectorySize(string path, int maxDepth = -1)
         => FileSystemUtils.GetDirectorySize(path, maxDepth);
+
+    private static string ExtractSoftwareName(string ruleName)
+    {
+        // 从规则名称中提取软件名称
+        // 例如 "Chrome Cache" -> "Chrome"
+        //      "WeChat Cache" -> "微信"
+        //      "QQ Temp" -> "QQ"
+
+        var nameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Chrome", "Chrome" },
+            { "Edge", "Edge" },
+            { "Firefox", "Firefox" },
+            { "Brave", "Brave" },
+            { "Opera", "Opera" },
+            { "Vivaldi", "Vivaldi" },
+            { "WeChat", "微信" },
+            { "QQ", "QQ" },
+            { "Tencent Video", "腾讯视频" },
+            { "iQiyi", "爱奇艺" },
+            { "Youku", "优酷" },
+            { "Bilibili", "哔哩哔哩" },
+            { "NetEase Music", "网易云音乐" },
+            { "QQ Music", "QQ音乐" },
+            { "Kuwo", "酷我音乐" },
+            { "Kugou", "酷狗音乐" },
+            { "Douyin", "抖音" },
+            { "Taobao", "淘宝" },
+            { "JD", "京东" },
+            { "Meituan", "美团" },
+            { "Eleme", "饿了么" },
+            { "DingTalk", "钉钉" },
+            { "Feishu", "飞书" },
+            { "AliyunPan", "阿里云盘" },
+            { "Baidu Netdisk", "百度网盘" },
+            { "WPS", "WPS" },
+            { "WeGame", "WeGame" },
+            { "VS Code", "VS Code" },
+            { "Docker", "Docker" },
+            { "Postman", "Postman" },
+            { "Notion", "Notion" },
+            { "Slack", "Slack" },
+            { "Discord", "Discord" },
+            { "Gradle", "Gradle" },
+            { "NuGet", "NuGet" },
+            { "npm", "npm" },
+            { "pip", "pip" },
+            { "Maven", "Maven" },
+            { "JetBrains", "JetBrains" }
+        };
+
+        foreach (var kvp in nameMap)
+        {
+            if (ruleName.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase))
+                return kvp.Value;
+        }
+
+        return "";
+    }
+
+    private static string ExtractFileType(string ruleName, string description)
+    {
+        // 提取文件类型
+        if (ruleName.Contains("Cache", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("cache", StringComparison.OrdinalIgnoreCase))
+            return "缓存";
+
+        if (ruleName.Contains("Temp", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("temp", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("temporary", StringComparison.OrdinalIgnoreCase))
+            return "临时文件";
+
+        if (ruleName.Contains("Log", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("log", StringComparison.OrdinalIgnoreCase))
+            return "日志";
+
+        if (ruleName.Contains("Crash", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("crash", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("dump", StringComparison.OrdinalIgnoreCase))
+            return "崩溃转储";
+
+        if (ruleName.Contains("Prefetch", StringComparison.OrdinalIgnoreCase))
+            return "预读取";
+
+        return "缓存";
+    }
 
     public DiskInfo GetDiskInfo(string drive = "C:")
     {

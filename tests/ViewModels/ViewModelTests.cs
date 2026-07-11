@@ -168,20 +168,25 @@ public class SettingsViewModelTests
 {
     private readonly Mock<ISettingsService> _mockSettingsService;
     private readonly Mock<ILicenseService> _mockLicenseService;
+    private readonly Mock<IScanService> _mockScanService;
     private readonly SettingsViewModel _viewModel;
 
     public SettingsViewModelTests()
     {
         _mockSettingsService = new Mock<ISettingsService>();
         _mockLicenseService = new Mock<ILicenseService>();
+        _mockScanService = new Mock<IScanService>();
 
         _mockSettingsService.Setup(s => s.Get()).Returns(new AppSettings());
         _mockLicenseService.Setup(l => l.CheckActivationAsync())
             .ReturnsAsync((false, "Not activated"));
+        _mockScanService.Setup(s => s.GetAllDisks())
+            .Returns(new List<DiskInfo> { new() { DriveLetter = "C:" } });
 
         _viewModel = new SettingsViewModel(
             _mockSettingsService.Object,
-            _mockLicenseService.Object);
+            _mockLicenseService.Object,
+            _mockScanService.Object);
     }
 
     [Fact]

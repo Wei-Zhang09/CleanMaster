@@ -27,6 +27,7 @@
             <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <conv:NullVisibilityConverter x:Key="NullVisibilityConverter"/>
             <conv:IconPathToImageSourceConverter x:Key="IconConverter"/>
+            <conv:PercentToWidthConverter x:Key="PercentToWidthConverter" TotalWidth="400"/>
 
             <Style x:Key="NavBtn" TargetType="RadioButton">
                 <Setter Property="Background" Value="Transparent"/>

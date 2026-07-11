@@ -1,14 +1,15 @@
 using System.Management;
 using System.Security.Cryptography;
 using System.Text;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
-public static class MachineIdService
+public class MachineIdService : IMachineIdService
 {
-    private static string? _cachedId;
+    private string? _cachedId;
 
-    public static string GetMachineId()
+    public string GetMachineId()
     {
         if (_cachedId != null) return _cachedId;
 

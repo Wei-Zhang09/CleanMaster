@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
@@ -8,19 +9,26 @@ public class AppSettings
 {
     public string WebsiteUrl { get; set; } = "https://awe-software-production.up.railway.app";
     public string ApiBaseUrl { get; set; } = "https://awe-software-production.up.railway.app/api";
+    public bool EnableRemoteSync { get; set; } = false;
+    public string LicenseApiUrl { get; set; } = "https://awe-software-production.up.railway.app/api";
 }
 
-public static class SettingsService
+public class SettingsService : ISettingsService
 {
-    private static readonly string ConfigDir = Path.Combine(
+    private readonly string ConfigDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "CleanMaster");
 
-    private static readonly string SettingsFile = Path.Combine(ConfigDir, "settings.json");
-    private static AppSettings? _cached;
-    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+    private readonly string SettingsFile;
+    private AppSettings? _cached;
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
 
-    public static AppSettings Get()
+    public SettingsService()
+    {
+        SettingsFile = Path.Combine(ConfigDir, "settings.json");
+    }
+
+    public AppSettings Get()
     {
         if (_cached != null) return _cached;
 
@@ -33,13 +41,13 @@ public static class SettingsService
                 return _cached!;
             }
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("SettingsService.Get", ex); }
 
         _cached = new AppSettings();
         return _cached;
     }
 
-    public static void Save(AppSettings settings)
+    public void Save(AppSettings settings)
     {
         try
         {
@@ -50,10 +58,10 @@ public static class SettingsService
             File.WriteAllText(SettingsFile, json);
             _cached = settings;
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("SettingsService.Save", ex); }
     }
 
-    public static async Task<string> GetWebsiteUrlAsync()
+    public async Task<string> GetWebsiteUrlAsync()
     {
         try
         {
@@ -70,20 +78,23 @@ public static class SettingsService
                 return url;
             }
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("GetWebsiteUrlAsync", ex); }
 
         return Get().WebsiteUrl;
     }
 
-    public static async Task SyncFromServerAsync()
+    public async Task SyncFromServerAsync()
     {
+        var settings = Get();
+        if (!settings.EnableRemoteSync)
+            return;
+
         try
         {
             var url = await GetWebsiteUrlAsync();
-            var settings = Get();
             settings.WebsiteUrl = url;
             Save(settings);
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("SyncFromServerAsync", ex); }
     }
 }

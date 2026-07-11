@@ -1,11 +1,13 @@
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using CleanMaster.Services;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Views;
 
 public partial class ActivationDialog : Window
 {
-    private readonly LicenseService _licenseService = new();
+    private readonly ILicenseService _licenseService;
     private bool _isActivating;
 
     public bool ActivationSuccessful { get; private set; }
@@ -13,6 +15,7 @@ public partial class ActivationDialog : Window
     public ActivationDialog()
     {
         InitializeComponent();
+        _licenseService = App.Services.GetRequiredService<ILicenseService>();
     }
 
     private void KeyCodeBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -80,7 +83,7 @@ public partial class ActivationDialog : Window
                 UseShellExecute = true
             });
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("OpenWebsite", ex); }
     }
 
     private void ShowStatus(string message, bool isSuccess)

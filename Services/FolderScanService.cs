@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.IO;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
@@ -25,7 +27,7 @@ public class EmptyFolderItem
     public bool IsSelected { get; set; } = true;
 }
 
-public class FolderScanService
+public class FolderScanService : IFolderScanService
 {
     public event Action<string>? ProgressChanged;
 
@@ -53,8 +55,8 @@ public class FolderScanService
                 try
                 {
                     var dirInfo = new DirectoryInfo(dir);
-                    if ((dirInfo.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden) continue;
-                    if ((dirInfo.Attributes & FileAttributes.System) == FileAttributes.System) continue;
+                    if (dirInfo.Attributes.HasFlag(FileAttributes.Hidden)) continue;
+                    if (dirInfo.Attributes.HasFlag(FileAttributes.System)) continue;
 
                     ProgressChanged?.Invoke(dirInfo.Name);
 
@@ -71,7 +73,7 @@ public class FolderScanService
                         });
                     }
                 }
-                catch { }
+                catch (Exception ex) { CleanMaster.App.LogError("ScanLargeFoldersAsync", ex); }
             }
 
             // Also scan one level deeper for key directories
@@ -84,7 +86,7 @@ public class FolderScanService
                     try
                     {
                         var subDirInfo = new DirectoryInfo(subDir);
-                        if ((subDirInfo.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden) continue;
+                        if (subDirInfo.Attributes.HasFlag(FileAttributes.Hidden)) continue;
 
                         ProgressChanged?.Invoke(subDirInfo.Name);
                         var (size, count) = GetDirectoryInfo(subDir);
@@ -100,7 +102,7 @@ public class FolderScanService
                             });
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { CleanMaster.App.LogError("ScanLargeFoldersAsync", ex); }
                 }
             }
 
@@ -122,8 +124,8 @@ public class FolderScanService
                 try
                 {
                     var dirInfo = new DirectoryInfo(dir);
-                    if ((dirInfo.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden) continue;
-                    if ((dirInfo.Attributes & FileAttributes.System) == FileAttributes.System) continue;
+                    if (dirInfo.Attributes.HasFlag(FileAttributes.Hidden)) continue;
+                    if (dirInfo.Attributes.HasFlag(FileAttributes.System)) continue;
 
                     ProgressChanged?.Invoke(dirInfo.Name);
 
@@ -136,7 +138,7 @@ public class FolderScanService
                         });
                     }
                 }
-                catch { }
+                catch (Exception ex) { CleanMaster.App.LogError("ScanEmptyFoldersAsync", ex); }
             }
 
             return results.OrderBy(r => r.FolderPath).ToList();
@@ -156,7 +158,7 @@ public class FolderScanService
                     deleted++;
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("DeleteEmptyFolders", ex); }
         }
         return deleted;
     }
@@ -169,10 +171,10 @@ public class FolderScanService
         {
             foreach (var file in Directory.EnumerateFiles(path, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }))
             {
-                try { size += new FileInfo(file).Length; count++; } catch { }
+                try { size += new FileInfo(file).Length; count++; } catch (Exception ex) { Debug.WriteLine($"GetDirectoryInfo: {ex.Message}"); }
             }
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("GetDirectoryInfo", ex); }
         return (size, count);
     }
 
@@ -182,13 +184,13 @@ public class FolderScanService
         {
             return !Directory.EnumerateFileSystemEntries(path).Any();
         }
-        catch { return false; }
+        catch (Exception ex) { CleanMaster.App.LogError("IsEmptyDirectory", ex); return false; }
     }
 
     private static IEnumerable<string> GetDirectoriesSafe(string path)
     {
         try { return Directory.GetDirectories(path); }
-        catch { return Enumerable.Empty<string>(); }
+        catch (Exception ex) { CleanMaster.App.LogError("GetDirectoriesSafe", ex); return Enumerable.Empty<string>(); }
     }
 
     private static string GetFolderDescription(string path)

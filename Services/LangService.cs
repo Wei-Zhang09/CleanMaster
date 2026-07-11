@@ -1,10 +1,11 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
-public class LangService : INotifyPropertyChanged
+public class LangService : ILangService, INotifyPropertyChanged
 {
     public static LangService Instance { get; } = new();
 

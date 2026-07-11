@@ -2,6 +2,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
@@ -13,16 +14,24 @@ public class LicenseInfo
     public bool IsValid { get; set; }
 }
 
-public class LicenseService
+public class LicenseService : ILicenseService
 {
     private static readonly string ConfigDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "CleanMaster");
 
     private static readonly string ConfigFile = Path.Combine(ConfigDir, "license.json");
-    private static readonly string ApiBase = "https://awe-software-production.up.railway.app/api";
 
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly MachineIdService _machineIdService = new();
+    private readonly ISettingsService _settingsService;
+
+    public LicenseService(ISettingsService settingsService)
+    {
+        _settingsService = settingsService;
+    }
+
+    private string ApiBase => _settingsService.Get().LicenseApiUrl;
 
     public LicenseInfo? LoadLocal()
     {
@@ -32,8 +41,9 @@ public class LicenseService
             var json = File.ReadAllText(ConfigFile);
             return JsonSerializer.Deserialize<LicenseInfo>(json);
         }
-        catch
+        catch (Exception ex)
         {
+            CleanMaster.App.LogError("LoadLocal", ex);
             return null;
         }
     }
@@ -48,7 +58,7 @@ public class LicenseService
             var json = JsonSerializer.Serialize(info, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(ConfigFile, json);
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("SaveLocal", ex); }
     }
 
     public void ClearLocal()
@@ -58,14 +68,14 @@ public class LicenseService
             if (File.Exists(ConfigFile))
                 File.Delete(ConfigFile);
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("ClearLocal", ex); }
     }
 
     public async Task<(bool Success, string Message, LicenseInfo? Info)> VerifyKeyAsync(string keyCode)
     {
         try
         {
-            var machineId = MachineIdService.GetMachineId();
+            var machineId = _machineIdService.GetMachineId();
 
             var payload = new
             {
@@ -124,7 +134,7 @@ public class LicenseService
 
         try
         {
-            var machineId = MachineIdService.GetMachineId();
+            var machineId = _machineIdService.GetMachineId();
             var payload = new
             {
                 key_code = local.KeyCode,
@@ -153,9 +163,10 @@ public class LicenseService
                 return (false, error);
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Offline - trust local cache
+            CleanMaster.App.LogError("CheckActivationAsync", ex);
             return (local.IsValid, local.IsValid ? "已激活(离线)" : "验证失败");
         }
     }

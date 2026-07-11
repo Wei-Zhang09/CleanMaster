@@ -78,10 +78,10 @@ public class RegistryCleanerService
                             });
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { CleanMaster.App.LogError("ScanUninstallKeys", ex); }
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("ScanUninstallKeys", ex); }
         }
         return issues;
     }
@@ -115,13 +115,33 @@ public class RegistryCleanerService
 
             if (root == null) return;
 
+            // Export backup before deletion
+            try
+            {
+                var backupDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "CleanMaster", "RegistryBackups");
+                Directory.CreateDirectory(backupDir);
+                var backupFile = Path.Combine(backupDir,
+                    $"backup_{DateTime.Now:yyyyMMdd_HHmmss}_{issue.Name}.reg");
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "reg.exe",
+                    Arguments = $"export \"{issue.Key}\" \"{backupFile}\" /y",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                System.Diagnostics.Process.Start(psi)?.WaitForExit(5000);
+            }
+            catch (Exception ex) { CleanMaster.App.LogError("CleanIssue-backup", ex); /* non-critical: backup failure shouldn't block cleanup */ }
+
             // Delete the subkey
             var parentPath = string.Join("\\", parts.Skip(1).Take(parts.Length - 2));
             var keyName = parts.Last();
             using var parentKey = root.OpenSubKey(parentPath, true);
             parentKey?.DeleteSubKeyTree(keyName, false);
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("CleanIssue", ex); }
     }
 
     private static string ExtractExePath(string command)

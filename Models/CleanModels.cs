@@ -1,5 +1,30 @@
 namespace CleanMaster.Models;
 
+public static class FileExtensionConstants
+{
+    public static readonly HashSet<string> SafeExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".tmp", ".log", ".bak", ".old", ".cache", ".temp",
+        ".dmp", ".mdmp", ".etl", ".evtx",
+        ".zip", ".rar", ".7z", ".tar", ".gz",
+        ".iso", ".img",
+        ".mp4", ".avi", ".mkv", ".mov", ".wmv",
+        ".mp3", ".wav", ".flac",
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"
+    };
+
+    public static readonly HashSet<string> CautionExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".vmdk", ".vhd", ".vhdx", ".qcow2",
+        ".pst", ".ost", ".db", ".sqlite"
+    };
+
+    public static readonly HashSet<string> DangerousExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".exe", ".dll", ".sys"
+    };
+}
+
 public enum CleanSafety
 {
     Safe,       // cache/temp/log - always safe

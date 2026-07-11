@@ -1,10 +1,12 @@
+using System.Diagnostics;
 using System.IO;
 using CleanMaster.Models;
 using CleanMaster.Rules;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
-public class ScanService
+public class ScanService : IScanService
 {
     public event Action<ScanProgress>? ProgressChanged;
     public event Action<ScanCategoryResult>? CategoryScanned;
@@ -76,7 +78,7 @@ public class ScanService
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("ScanCategory", ex); }
         }
 
         return result;
@@ -132,26 +134,11 @@ public class ScanService
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("ScanDirectory", ex); }
     }
 
     public static long GetDirectorySize(string path, int maxDepth = -1)
-    {
-        long size = 0;
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(path, "*", new EnumerationOptions
-            {
-                IgnoreInaccessible = true,
-                RecurseSubdirectories = maxDepth == -1
-            }))
-            {
-                try { size += new FileInfo(file).Length; } catch { }
-            }
-        }
-        catch { }
-        return size;
-    }
+        => FileSystemUtils.GetDirectorySize(path, maxDepth);
 
     public DiskInfo GetDiskInfo(string drive = "C:")
     {
@@ -183,7 +170,7 @@ public class ScanService
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("GetAllDisks", ex); }
         }
         return disks;
     }
@@ -207,24 +194,8 @@ public class ScanService
                 @"C:\ProgramData\Package Cache"
             };
 
-            // Safe to delete extensions
-            var safeExts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ".tmp", ".log", ".bak", ".old", ".cache", ".temp",
-                ".dmp", ".mdmp", ".etl", ".evtx",
-                ".zip", ".rar", ".7z", ".tar", ".gz",
-                ".iso", ".img",
-                ".mp4", ".avi", ".mkv", ".mov", ".wmv",
-                ".mp3", ".wav", ".flac",
-                ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"
-            };
-
-            // Caution extensions (might be important)
-            var cautionExts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ".vmdk", ".vhd", ".vhdx", ".qcow2",
-                ".pst", ".ost", ".db", ".sqlite"
-            };
+            var safeExts = FileExtensionConstants.SafeExtensions;
+            var cautionExts = FileExtensionConstants.CautionExtensions;
 
             try
             {
@@ -262,10 +233,10 @@ public class ScanService
                             });
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { Debug.WriteLine($"FindLargeFilesAsync: {ex.Message}"); }
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("FindLargeFilesAsync", ex); }
             return files.OrderByDescending(f => f.SizeBytes).Take(500).ToList();
         }, ct);
     }
@@ -274,28 +245,10 @@ public class ScanService
     {
         var lowerPath = fullPath.ToLower();
 
-        // Safety by extension
-        var safeExts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".tmp", ".log", ".bak", ".old", ".cache", ".temp",
-            ".dmp", ".mdmp", ".etl", ".evtx",
-            ".zip", ".rar", ".7z", ".tar", ".gz",
-            ".iso", ".img",
-            ".mp4", ".avi", ".mkv", ".mov", ".wmv",
-            ".mp3", ".wav", ".flac",
-            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"
-        };
-
-        var cautionExts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".vmdk", ".vhd", ".vhdx", ".qcow2",
-            ".pst", ".ost", ".db", ".sqlite"
-        };
-
         string safety = "unknown";
-        if (safeExts.Contains(ext)) safety = "safe";
-        else if (cautionExts.Contains(ext)) safety = "caution";
-        else if (ext == ".exe" || ext == ".dll" || ext == ".sys") safety = "danger";
+        if (FileExtensionConstants.SafeExtensions.Contains(ext)) safety = "safe";
+        else if (FileExtensionConstants.CautionExtensions.Contains(ext)) safety = "caution";
+        else if (FileExtensionConstants.DangerousExtensions.Contains(ext)) safety = "danger";
 
         // Type and description
         string type, desc;

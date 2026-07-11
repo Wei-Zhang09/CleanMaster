@@ -239,26 +239,38 @@
                                             </TextBlock>
                                         </Border>
                                         <TextBlock Grid.Column="3" Text="{Binding TotalSizeText}" FontSize="15" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <Button Grid.Column="4" Content="{Binding ExpandButtonText}" Margin="0,0,18,0" Padding="8,4" FontSize="11" 
-                                                Command="{Binding DataContext.Clean.ToggleExpandCommand, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
-                                                CommandParameter="{Binding}" Cursor="Hand">
-                                            <Button.Style>
-                                                <Style TargetType="Button">
-                                                    <Setter Property="Background" Value="#F1F5F9"/>
-                                                    <Setter Property="Foreground" Value="#64748B"/>
+                                        <ToggleButton Grid.Column="4" IsChecked="{Binding IsExpanded}" Margin="0,0,18,0" Cursor="Hand">
+                                            <ToggleButton.Style>
+                                                <Style TargetType="ToggleButton">
+                                                    <Setter Property="Background" Value="Transparent"/>
                                                     <Setter Property="BorderThickness" Value="0"/>
+                                                    <Setter Property="Padding" Value="6"/>
                                                     <Setter Property="Template">
                                                         <Setter.Value>
-                                                            <ControlTemplate TargetType="Button">
-                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            <ControlTemplate TargetType="ToggleButton">
+                                                                <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                                                    <ContentPresenter x:Name="Content" Content="&#xE70D;" ContentTemplate="{TemplateBinding ContentTemplate}">
+                                                                        <ContentPresenter.Resources>
+                                                                            <DataTemplate x:Key="ArrowDown">
+                                                                                <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#64748B"/>
+                                                                            </DataTemplate>
+                                                                            <DataTemplate x:Key="ArrowUp">
+                                                                                <TextBlock Text="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#64748B"/>
+                                                                            </DataTemplate>
+                                                                        </ContentPresenter.Resources>
+                                                                    </ContentPresenter>
                                                                 </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsChecked" Value="True">
+                                                                        <Setter TargetName="Content" Property="Content" Value="&#xE70E;"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
                                                             </ControlTemplate>
                                                         </Setter.Value>
                                                     </Setter>
                                                 </Style>
-                                            </Button.Style>
-                                        </Button>
+                                            </ToggleButton.Style>
+                                        </ToggleButton>
                                     </Grid>
 
                                     <!-- Expanded file list -->
@@ -324,34 +336,7 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Search and Filter -->
-                <Grid Margin="0,0,0,12">
-                    <TextBox Text="{Binding DiskFiles.LargeFileSearchText, UpdateSourceTrigger=PropertyChanged}" 
-                             Padding="8,6" Width="300" HorizontalAlignment="Left"
-                             VerticalContentAlignment="Center">
-                        <TextBox.Style>
-                            <Style TargetType="TextBox">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="TextBox">
-                                            <Border Background="White" CornerRadius="6" BorderBrush="#E2E8F0" BorderThickness="1" Padding="{TemplateBinding Padding}">
-                                                <Grid>
-                                                    <TextBlock Text="搜索文件名、路径、类型..." Foreground="#94A3B8" VerticalAlignment="Center" 
-                                                               Visibility="{Binding Text.IsEmpty, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolVisibilityConverter}}"/>
-                                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
-                                                </Grid>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </TextBox.Style>
-                    </TextBox>
-                    <ComboBox ItemsSource="{Binding DiskFiles.FileTypeFilters}" SelectedItem="{Binding DiskFiles.SelectedFileTypeFilter}" 
-                              Width="100" Padding="5,3" HorizontalAlignment="Left" Margin="310,0,0,0"/>
-                </Grid>
-
-                <ItemsControl ItemsSource="{Binding DiskFiles.LargeFilesView}">
+                <ItemsControl ItemsSource="{Binding DiskFiles.LargeFiles}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Background="White" CornerRadius="6" Padding="14,8" Margin="0,0,0,3">
@@ -423,34 +408,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Search and Filter -->
-                <Grid Margin="0,0,0,12">
-                    <TextBox Text="{Binding Software.SoftwareSearchText, UpdateSourceTrigger=PropertyChanged}" 
-                             Padding="8,6" Width="300" HorizontalAlignment="Left"
-                             VerticalContentAlignment="Center">
-                        <TextBox.Style>
-                            <Style TargetType="TextBox">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="TextBox">
-                                            <Border Background="White" CornerRadius="6" BorderBrush="#E2E8F0" BorderThickness="1" Padding="{TemplateBinding Padding}">
-                                                <Grid>
-                                                    <TextBlock Text="搜索软件名称、发布者..." Foreground="#94A3B8" VerticalAlignment="Center" 
-                                                               Visibility="{Binding Text.IsEmpty, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolVisibilityConverter}}"/>
-                                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
-                                                </Grid>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </TextBox.Style>
-                    </TextBox>
-                    <ComboBox ItemsSource="{Binding Software.SizeFilters}" SelectedItem="{Binding Software.SelectedSizeFilter}" 
-                              Width="100" Padding="5,3" HorizontalAlignment="Left" Margin="310,0,0,0"/>
-                </Grid>
-
-                <ItemsControl ItemsSource="{Binding Software.SoftwareView}">
+                <ItemsControl ItemsSource="{Binding Software.InstalledSoftware}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Background="White" CornerRadius="6" Padding="14,10" Margin="0,0,0,3">
@@ -899,12 +857,16 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Empty Folders -->
+                <!-- Disk Analysis -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="空文件夹清理"/>
-                        <TextBlock Text="扫描并清理磁盘中的空文件夹，保持文件系统整洁。" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="空文件夹不占用空间，但会影响查找效率。所有操作安全可逆。" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="磁盘分析"/>
+                        <TextBlock Text="分析磁盘空间占用情况，帮助您了解各类文件的空间占用比例。" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
+                        <TextBlock Text="分析内容包括：" FontSize="13" FontWeight="Medium" Foreground="#1E293B" Margin="0,0,0,4"/>
+                        <TextBlock Text="- Windows 系统文件" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="- Program Files 程序文件" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="- 用户数据文件" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock Text="- 其他文件" FontSize="13" Foreground="#64748B"/>
                     </StackPanel>
                 </Border>
 

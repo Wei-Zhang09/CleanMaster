@@ -397,23 +397,13 @@ public static class RuleDatabase
         },
         new()
         {
-            Name = "Baidu Netdisk Cache",
-            PathFactory = () => Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                @"baidu\BaiduYunKernel"),
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.AppCache,
-            Description = "Baidu Netdisk download cache."
-        },
-        new()
-        {
             Name = "Tencent Video Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 @"Tencent\QQLive"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
-            Description = "Tencent Video cache."
+            Description = "腾讯视频缓存。"
         },
         new()
         {
@@ -530,7 +520,7 @@ public static class RuleDatabase
             Name = "WeChat Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                @"Tencent\WeChat\Cache"),
+                @"Tencent\WeChat"),
             Safety = CleanSafety.Caution,
             Category = CleanCategory.AppCache,
             Description = "微信缓存，可能包含聊天媒体文件。"
@@ -550,7 +540,7 @@ public static class RuleDatabase
             Name = "QQ Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Tencent\QQ\Cache"),
+                @"Tencent\QQ"),
             Safety = CleanSafety.Caution,
             Category = CleanCategory.AppCache,
             Description = "QQ缓存，可能包含聊天媒体文件。"
@@ -567,50 +557,30 @@ public static class RuleDatabase
         },
         new()
         {
-            Name = "Tencent Video Cache",
+            Name = "WeChat Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                @"Tencent\QQLive\Cache"),
-            Safety = CleanSafety.Safe,
+                @"Tencent\WeChat"),
+            Safety = CleanSafety.Caution,
             Category = CleanCategory.AppCache,
-            Description = "腾讯视频缓存。"
-        },
-        new()
-        {
-            Name = "Tencent Video Temp",
-            PathFactory = () => Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Tencent\QQLive\Temp"),
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.AppCache,
-            Description = "腾讯视频临时文件。"
+            Description = "微信缓存，可能包含聊天媒体文件。"
         },
         new()
         {
             Name = "iQiyi Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"iqiyi\Cache"),
+                @"iqiyi"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "爱奇艺缓存。"
         },
         new()
         {
-            Name = "iQiyi Video Cache",
-            PathFactory = () => Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"iqiyi\video\Cache"),
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.AppCache,
-            Description = "爱奇艺视频缓存。"
-        },
-        new()
-        {
             Name = "Youku Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Youku\Cache"),
+                @"Youku"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "优酷缓存。"
@@ -620,7 +590,7 @@ public static class RuleDatabase
             Name = "Bilibili Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"bilibili\Cache"),
+                @"Bilibili"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "哔哩哔哩缓存。"
@@ -630,7 +600,7 @@ public static class RuleDatabase
             Name = "NetEase Music Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"NetEase\CloudMusic\Cache"),
+                @"NetEase\CloudMusic"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "网易云音乐缓存。"
@@ -640,7 +610,7 @@ public static class RuleDatabase
             Name = "QQ Music Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Tencent\QQMusic\Cache"),
+                @"Tencent\QQMusic"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "QQ音乐缓存。"
@@ -650,7 +620,7 @@ public static class RuleDatabase
             Name = "Kuwo Music Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Kuwo\Cache"),
+                @"Kuwo"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "酷我音乐缓存。"
@@ -660,7 +630,7 @@ public static class RuleDatabase
             Name = "Kugou Music Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Kugou\Cache"),
+                @"Kugou"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "酷狗音乐缓存。"
@@ -670,7 +640,7 @@ public static class RuleDatabase
             Name = "Douyin Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Douyin\Cache"),
+                @"Douyin"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "抖音缓存。"
@@ -680,7 +650,7 @@ public static class RuleDatabase
             Name = "Taobao Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Taobao\Cache"),
+                @"Taobao"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "淘宝缓存。"
@@ -690,7 +660,7 @@ public static class RuleDatabase
             Name = "JD Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"JD\Cache"),
+                @"JD"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "京东缓存。"
@@ -700,7 +670,7 @@ public static class RuleDatabase
             Name = "Meituan Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Meituan\Cache"),
+                @"Meituan"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "美团缓存。"
@@ -710,7 +680,7 @@ public static class RuleDatabase
             Name = "Eleme Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Eleme\Cache"),
+                @"Eleme"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "饿了么缓存。"
@@ -720,7 +690,7 @@ public static class RuleDatabase
             Name = "DingTalk Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"DingTalk\Cache"),
+                @"DingTalk"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "钉钉缓存。"
@@ -730,7 +700,7 @@ public static class RuleDatabase
             Name = "Feishu Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Feishu\Cache"),
+                @"Feishu"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "飞书缓存。"
@@ -740,7 +710,7 @@ public static class RuleDatabase
             Name = "AliyunPan Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"Alibaba\AliyunPan\Cache"),
+                @"Alibaba\AliyunPan"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "阿里云盘缓存。"
@@ -750,7 +720,7 @@ public static class RuleDatabase
             Name = "Baidu Netdisk Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                @"BaiduNetdisk\Cache"),
+                @"BaiduNetdisk"),
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "百度网盘缓存。"
@@ -813,14 +783,6 @@ public static class RuleDatabase
             Category = CleanCategory.AppCache,
             Description = "文件缩略图缓存，删除后Windows会自动重建",
             FilePatterns = new[] { "thumbcache_*.db", "iconcache_*.db" }
-        },
-        new()
-        {
-            Name = "Windows更新备份",
-            Path = @"C:\Windows\SoftwareDistribution\DataStore",
-            Safety = CleanSafety.Caution,
-            Category = CleanCategory.WindowsUpdate,
-            Description = "Windows更新数据库，清理后更新历史记录将丢失"
         },
         new()
         {

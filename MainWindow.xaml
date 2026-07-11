@@ -52,28 +52,16 @@
                             <TextBlock Text="大文件夹扫描"/>
                         </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="EmptyFolders">
+                    <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="DiskAnalysis">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0"/>
-                            <TextBlock Text="空文件夹清理"/>
+                            <TextBlock Text="&#xE9F9;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0"/>
+                            <TextBlock Text="磁盘分析"/>
                         </StackPanel>
                     </RadioButton>
                     <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="SystemCleanup">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE74C;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0"/>
                             <TextBlock Text="系统清理"/>
-                        </StackPanel>
-                    </RadioButton>
-                    <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="RegistryCleaner">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE74C;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0"/>
-                            <TextBlock Text="注册表清理"/>
-                        </StackPanel>
-                    </RadioButton>
-                    <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="PrivacyCleaner">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE74C;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0"/>
-                            <TextBlock Text="隐私清理"/>
                         </StackPanel>
                     </RadioButton>
                     <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Guide">
@@ -614,6 +602,62 @@
             </StackPanel>
         </ScrollViewer>
 
+        <!-- Disk Analysis -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=DiskAnalysis}">
+            <StackPanel Margin="28,20,28,28">
+                <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,8" Text="磁盘分析"/>
+                <TextBlock Text="{Binding Settings.AnalysisStatus}" FontSize="12" Foreground="#64748B" Margin="0,0,0,20"/>
+
+                <Grid Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="选择磁盘:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#64748B"/>
+                        <ComboBox ItemsSource="{Binding Settings.AvailableDrives}" SelectedItem="{Binding Settings.AnalyzedDrive}" 
+                                  Width="70" Padding="5,3" Margin="0,0,12,0"/>
+                        <Button Style="{StaticResource Btn}" Padding="16,8"
+                                Command="{Binding Settings.AnalyzeDiskCommand}" IsEnabled="{Binding Settings.IsAnalyzing, Converter={StaticResource InverseBoolConverter}}" Content="开始分析"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="分析磁盘空间占用情况，帮助您了解各类文件的空间占用比例。" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,24"/>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <!-- Space visualization bar -->
+                        <Border Height="30" CornerRadius="6" Background="#E2E8F0" Margin="0,0,0,20" ClipToBounds="True">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="{Binding Settings.DiskSpaceCategories[0].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[0].Color}" Height="30"/>
+                                <Border Width="{Binding Settings.DiskSpaceCategories[1].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[1].Color}" Height="30"/>
+                                <Border Width="{Binding Settings.DiskSpaceCategories[2].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[2].Color}" Height="30"/>
+                                <Border Width="{Binding Settings.DiskSpaceCategories[3].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[3].Color}" Height="30"/>
+                                <Border Width="{Binding Settings.DiskSpaceCategories[4].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[4].Color}" Height="30"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Category list -->
+                        <ItemsControl ItemsSource="{Binding Settings.DiskSpaceCategories}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Grid.Column="0" Width="14" Height="14" Fill="{Binding Color}" Margin="0,0,10,0"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="14" Foreground="#1E293B"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="14" FontWeight="Medium" Foreground="#1E293B" Margin="16,0"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Percentage, StringFormat='{}{0:F1}%'}" FontSize="13" Foreground="#64748B" Width="60" TextAlignment="Right"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
         <!-- System Cleanup -->
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=SystemCleanup}">
@@ -925,55 +969,6 @@
                         </StackPanel>
                         <TextBlock FontSize="12" Foreground="#64748B" Text="{Binding Settings.Lang[Version]}"/>
                         <TextBlock FontSize="12" Foreground="#64748B" Margin="0,4,0,0" Text="{Binding Settings.Lang[Description]}"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Disk Space Analysis -->
-                <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,16">
-                            <StackPanel>
-                                <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#1E293B" Text="磁盘空间分析"/>
-                                <TextBlock Text="{Binding Settings.AnalysisStatus}" FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <ComboBox ItemsSource="{Binding Settings.AvailableDrives}" SelectedItem="{Binding Settings.AnalyzedDrive}" 
-                                          Width="70" Padding="5,3" Margin="0,0,8,0"/>
-                                <Button Style="{StaticResource Btn}" Padding="12,6" FontSize="12"
-                                        Command="{Binding Settings.AnalyzeDiskCommand}" IsEnabled="{Binding Settings.IsAnalyzing, Converter={StaticResource InverseBoolConverter}}" Content="分析"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Space visualization bar -->
-                        <Border Height="24" CornerRadius="4" Background="#E2E8F0" Margin="0,0,0,16" ClipToBounds="True">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="{Binding Settings.DiskSpaceCategories[0].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[0].Color}" Height="24"/>
-                                <Border Width="{Binding Settings.DiskSpaceCategories[1].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[1].Color}" Height="24"/>
-                                <Border Width="{Binding Settings.DiskSpaceCategories[2].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[2].Color}" Height="24"/>
-                                <Border Width="{Binding Settings.DiskSpaceCategories[3].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[3].Color}" Height="24"/>
-                                <Border Width="{Binding Settings.DiskSpaceCategories[4].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[4].Color}" Height="24"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Category list -->
-                        <ItemsControl ItemsSource="{Binding Settings.DiskSpaceCategories}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Ellipse Grid.Column="0" Width="12" Height="12" Fill="{Binding Color}" Margin="0,0,8,0"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" Foreground="#1E293B"/>
-                                        <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="13" FontWeight="Medium" Foreground="#1E293B" Margin="12,0"/>
-                                        <TextBlock Grid.Column="3" Text="{Binding Percentage, StringFormat='{}{0:F1}%'}" FontSize="12" Foreground="#64748B" Width="50" TextAlignment="Right"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
                     </StackPanel>
                 </Border>
             </StackPanel>

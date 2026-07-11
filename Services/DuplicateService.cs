@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using CleanMaster.Models;
 
 namespace CleanMaster.Services;
 
@@ -109,7 +111,7 @@ public class DuplicateService
                             });
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { Debug.WriteLine($"FindDuplicatesAsync: {ex.Message}"); }
                 }
             }
 
@@ -141,7 +143,7 @@ public class DuplicateService
                             LastModified = fi.LastWriteTime
                         });
                     }
-                    catch { }
+                    catch (Exception ex) { Debug.WriteLine($"FindDuplicatesAsync: {ex.Message}"); }
                 }
 
                 groupsHashed++;
@@ -201,7 +203,7 @@ public class DuplicateService
                         File.Delete(file.FullPath);
                         freedBytes += file.SizeBytes;
                     }
-                    catch { }
+                    catch (Exception ex) { CleanMaster.App.LogError("DeleteDuplicatesAsync", ex); }
                 }
             }
         }, ct);
@@ -213,28 +215,29 @@ public class DuplicateService
     {
         try
         {
-            using var md5 = MD5.Create();
+            using var sha256 = SHA256.Create();
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-            // Read first 64KB + last 64KB for speed
-            const int chunkSize = 65536;
-            var buffer = new byte[chunkSize];
-
-            int read = stream.Read(buffer, 0, chunkSize);
-            md5.TransformBlock(buffer, 0, read, buffer, 0);
-
-            if (stream.Length > chunkSize * 2)
+            const long largeFileThreshold = 100 * 1024 * 1024; // 100MB
+            if (stream.Length <= largeFileThreshold)
             {
-                stream.Seek(-chunkSize, SeekOrigin.End);
-                read = stream.Read(buffer, 0, chunkSize);
-                md5.TransformBlock(buffer, 0, read, buffer, 0);
+                var hash = sha256.ComputeHash(stream);
+                return Convert.ToHexString(hash);
             }
 
-            md5.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
-            return md5.Hash != null ? Convert.ToHexString(md5.Hash) : null;
+            // For large files, read in chunks to avoid memory pressure
+            var buffer = new byte[81920]; // 80KB chunks
+            int bytesRead;
+            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
+            }
+            sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            return sha256.Hash != null ? Convert.ToHexString(sha256.Hash) : null;
         }
-        catch
+        catch (Exception ex)
         {
+            App.LogError("ComputeFileHash", ex);
             return null;
         }
     }
@@ -243,13 +246,13 @@ public class DuplicateService
     {
         IEnumerable<string> files;
         try { files = Directory.EnumerateFiles(path); }
-        catch { yield break; }
+        catch (Exception ex) { CleanMaster.App.LogError("EnumerateFilesSafe", ex); yield break; }
 
         foreach (var file in files) yield return file;
 
         IEnumerable<string> dirs;
         try { dirs = Directory.EnumerateDirectories(path); }
-        catch { yield break; }
+        catch (Exception ex) { CleanMaster.App.LogError("EnumerateFilesSafe", ex); yield break; }
 
         foreach (var dir in dirs)
         {
@@ -260,7 +263,7 @@ public class DuplicateService
                 if (dirInfo.Attributes.HasFlag(FileAttributes.Hidden)) continue;
                 if (dirInfo.Name.StartsWith(".")) continue;
             }
-            catch { continue; }
+            catch (Exception ex) { Debug.WriteLine($"EnumerateFilesSafe: {ex.Message}"); continue; }
 
             foreach (var file in EnumerateFilesSafe(dir))
             {

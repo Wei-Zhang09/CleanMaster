@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 
 namespace CleanMaster.Services;
@@ -129,13 +130,13 @@ public class PrivacyCleanerService
                     {
                         foreach (var file in Directory.GetFiles(item.Path, "*", SearchOption.AllDirectories))
                         {
-                            try { File.Delete(file); } catch { }
+                            try { File.Delete(file); } catch (Exception ex) { Debug.WriteLine($"Clean: {ex.Message}"); }
                         }
                     }
                     break;
             }
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("Clean", ex); }
     }
 }
 

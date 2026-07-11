@@ -37,5 +37,3 @@ Name: "{autodesktop}\CleanMaster"; Filename: "{app}\CleanMaster.exe"; Tasks: des
 [Run]
 Filename: "{app}\CleanMaster.exe"; Description: "Launch CleanMaster"; Flags: nowait postinstall skipifsilent
 
-[Registry]
-Root: HKCU; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "CleanMaster"; ValueData: "{app}\CleanMaster.exe"; Flags: uninsdeletevalue

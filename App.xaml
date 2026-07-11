@@ -1,14 +1,92 @@
-﻿<Application x:Class="CleanMaster.App"
+<Application x:Class="CleanMaster.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:CleanMaster"
              xmlns:conv="clr-namespace:CleanMaster.Converters"
-             StartupUri="MainWindow.xaml">
+             xmlns:svc="clr-namespace:CleanMaster.Services">
     <Application.Resources>
-        <conv:ViewVisibilityConverter x:Key="ViewVisibilityConverter"/>
-        <conv:BoolVisibilityConverter x:Key="BoolVisibilityConverter"/>
-        <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
-        <conv:NullVisibilityConverter x:Key="NullVisibilityConverter"/>
-        <conv:IconPathToImageSourceConverter x:Key="IconConverter"/>
+        <ResourceDictionary>
+            <svc:LangService x:Key="Lang"/>
+
+            <Color x:Key="Primary">#3B82F6</Color>
+            <Color x:Key="PrimaryDark">#2563EB</Color>
+            <Color x:Key="Success">#10B981</Color>
+            <Color x:Key="Warning">#F59E0B</Color>
+            <Color x:Key="Danger">#EF4444</Color>
+            <Color x:Key="Sidebar">#0F172A</Color>
+
+            <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Primary}"/>
+            <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{StaticResource PrimaryDark}"/>
+            <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource Success}"/>
+            <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource Warning}"/>
+            <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource Danger}"/>
+            <SolidColorBrush x:Key="SidebarBrush" Color="{StaticResource Sidebar}"/>
+
+            <conv:ViewVisibilityConverter x:Key="ViewVisibilityConverter"/>
+            <conv:BoolVisibilityConverter x:Key="BoolVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+            <conv:NullVisibilityConverter x:Key="NullVisibilityConverter"/>
+            <conv:IconPathToImageSourceConverter x:Key="IconConverter"/>
+
+            <Style x:Key="NavBtn" TargetType="RadioButton">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="#94A3B8"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Padding" Value="20,11"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="GroupName" Value="Nav"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#1E293B"/></Trigger>
+                                <Trigger Property="IsChecked" Value="True"><Setter TargetName="Bd" Property="Background" Value="{StaticResource PrimaryBrush}"/><Setter Property="Foreground" Value="White"/></Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="Btn" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Padding" Value="24,10"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{StaticResource PrimaryDarkBrush}"/></Trigger>
+                                <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Bd" Property="Opacity" Value="0.5"/></Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="DangerBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
+                <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{StaticResource Danger}"/></Setter.Value></Setter>
+            </Style>
+
+            <Style x:Key="SuccessBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
+                <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{StaticResource Success}"/></Setter.Value></Setter>
+            </Style>
+
+            <Style x:Key="Card" TargetType="Border">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="Padding" Value="20"/>
+                <Setter Property="Effect"><Setter.Value><DropShadowEffect BlurRadius="10" Opacity="0.06" ShadowDepth="1" Color="#000"/></Setter.Value></Setter>
+            </Style>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

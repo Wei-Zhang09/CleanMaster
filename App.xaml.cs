@@ -1,18 +1,36 @@
 ﻿using System.IO;
+using System.Text;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CleanMaster;
 
 public partial class App : Application
 {
+    public static IServiceProvider Services { get; private set; } = null!;
+
     private static readonly string LogDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "CleanMaster", "logs");
 
     private static readonly string LogFile = Path.Combine(LogDir, "startup.log");
 
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+        Services = CompositionRoot.Configure();
+        var mainWindow = new MainWindow
+        {
+            DataContext = Services.GetRequiredService<ViewModels.MainViewModel>()
+        };
+        mainWindow.Show();
+    }
+
     public App()
     {
+        // Register encoding provider for GBK and other non-Unicode encodings
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
         // Global exception handler
         DispatcherUnhandledException += (s, e) =>
         {

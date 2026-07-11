@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.IO;
 using CleanMaster.Models;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
@@ -11,7 +13,7 @@ public class CleanProgress
     public double Percent => Total > 0 ? (double)Current / Total * 100 : 0;
 }
 
-public class CleanService
+public class CleanService : ICleanService
 {
     public event Action<string>? ProgressChanged;
     public event Action<CleanProgress>? ProgressUpdated;
@@ -37,9 +39,9 @@ public class CleanService
 
                     if (item.IsDirectory)
                     {
-                        var sizeBefore = ScanService.GetDirectorySize(item.FullPath);
+                        var sizeBefore = FileSystemUtils.GetDirectorySize(item.FullPath);
                         DeleteDirectory(item.FullPath);
-                        var sizeAfter = Directory.Exists(item.FullPath) ? ScanService.GetDirectorySize(item.FullPath) : 0;
+                        var sizeAfter = Directory.Exists(item.FullPath) ? FileSystemUtils.GetDirectorySize(item.FullPath) : 0;
                         var freed = sizeBefore - sizeAfter;
                         if (freed > 0)
                         {
@@ -106,16 +108,16 @@ public class CleanService
 
             foreach (var file in Directory.EnumerateFiles(path, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }))
             {
-                try { File.SetAttributes(file, FileAttributes.Normal); File.Delete(file); } catch { }
+                try { File.SetAttributes(file, FileAttributes.Normal); File.Delete(file); } catch (Exception ex) { Debug.WriteLine($"DeleteDirectory: {ex.Message}"); }
             }
 
             foreach (var dir in Directory.EnumerateDirectories(path, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }).OrderByDescending(d => d.Length))
             {
-                try { Directory.Delete(dir, false); } catch { }
+                try { Directory.Delete(dir, false); } catch (Exception ex) { Debug.WriteLine($"DeleteDirectory: {ex.Message}"); }
             }
 
             Directory.Delete(path, false);
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("DeleteDirectory", ex); }
     }
 }

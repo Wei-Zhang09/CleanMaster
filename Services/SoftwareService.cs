@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
+using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
@@ -51,7 +53,7 @@ public class UninstallResult
     };
 }
 
-public class SoftwareService
+public class SoftwareService : ISoftwareService
 {
     public List<InstalledSoftware> GetInstalledSoftware()
     {
@@ -149,10 +151,10 @@ public class SoftwareService
                             InstallDate = installDate
                         });
                     }
-                    catch { }
+                    catch (Exception ex) { CleanMaster.App.LogError("GetInstalledSoftware", ex); }
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("GetInstalledSoftware", ex); }
         }
 
         return software.OrderByDescending(s => s.EstimatedSize).ToList();
@@ -193,7 +195,7 @@ public class SoftwareService
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("GetStartupItems", ex); }
         }
 
         try
@@ -215,7 +217,7 @@ public class SoftwareService
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("GetStartupItems", ex); }
 
         return items.OrderBy(i => i.Name).ToList();
     }
@@ -249,7 +251,7 @@ public class SoftwareService
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("DisableStartupItem", ex); }
         return false;
     }
 
@@ -258,9 +260,14 @@ public class SoftwareService
         if (string.IsNullOrEmpty(software.UninstallString))
             throw new Exception("No uninstall command found");
 
+        var cmd = software.UninstallString.Trim();
+
+        // Security: Validate the uninstall string to prevent command injection
+        if (ContainsSuspiciousCharacters(cmd))
+            throw new Exception("Uninstall command contains suspicious characters");
+
         try
         {
-            var cmd = software.UninstallString.Trim();
             if (cmd.StartsWith("\""))
             {
                 var endQuote = cmd.IndexOf('"', 1);
@@ -268,6 +275,11 @@ public class SoftwareService
                 {
                     var exe = cmd.Substring(1, endQuote - 1);
                     var args = cmd.Substring(endQuote + 1).Trim();
+
+                    // Validate exe path exists and is a valid executable
+                    if (!File.Exists(exe) || !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        throw new Exception("Invalid uninstaller executable path");
+
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = exe,
@@ -278,18 +290,62 @@ public class SoftwareService
             }
             else
             {
+                // Extract and validate the executable path
+                var parts = cmd.Split(' ', 2);
+                var exePath = parts[0];
+
+                // Try to find the executable
+                var resolvedPath = ResolveExecutablePath(exePath);
+                if (string.IsNullOrEmpty(resolvedPath))
+                    throw new Exception($"Cannot find uninstaller: {exePath}");
+
+                var args = parts.Length > 1 ? parts[1] : "";
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c {cmd}",
+                    FileName = resolvedPath,
+                    Arguments = args,
                     UseShellExecute = true
                 });
             }
+        }
+        catch (Exception ex) when (ex.Message.Contains("Cannot find") || ex.Message.Contains("Invalid") || ex.Message.Contains("suspicious"))
+        {
+            throw;
         }
         catch (Exception ex)
         {
             throw new Exception($"Failed to start uninstaller: {ex.Message}");
         }
+    }
+
+    private static bool ContainsSuspiciousCharacters(string input)
+    {
+        // Check for command injection patterns
+        var suspiciousPatterns = new[] { "&", "|", ";", "`", "$", "(", ")", "{", "}", "<", ">", "^" };
+        return suspiciousPatterns.Any(p => input.Contains(p));
+    }
+
+    private static string? ResolveExecutablePath(string path)
+    {
+        // If it's already a full path and exists
+        if (File.Exists(path)) return path;
+
+        // Try with common locations
+        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+
+        foreach (var baseDir in new[] { programFiles, programFilesX86, windows })
+        {
+            var fullPath = Path.Combine(baseDir, path);
+            if (File.Exists(fullPath)) return fullPath;
+        }
+
+        // Try expanding environment variables
+        var expanded = Environment.ExpandEnvironmentVariables(path);
+        if (File.Exists(expanded)) return expanded;
+
+        return null;
     }
 
     public UninstallResult ScanLeftovers(InstalledSoftware software)
@@ -323,7 +379,7 @@ public class SoftwareService
                             possibleLocations.Add(dir);
                     }
                 }
-                catch { }
+                catch (Exception ex) { CleanMaster.App.LogError("ScanLeftovers", ex); }
             }
         }
 
@@ -338,7 +394,7 @@ public class SoftwareService
                     result.LeftoverSize += size;
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("ScanLeftovers", ex); }
         }
 
         // Scan leftover registry keys
@@ -366,10 +422,10 @@ public class SoftwareService
                             result.LeftoverRegistryKeys.Add($@"HKLM\{regPath}\{subKeyName}");
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { CleanMaster.App.LogError("ScanLeftovers", ex); }
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("ScanLeftovers", ex); }
         }
 
         return result;
@@ -386,12 +442,12 @@ public class SoftwareService
                 {
                     foreach (var file in Directory.GetFiles(folder, "*", SearchOption.AllDirectories))
                     {
-                        try { File.SetAttributes(file, FileAttributes.Normal); File.Delete(file); } catch { }
+                        try { File.SetAttributes(file, FileAttributes.Normal); File.Delete(file); } catch (Exception ex) { Debug.WriteLine($"CleanupLeftovers: {ex.Message}"); }
                     }
                     Directory.Delete(folder, true);
                 }
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("CleanupLeftovers", ex); }
         }
 
         // Clean orphaned registry keys
@@ -418,7 +474,7 @@ public class SoftwareService
                 using var parentKey = root.OpenSubKey(parentPath, true);
                 parentKey?.DeleteSubKeyTree(keyName, false);
             }
-            catch { }
+            catch (Exception ex) { CleanMaster.App.LogError("CleanupLeftovers", ex); }
         }
     }
 
@@ -439,8 +495,9 @@ public class SoftwareService
 
             return exes[0];
         }
-        catch
+        catch (Exception ex)
         {
+            CleanMaster.App.LogError("FindIconInDirectory", ex);
             return "";
         }
     }
@@ -478,26 +535,11 @@ public class SoftwareService
                 if (File.Exists(fullPath)) return fullPath;
             }
         }
-        catch { }
+        catch (Exception ex) { CleanMaster.App.LogError("ExtractExePath", ex); }
 
         return "";
     }
 
     private static long GetDirectorySize(string path)
-    {
-        long size = 0;
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(path, "*", new EnumerationOptions
-            {
-                IgnoreInaccessible = true,
-                RecurseSubdirectories = true
-            }))
-            {
-                try { size += new FileInfo(file).Length; } catch { }
-            }
-        }
-        catch { }
-        return size;
-    }
+        => FileSystemUtils.GetDirectorySize(path);
 }

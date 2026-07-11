@@ -397,13 +397,13 @@ public static class RuleDatabase
         },
         new()
         {
-            Name = "Tencent Video Cache",
+            Name = "WeChat Cache",
             PathFactory = () => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                @"Tencent\QQLive"),
-            Safety = CleanSafety.Safe,
+                @"Tencent\WeChat"),
+            Safety = CleanSafety.Caution,
             Category = CleanCategory.AppCache,
-            Description = "腾讯视频缓存。"
+            Description = "微信缓存，包含聊天图片/视频/文件。删除不影响聊天记录，但历史媒体需重新下载。"
         },
         new()
         {
@@ -543,7 +543,7 @@ public static class RuleDatabase
                 @"Tencent\QQ"),
             Safety = CleanSafety.Caution,
             Category = CleanCategory.AppCache,
-            Description = "QQ缓存，可能包含聊天媒体文件。"
+            Description = "QQ缓存，包含聊天图片/视频/文件。删除不影响聊天记录，但历史媒体需重新下载。"
         },
         new()
         {

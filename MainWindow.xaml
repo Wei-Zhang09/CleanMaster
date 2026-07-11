@@ -244,25 +244,16 @@
                                                 <Style TargetType="ToggleButton">
                                                     <Setter Property="Background" Value="Transparent"/>
                                                     <Setter Property="BorderThickness" Value="0"/>
-                                                    <Setter Property="Padding" Value="6"/>
+                                                    <Setter Property="Padding" Value="4"/>
                                                     <Setter Property="Template">
                                                         <Setter.Value>
                                                             <ControlTemplate TargetType="ToggleButton">
                                                                 <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                                                                    <ContentPresenter x:Name="Content" Content="&#xE70D;" ContentTemplate="{TemplateBinding ContentTemplate}">
-                                                                        <ContentPresenter.Resources>
-                                                                            <DataTemplate x:Key="ArrowDown">
-                                                                                <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#64748B"/>
-                                                                            </DataTemplate>
-                                                                            <DataTemplate x:Key="ArrowUp">
-                                                                                <TextBlock Text="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#64748B"/>
-                                                                            </DataTemplate>
-                                                                        </ContentPresenter.Resources>
-                                                                    </ContentPresenter>
+                                                                    <TextBlock x:Name="ArrowIcon" Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#64748B"/>
                                                                 </Border>
                                                                 <ControlTemplate.Triggers>
                                                                     <Trigger Property="IsChecked" Value="True">
-                                                                        <Setter TargetName="Content" Property="Content" Value="&#xE70E;"/>
+                                                                        <Setter TargetName="ArrowIcon" Property="Text" Value="&#xE70E;"/>
                                                                     </Trigger>
                                                                 </ControlTemplate.Triggers>
                                                             </ControlTemplate>

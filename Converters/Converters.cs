@@ -76,3 +76,21 @@ public class PercentToWidthConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
 }
+
+/// <summary>
+/// Converts a boolean to one of two texts specified in ConverterParameter separated by '|'.
+/// Example: ConverterParameter='禁用|启用' returns '禁用' when value is true, '启用' when false.
+/// </summary>
+public class BoolToTextConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var param = parameter as string ?? "True|False";
+        var parts = param.Split('|');
+        var trueText = parts.Length > 0 ? parts[0] : "True";
+        var falseText = parts.Length > 1 ? parts[1] : "False";
+        return value is bool b ? (b ? trueText : falseText) : (object)"";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+}

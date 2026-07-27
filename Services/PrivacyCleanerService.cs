@@ -33,7 +33,7 @@ public class PrivacyCleanerService
             });
         }
 
-        // Thumbnail cache
+        // Thumbnail cache (file-pattern targeted)
         var thumbCache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Microsoft\Windows\Explorer");
         if (Directory.Exists(thumbCache))
         {
@@ -116,27 +116,123 @@ public class PrivacyCleanerService
         return items;
     }
 
-    public void Clean(PrivacyItem item)
+    public bool Clean(PrivacyItem item)
     {
         try
         {
             switch (item.Type)
             {
                 case "DnsCache":
-                    System.Diagnostics.Process.Start("ipconfig", "/flushdns");
-                    break;
+                    return FlushDns();
+                case "ThumbCache":
+                    return DeleteFilesByPattern(item.Path, "thumbcache_*.db", "iconcache_*.db");
                 default:
                     if (!string.IsNullOrEmpty(item.Path) && Directory.Exists(item.Path))
                     {
-                        foreach (var file in Directory.GetFiles(item.Path, "*", SearchOption.AllDirectories))
-                        {
-                            try { File.Delete(file); } catch (Exception ex) { Debug.WriteLine($"Clean: {ex.Message}"); }
-                        }
+                        return DeleteAllInDirectory(item.Path);
                     }
-                    break;
+                    return false;
             }
         }
-        catch (Exception ex) { CleanMaster.App.LogError("Clean", ex); }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("Clean", ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Runs ipconfig /flushdns and waits for exit so the UI status reflects actual completion.
+    /// </summary>
+    private static bool FlushDns()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "ipconfig.exe",
+                Arguments = "/flushdns",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using var process = Process.Start(psi);
+            if (process == null) return false;
+            process.WaitForExit(5000);
+            return process.ExitCode == 0;
+        }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("FlushDns", ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Deletes files matching the given patterns inside a directory (non-recursive).
+    /// Clears read-only/system attributes first.
+    /// </summary>
+    private static bool DeleteFilesByPattern(string directory, params string[] patterns)
+    {
+        if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory)) return false;
+
+        bool anyDeleted = false;
+        foreach (var pattern in patterns)
+        {
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(directory, pattern,
+                    new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = false }))
+                {
+                    try
+                    {
+                        File.SetAttributes(file, FileAttributes.Normal);
+                        File.Delete(file);
+                        anyDeleted = true;
+                    }
+                    catch (Exception ex) { Debug.WriteLine($"DeleteFilesByPattern: {file}: {ex.Message}"); }
+                }
+            }
+            catch (Exception ex) { CleanMaster.App.LogError("DeleteFilesByPattern", ex); }
+        }
+        return anyDeleted;
+    }
+
+    /// <summary>
+    /// Deletes all files (recursively) inside a directory but leaves the directory itself.
+    /// Clears read-only/system attributes before deletion.
+    /// </summary>
+    private static bool DeleteAllInDirectory(string directory)
+    {
+        if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory)) return false;
+
+        bool anyDeleted = false;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    File.SetAttributes(file, FileAttributes.Normal);
+                    File.Delete(file);
+                    anyDeleted = true;
+                }
+                catch (Exception ex) { Debug.WriteLine($"DeleteAllInDirectory: {file}: {ex.Message}"); }
+            }
+
+            // Remove now-empty subdirectories (deepest first)
+            var subdirs = Directory.GetDirectories(directory, "*", SearchOption.AllDirectories)
+                .OrderByDescending(d => d.Length);
+            foreach (var dir in subdirs)
+            {
+                try { Directory.Delete(dir, false); }
+                catch (Exception ex) { Debug.WriteLine($"DeleteAllInDirectory: dir {dir}: {ex.Message}"); }
+            }
+        }
+        catch (Exception ex) { CleanMaster.App.LogError("DeleteAllInDirectory", ex); }
+
+        return anyDeleted;
     }
 }
 

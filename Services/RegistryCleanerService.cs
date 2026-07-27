@@ -6,6 +6,13 @@ namespace CleanMaster.Services;
 
 public class RegistryCleanerService
 {
+    private static readonly HashSet<string> SystemStubs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "msiexec.exe", "msiexec", "rundll32.exe", "rundll32",
+        "reg.exe", "reg", "regsvr32.exe", "regsvr32",
+        "wmic.exe", "wmic", "schtasks.exe", "schtasks"
+    };
+
     public List<RegistryIssue> ScanForIssues()
     {
         var issues = new List<RegistryIssue>();
@@ -48,10 +55,19 @@ public class RegistryCleanerService
 
                         if (string.IsNullOrEmpty(displayName)) continue;
 
-                        // Check if uninstall string points to missing file
+                        // Skip MSI/system-stub uninstall entries — these rely on Windows Installer
+                        // or other system binaries; missing File.Exists(exe) is normal, not orphan.
                         if (!string.IsNullOrEmpty(uninstallStr))
                         {
                             var exePath = ExtractExePath(uninstallStr);
+                            var fileName = !string.IsNullOrEmpty(exePath) ? Path.GetFileName(exePath) : "";
+
+                            if (!string.IsNullOrEmpty(fileName) && SystemStubs.Contains(fileName))
+                            {
+                                // Not orphaned by definition; skip.
+                                continue;
+                            }
+
                             if (!string.IsNullOrEmpty(exePath) && !File.Exists(exePath))
                             {
                                 issues.Add(new RegistryIssue
@@ -62,6 +78,7 @@ public class RegistryCleanerService
                                     Description = $"Uninstaller not found: {exePath}",
                                     CanClean = true
                                 });
+                                continue; // don't double-report same entry
                             }
                         }
 
@@ -123,7 +140,7 @@ public class RegistryCleanerService
                     "CleanMaster", "RegistryBackups");
                 Directory.CreateDirectory(backupDir);
                 var backupFile = Path.Combine(backupDir,
-                    $"backup_{DateTime.Now:yyyyMMdd_HHmmss}_{issue.Name}.reg");
+                    $"backup_{DateTime.Now:yyyyMMdd_HHmmss}_{SanitizeFileName(issue.Name)}.reg");
                 var psi = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "reg.exe",
@@ -144,6 +161,19 @@ public class RegistryCleanerService
         catch (Exception ex) { CleanMaster.App.LogError("CleanIssue", ex); }
     }
 
+    private static string SanitizeFileName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "unnamed";
+        var invalid = Path.GetInvalidFileNameChars();
+        var sb = new System.Text.StringBuilder();
+        foreach (var c in name)
+        {
+            if (invalid.Contains(c) || c == ' ') sb.Append('_');
+            else sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
     private static string ExtractExePath(string command)
     {
         if (string.IsNullOrEmpty(command)) return "";
@@ -153,7 +183,10 @@ public class RegistryCleanerService
             var endQuote = cmd.IndexOf('"', 1);
             if (endQuote > 0) return cmd.Substring(1, endQuote - 1);
         }
-        return cmd.Split(' ')[0];
+
+        // Split on first whitespace to get the executable token
+        var parts = cmd.Split(' ', 2);
+        return parts[0];
     }
 }
 

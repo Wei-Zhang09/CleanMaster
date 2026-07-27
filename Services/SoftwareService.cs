@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
@@ -26,14 +27,29 @@ public class InstalledSoftware
     };
 }
 
-public class StartupItem
+public class StartupItem : INotifyPropertyChanged
 {
     public string Name { get; set; } = "";
     public string Command { get; set; } = "";
     public string Location { get; set; } = "";
-    public bool IsEnabled { get; set; }
+    private bool _isEnabled;
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set { _isEnabled = value; OnPropertyChanged(); }
+    }
     public string Source { get; set; } = "";
-    public string IconPath { get; set; } = "";
+
+    private string _iconPath = "";
+    public string IconPath
+    {
+        get => _iconPath;
+        set { _iconPath = value; OnPropertyChanged(); }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 public class UninstallResult
@@ -55,6 +71,11 @@ public class UninstallResult
 
 public class SoftwareService : ISoftwareService
 {
+    private static readonly HashSet<string> KnownInstallerExes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "msiexec.exe", "rundll32.exe", "reg.exe", "regsvr32.exe", "wmic.exe"
+    };
+
     public List<InstalledSoftware> GetInstalledSoftware()
     {
         var software = new List<InstalledSoftware>();
@@ -83,7 +104,7 @@ public class SoftwareService : ISoftwareService
 
                         var name = subKey.GetValue("DisplayName") as string;
                         if (string.IsNullOrEmpty(name)) continue;
-                        if (name.StartsWith("KB") && name.Contains("Update")) continue;
+                        if (IsWindowsUpdateKbEntry(name, subKey)) continue;
                         if (seen.Contains(name)) continue;
                         seen.Add(name);
 
@@ -160,6 +181,43 @@ public class SoftwareService : ISoftwareService
         return software.OrderByDescending(s => s.EstimatedSize).ToList();
     }
 
+    /// <summary>
+    /// Identifies Windows Update / hotfix entries (KB-prefixed and similar) that should
+    /// not be exposed as user-uninstallable software.
+    /// </summary>
+    private static bool IsWindowsUpdateKbEntry(string displayName, RegistryKey subKey)
+    {
+        // Microsoft's own convention: DisplayName starts with "KB" followed by digits,
+        // and ParentKeyName = "OperatingSystem" or "Hotfix" indicates a Windows Update.
+        if (string.IsNullOrEmpty(displayName)) return false;
+
+        // Match "KB" + digits (e.g. "KB5031456" or "KB5031456 Update")
+        if (displayName.Length >= 4
+            && (displayName[0] == 'K' || displayName[0] == 'k')
+            && (displayName[1] == 'B' || displayName[1] == 'b')
+            && char.IsDigit(displayName[2])
+            && char.IsDigit(displayName[3]))
+        {
+            return true;
+        }
+
+        try
+        {
+            var parent = subKey.GetValue("ParentKeyName") as string;
+            if (!string.IsNullOrEmpty(parent)
+                && (parent.IndexOf("Hotfix", StringComparison.OrdinalIgnoreCase) >= 0
+                    || parent.IndexOf("OperatingSystem", StringComparison.OrdinalIgnoreCase) >= 0
+                    || parent.IndexOf("Component", StringComparison.OrdinalIgnoreCase) >= 0
+                    || parent.IndexOf("Update", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                return true;
+            }
+        }
+        catch { }
+
+        return false;
+    }
+
     public List<StartupItem> GetStartupItems()
     {
         var items = new List<StartupItem>();
@@ -183,7 +241,6 @@ public class SoftwareService : ISoftwareService
                 foreach (var name in key.GetValueNames())
                 {
                     var command = key.GetValue(name) as string ?? "";
-                    var iconPath = ExtractExePath(command);
                     items.Add(new StartupItem
                     {
                         Name = name,
@@ -191,13 +248,15 @@ public class SoftwareService : ISoftwareService
                         Location = path,
                         IsEnabled = true,
                         Source = source,
-                        IconPath = iconPath
+                        // 图标延迟加载, 加快列表呈现
+                        IconPath = ""
                     });
                 }
             }
             catch (Exception ex) { CleanMaster.App.LogError("GetStartupItems", ex); }
         }
 
+        // Startup folder (always enabled)
         try
         {
             var startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
@@ -212,9 +271,24 @@ public class SoftwareService : ISoftwareService
                         Location = "Startup Folder",
                         IsEnabled = true,
                         Source = "StartupFolder",
-                        IconPath = file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? file : ""
+                        IconPath = ""
                     });
                 }
+            }
+
+            // Also check for .disabled files (previously disabled via this app)
+            var disabledFiles = Directory.GetFiles(startupFolder, "*.disabled");
+            foreach (var file in disabledFiles)
+            {
+                items.Add(new StartupItem
+                {
+                    Name = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(file)),
+                    Command = file,
+                    Location = "Startup Folder",
+                    IsEnabled = false,
+                    Source = "StartupFolder",
+                    IconPath = ""
+                });
             }
         }
         catch (Exception ex) { CleanMaster.App.LogError("GetStartupItems", ex); }
@@ -222,39 +296,209 @@ public class SoftwareService : ISoftwareService
         return items.OrderBy(i => i.Name).ToList();
     }
 
+    /// <summary>
+    /// Computes the icon path for a startup item by extracting the executable
+    /// from its command line. Called lazily by the UI so the initial list load
+    /// is fast and icon extraction doesn't block the registry read.
+    /// </summary>
+    public string GetStartupItemIconPath(StartupItem item)
+    {
+        if (item == null) return "";
+        try
+        {
+            if (!string.IsNullOrEmpty(item.IconPath)) return item.IconPath;
+            if (item.Source == "StartupFolder"
+                && !string.IsNullOrEmpty(item.Command)
+                && item.Command.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                && File.Exists(item.Command))
+            {
+                item.IconPath = item.Command;
+                return item.IconPath;
+            }
+            item.IconPath = ExtractExePath(item.Command);
+            return item.IconPath;
+        }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("GetStartupItemIconPath", ex);
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// Disables a startup item by moving it aside (folder) or backing up + removing
+    /// the registry value. The original command is preserved so EnableStartupItem can restore it.
+    /// </summary>
     public bool DisableStartupItem(StartupItem item)
     {
         try
         {
             if (item.Source == "StartupFolder")
             {
+                if (!File.Exists(item.Command)) return false;
                 var disabledPath = item.Command + ".disabled";
+                if (File.Exists(disabledPath)) File.Delete(disabledPath);
                 File.Move(item.Command, disabledPath);
                 return true;
             }
-            else
-            {
-                var path = item.Source switch
-                {
-                    "HKLM" => @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-                    "HKLM64" => @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
-                    "HKCU" => @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-                    _ => ""
-                };
-                var root = item.Source.StartsWith("HKLM") ? Registry.LocalMachine : Registry.CurrentUser;
 
-                if (!string.IsNullOrEmpty(path))
-                {
-                    using var key = root.OpenSubKey(path, true);
-                    key?.DeleteValue(item.Name, false);
-                    return true;
-                }
-            }
+            var regInfo = ResolveStartupRegPath(item.Source);
+            if (regInfo == null) return false;
+
+            using var key = regInfo.Value.Root.OpenSubKey(regInfo.Value.Path, true);
+            if (key == null) return false;
+
+            // Back up the value under a "Disabled_" name so we can re-enable later
+            var existing = key.GetValue(item.Name);
+            if (existing == null) return false;
+
+            var backupName = "Disabled_" + item.Name;
+            key.SetValue(backupName, existing, key.GetValueKind(item.Name));
+            key.DeleteValue(item.Name, false);
+            return true;
         }
         catch (Exception ex) { CleanMaster.App.LogError("DisableStartupItem", ex); }
         return false;
     }
 
+    /// <summary>
+    /// Restores a previously-disabled startup item.
+    /// </summary>
+    public bool EnableStartupItem(StartupItem item)
+    {
+        try
+        {
+            if (item.Source == "StartupFolder")
+            {
+                // item.Command points to the .disabled path when disabled
+                var disabledPath = item.Command;
+                if (disabledPath.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
+                    && File.Exists(disabledPath))
+                {
+                    var restored = disabledPath[..^(".disabled".Length)];
+                    if (File.Exists(restored)) File.Delete(restored);
+                    File.Move(disabledPath, restored);
+                    return true;
+                }
+                return false;
+            }
+
+            var regInfo = ResolveStartupRegPath(item.Source);
+            if (regInfo == null) return false;
+
+            using var key = regInfo.Value.Root.OpenSubKey(regInfo.Value.Path, true);
+            if (key == null) return false;
+
+            var backupName = "Disabled_" + item.Name;
+            var backup = key.GetValue(backupName);
+            if (backup == null) return false;
+
+            key.SetValue(item.Name, backup, key.GetValueKind(backupName));
+            key.DeleteValue(backupName, false);
+            return true;
+        }
+        catch (Exception ex) { CleanMaster.App.LogError("EnableStartupItem", ex); }
+        return false;
+    }
+
+    private static (RegistryKey Root, string Path)? ResolveStartupRegPath(string source)
+    {
+        return source switch
+        {
+            "HKLM" => (Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+            "HKLM64" => (Registry.LocalMachine, @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run"),
+            "HKCU" => (Registry.CurrentUser, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+            "HKLM-Once" => (Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"),
+            "HKCU-Once" => (Registry.CurrentUser, @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"),
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Starts the uninstaller and awaits its exit. Returns the exit code (or null if start failed).
+    /// Caller controls the wait timeout via the cancellationToken.
+    /// </summary>
+    public async Task<(bool Started, int? ExitCode, string Message)> UninstallSoftwareAsync(
+        InstalledSoftware software, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(software.UninstallString))
+            return (false, null, "No uninstall command found");
+
+        var cmd = software.UninstallString.Trim();
+
+        if (ContainsSuspiciousCharacters(cmd))
+            return (false, null, "Uninstall command contains suspicious characters");
+
+        try
+        {
+            ProcessStartInfo psi;
+            string resolvedExe;
+
+            if (cmd.StartsWith("\""))
+            {
+                var endQuote = cmd.IndexOf('"', 1);
+                if (endQuote <= 0)
+                    return (false, null, "Invalid uninstall string format");
+                resolvedExe = cmd.Substring(1, endQuote - 1);
+                var args = cmd.Substring(endQuote + 1).Trim();
+
+                if (!IsAllowedInstallerExe(resolvedExe) && !File.Exists(resolvedExe))
+                    return (false, null, $"Uninstaller not found: {resolvedExe}");
+
+                psi = new ProcessStartInfo
+                {
+                    FileName = resolvedExe,
+                    Arguments = args,
+                    UseShellExecute = true
+                };
+            }
+            else
+            {
+                var parts = cmd.Split(' ', 2);
+                var exePath = parts[0];
+                var args = parts.Length > 1 ? parts[1] : "";
+
+                resolvedExe = ResolveExecutablePath(exePath);
+                if (string.IsNullOrEmpty(resolvedExe))
+                    return (false, null, $"Cannot find uninstaller: {exePath}");
+
+                psi = new ProcessStartInfo
+                {
+                    FileName = resolvedExe,
+                    Arguments = args,
+                    UseShellExecute = true
+                };
+            }
+
+            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            if (!process.Start()) return (false, null, "Failed to start uninstaller process");
+
+            try
+            {
+                await process.WaitForExitAsync(ct);
+                return (true, process.ExitCode, "Uninstaller exited");
+            }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                return (true, null, "Uninstaller execution was cancelled");
+            }
+        }
+        catch (Exception ex) when (ex.Message.Contains("Cannot find")
+                                 || ex.Message.Contains("Invalid")
+                                 || ex.Message.Contains("suspicious"))
+        {
+            return (false, null, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return (false, null, $"Failed to start uninstaller: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Synchronous legacy entry. Prefer <see cref="UninstallSoftwareAsync"/>.
+    /// </summary>
     public void UninstallSoftware(InstalledSoftware software)
     {
         if (string.IsNullOrEmpty(software.UninstallString))
@@ -262,7 +506,6 @@ public class SoftwareService : ISoftwareService
 
         var cmd = software.UninstallString.Trim();
 
-        // Security: Validate the uninstall string to prevent command injection
         if (ContainsSuspiciousCharacters(cmd))
             throw new Exception("Uninstall command contains suspicious characters");
 
@@ -276,8 +519,7 @@ public class SoftwareService : ISoftwareService
                     var exe = cmd.Substring(1, endQuote - 1);
                     var args = cmd.Substring(endQuote + 1).Trim();
 
-                    // Validate exe path exists and is a valid executable
-                    if (!File.Exists(exe) || !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    if (!IsAllowedInstallerExe(exe) && !File.Exists(exe))
                         throw new Exception("Invalid uninstaller executable path");
 
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -290,11 +532,9 @@ public class SoftwareService : ISoftwareService
             }
             else
             {
-                // Extract and validate the executable path
                 var parts = cmd.Split(' ', 2);
                 var exePath = parts[0];
 
-                // Try to find the executable
                 var resolvedPath = ResolveExecutablePath(exePath);
                 if (string.IsNullOrEmpty(resolvedPath))
                     throw new Exception($"Cannot find uninstaller: {exePath}");
@@ -318,19 +558,35 @@ public class SoftwareService : ISoftwareService
         }
     }
 
+    /// <summary>
+    /// Shell-metacharacter filter. Allows parentheses (used by many MSI/Inno setups),
+    /// but blocks shell separators that could chain commands.
+    /// </summary>
     private static bool ContainsSuspiciousCharacters(string input)
     {
-        // Check for command injection patterns
-        var suspiciousPatterns = new[] { "&", "|", ";", "`", "$", "(", ")", "{", "}", "<", ">", "^" };
+        if (string.IsNullOrEmpty(input)) return false;
+        // Block shell command separators only. Allow () {} as they appear in legit GUIDs/paths.
+        var suspiciousPatterns = new[] { "&", "|", ";", "`", "$", "<", ">", "^", "\n", "\r" };
         return suspiciousPatterns.Any(p => input.Contains(p));
+    }
+
+    private static bool IsAllowedInstallerExe(string exePath)
+    {
+        if (string.IsNullOrEmpty(exePath)) return false;
+        var fileName = Path.GetFileName(exePath);
+        return KnownInstallerExes.Contains(fileName);
     }
 
     private static string? ResolveExecutablePath(string path)
     {
-        // If it's already a full path and exists
+        if (string.IsNullOrEmpty(path)) return null;
+
+        // Known installer stubs - run via shell
+        if (KnownInstallerExes.Contains(Path.GetFileName(path)))
+            return path;
+
         if (File.Exists(path)) return path;
 
-        // Try with common locations
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
@@ -341,7 +597,6 @@ public class SoftwareService : ISoftwareService
             if (File.Exists(fullPath)) return fullPath;
         }
 
-        // Try expanding environment variables
         var expanded = Environment.ExpandEnvironmentVariables(path);
         if (File.Exists(expanded)) return expanded;
 
@@ -352,31 +607,40 @@ public class SoftwareService : ISoftwareService
     {
         var result = new UninstallResult { Success = true };
 
-        // Scan leftover folders
         var possibleLocations = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         if (!string.IsNullOrEmpty(software.InstallLocation) && Directory.Exists(software.InstallLocation))
+        {
             possibleLocations.Add(software.InstallLocation);
+            seen.Add(software.InstallLocation);
+        }
 
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
 
-        var nameParts = software.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        foreach (var part in nameParts)
-        {
-            if (part.Length < 3) continue;
-            var lower = part.ToLower();
+        // Build precise matching tokens from the install location (preferred) or software name.
+        // The previous implementation split the name by spaces and matched any 3+ char part,
+        // which caused false positives (e.g. "Microsoft Visual C++" matched "Microsoft Edge").
+        // We now require matches against the most-specific token (Publisher + Name) and
+        // explicitly exclude directories that look like other vendors.
+        var tokens = ExtractMatchTokens(software);
 
+        foreach (var token in tokens)
+        {
             foreach (var baseDir in new[] { appData, localAppData, programFiles, programFilesX86 })
             {
                 try
                 {
-                    foreach (var dir in Directory.GetDirectories(baseDir, $"*{lower}*", SearchOption.TopDirectoryOnly))
+                    foreach (var dir in Directory.GetDirectories(baseDir, $"*{token}*", SearchOption.TopDirectoryOnly))
                     {
-                        if (!possibleLocations.Contains(dir))
-                            possibleLocations.Add(dir);
+                        if (seen.Contains(dir)) continue;
+                        // Only accept if directory name actually starts with or equals the token-ish
+                        if (!IsLikelyLeftover(dir, software, token)) continue;
+                        possibleLocations.Add(dir);
+                        seen.Add(dir);
                     }
                 }
                 catch (Exception ex) { CleanMaster.App.LogError("ScanLeftovers", ex); }
@@ -397,7 +661,6 @@ public class SoftwareService : ISoftwareService
             catch (Exception ex) { CleanMaster.App.LogError("ScanLeftovers", ex); }
         }
 
-        // Scan leftover registry keys
         var regPaths = new[]
         {
             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
@@ -431,15 +694,86 @@ public class SoftwareService : ISoftwareService
         return result;
     }
 
+    /// <summary>
+    /// Produces precise tokens to match against leftover folder names.
+    /// Priority: install location basename > publisher > most specific name token.
+    /// </summary>
+    private static List<string> ExtractMatchTokens(InstalledSoftware software)
+    {
+        var tokens = new List<string>();
+
+        if (!string.IsNullOrEmpty(software.InstallLocation))
+        {
+            var basename = Path.GetFileName(software.InstallLocation.TrimEnd('\\', '/'));
+            if (!string.IsNullOrEmpty(basename) && basename.Length >= 3)
+                tokens.Add(basename);
+        }
+
+        if (!string.IsNullOrEmpty(software.Publisher))
+        {
+            // Only use publisher if it doesn't equal generic terms
+            var p = software.Publisher.Trim();
+            if (p.Length >= 3 && !IsGenericPublisher(p))
+                tokens.Add(p);
+        }
+
+        // Use the longest token of the name as a last resort (min 4 chars)
+        var nameParts = software.Name.Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in nameParts.OrderByDescending(p => p.Length))
+        {
+            if (part.Length < 4) continue;
+            if (IsGenericNameToken(part)) continue;
+            tokens.Add(part);
+            break; // only the longest specific token
+        }
+
+        return tokens.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static bool IsGenericPublisher(string p)
+    {
+        var lowered = p.ToLowerInvariant();
+        return lowered == "microsoft corporation" || lowered == "microsoft" || lowered == "windows";
+    }
+
+    private static bool IsGenericNameToken(string t)
+    {
+        var lowered = t.ToLowerInvariant();
+        return lowered switch
+        {
+            "update" or "version" or "x64" or "x86" or "32" or "64" or "the" => true,
+            _ => false
+        };
+    }
+
+    private static bool IsLikelyLeftover(string dir, InstalledSoftware software, string token)
+    {
+        var dirName = Path.GetFileName(dir);
+        if (dirName.Length < 3) return false;
+
+        // Require the token to appear in the directory name (already enforced by glob),
+        // but additionally disallow obvious other-vendor matches when the publisher
+        // token wasn't used.
+        if (dirName.IndexOf(token, StringComparison.OrdinalIgnoreCase) < 0) return false;
+
+        // Exclude common system folders
+        var lower = dirName.ToLowerInvariant();
+        if (lower == "microsoft" || lower == "windows" || lower == "common files"
+            || lower == "package cache" || lower == "installer")
+            return false;
+
+        return true;
+    }
+
     public void CleanupLeftovers(UninstallResult result)
     {
-        // Delete leftover folders
         foreach (var folder in result.LeftoverFolders)
         {
             try
             {
                 if (Directory.Exists(folder))
                 {
+                    // Clear attributes first so read-only files can be deleted
                     foreach (var file in Directory.GetFiles(folder, "*", SearchOption.AllDirectories))
                     {
                         try { File.SetAttributes(file, FileAttributes.Normal); File.Delete(file); } catch (Exception ex) { Debug.WriteLine($"CleanupLeftovers: {ex.Message}"); }
@@ -450,7 +784,6 @@ public class SoftwareService : ISoftwareService
             catch (Exception ex) { CleanMaster.App.LogError("CleanupLeftovers", ex); }
         }
 
-        // Clean orphaned registry keys
         foreach (var regKey in result.LeftoverRegistryKeys)
         {
             try

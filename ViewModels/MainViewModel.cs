@@ -7,7 +7,7 @@ using CleanMaster.Services;
 
 namespace CleanMaster.ViewModels;
 
-public class MainViewModel : INotifyPropertyChanged
+public class MainViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly DiskInfoService _diskInfoService;
     public LangService Lang { get; } = LangService.Instance;
@@ -21,6 +21,7 @@ public class MainViewModel : INotifyPropertyChanged
     public SettingsViewModel Settings { get; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    private bool _disposed;
 
     #region Disk Info
     private DiskInfo? _diskInfo;
@@ -37,6 +38,7 @@ public class MainViewModel : INotifyPropertyChanged
     #region Navigation
     private string _currentView = "Clean";
     private string _previousView = "";
+    private bool _isNavigating;
 
     public string CurrentView
     {
@@ -74,11 +76,27 @@ public class MainViewModel : INotifyPropertyChanged
         SystemCleanup = systemCleanupViewModel;
         Settings = settingsViewModel;
 
-        _diskInfoService.PropertyChanged += (s, e) =>
+        _diskInfoService.PropertyChanged += OnDiskInfoChanged;
+
+        // When the language changes, re-fire PropertyChanged for our Lang property so
+        // every {Binding Lang[Key]} across the main view re-evaluates immediately.
+        Lang.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged()
+    {
+        // Trigger WPF to re-read all {Binding Lang[...]} expressions on this VM.
+        try
         {
-            if (e.PropertyName == nameof(DiskInfoService.DiskInfo))
-                DiskInfo = _diskInfoService.DiskInfo;
-        };
+            App.Current?.Dispatcher?.BeginInvoke(new Action(() =>
+            {
+                OnPropertyChanged(nameof(Lang));
+            }));
+        }
+        catch
+        {
+            OnPropertyChanged(nameof(Lang));
+        }
     }
 
     public void LoadDiskInfo()
@@ -86,24 +104,61 @@ public class MainViewModel : INotifyPropertyChanged
         try { _diskInfoService.Refresh("C:"); } catch (Exception ex) { CleanMaster.App.LogError("LoadDiskInfo", ex); }
     }
 
-    private async void OnNavigatedTo(string view)
+    private void OnNavigatedTo(string view)
     {
-        switch (view)
+        // 防止用户连续点击导航时触发多次重负载加载。
+        // 导航本身（CurrentView 切换、Visibility 切换）非常轻量、仍然即时响应；
+        // 这里只对真正会触发 IO/扫描的副作用做去重入。
+        // 注意: 不能 await — 那会阻塞 CurrentView setter, 导致页面切换卡顿、
+        // 加载提示也来不及渲染。改为 fire-and-forget, 让 ViewModel 自己管理
+        // IsLoading 状态和 UI 提示。
+        if (_isNavigating) return;
+        _isNavigating = true;
+        try
         {
-            case "LargeFiles":
-            case "LargeFolders":
-            case "EmptyFolders":
-                DiskFiles.LoadDiskDrives();
-                break;
-            case "Software":
-                await Software.LoadInstalledSoftwareAsync();
-                break;
-            case "Startup":
-                Startup.LoadStartupItems();
-                break;
+            switch (view)
+            {
+                case "LargeFiles":
+                case "LargeFolders":
+                case "EmptyFolders":
+                    DiskFiles.LoadDiskDrives();
+                    break;
+                case "Software":
+                    _ = Software.LoadInstalledSoftwareAsync();
+                    break;
+                case "Startup":
+                    _ = Startup.LoadStartupItemsAsync(forceRefresh: false);
+                    break;
+            }
+        }
+        finally
+        {
+            _isNavigating = false;
         }
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        try
+        {
+            _diskInfoService.PropertyChanged -= OnDiskInfoChanged;
+            Lang.LanguageChanged -= OnLanguageChanged;
+            (Clean as IDisposable)?.Dispose();
+            (SystemCleanup as IDisposable)?.Dispose();
+            (Software as IDisposable)?.Dispose();
+        }
+        catch { }
+        GC.SuppressFinalize(this);
+    }
+
+    private void OnDiskInfoChanged(object? s, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DiskInfoService.DiskInfo))
+            DiskInfo = _diskInfoService.DiskInfo;
+    }
 }

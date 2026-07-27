@@ -85,6 +85,10 @@ public class SettingsViewModel : INotifyPropertyChanged
         _scanService = scanService;
         WebsiteUrl = _settingsService.Get().WebsiteUrl;
 
+        // 反向订阅 LangService.LanguageChanged: 即使语言被其它地方切换,
+        // SettingsView 也能同步 RadioButton 状态以及本地 Lang 属性。
+        Lang.LanguageChanged += OnLanguageChanged;
+
         ToggleLangCommand = new RelayCommand(() => { IsChinese = !IsChinese; OnPropertyChanged(nameof(Lang)); });
         ShowActivationCommand = new RelayCommand(ShowActivationDialog);
         OpenWebsiteCommand = new RelayCommand(OpenWebsite);
@@ -193,6 +197,27 @@ public class SettingsViewModel : INotifyPropertyChanged
                     cat.SizeText = FormatSize(cat.SizeBytes);
                 }
 
+                // Note: some directories are skipped due to permissions, so knownSize may
+                // undercount UsedBytes. We display "其他文件" as the residual (always >=0)
+                // and surface a note when the residual looks suspiciously large vs known.
+                var knownSum = categories.Sum(c => c.SizeBytes);
+                var residual = diskInfo.UsedBytes - knownSum;
+                if (residual < 0)
+                {
+                    // Permission skipping produced an undercount; clamp and add a note category
+                    var otherCat = categories.First(c => c.Name == "其他文件");
+                    otherCat.SizeBytes = 0;
+                    otherCat.SizeText = "0 B（含无法访问的目录）";
+                    otherCat.Percentage = 0;
+                }
+                else
+                {
+                    var otherCat = categories.First(c => c.Name == "其他文件");
+                    otherCat.SizeBytes = residual;
+                    otherCat.SizeText = FormatSize(residual);
+                    otherCat.Percentage = diskInfo.UsedBytes > 0 ? (double)residual / diskInfo.UsedBytes * 100 : 0;
+                }
+
                 // Sort by size descending
                 categories.Sort((a, b) => b.SizeBytes.CompareTo(a.SizeBytes));
 
@@ -202,8 +227,7 @@ public class SettingsViewModel : INotifyPropertyChanged
                 }));
             });
 
-            AnalysisStatus = $"{AnalyzedDrive} 分析完成";
-        }
+            AnalysisStatus = $"{AnalyzedDrive} 分析完成";        }
         catch (Exception ex)
         {
             AnalysisStatus = $"分析失败: {ex.Message}";
@@ -291,6 +315,25 @@ public class SettingsViewModel : INotifyPropertyChanged
             System.Windows.MessageBox.Show("网站地址已保存", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex) { CleanMaster.App.LogError("SaveWebsiteUrl", ex); }
+    }
+
+    private void OnLanguageChanged()
+    {
+        // LangService 已经切换了 IsChinese, 通知 WPF 让 RadioButton 和 Lang[] 绑定刷新。
+        try
+        {
+            App.Current?.Dispatcher?.BeginInvoke(new Action(() =>
+            {
+                OnPropertyChanged(nameof(IsChinese));
+                OnPropertyChanged(nameof(Lang));
+            }));
+        }
+        catch
+        {
+            // App 当前可能未启动 (单元测试场景): 同步触发属性变更
+            OnPropertyChanged(nameof(IsChinese));
+            OnPropertyChanged(nameof(Lang));
+        }
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)

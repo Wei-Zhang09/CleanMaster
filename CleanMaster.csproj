@@ -28,6 +28,7 @@
     <Resource Include="Resources\Icons\bebb7fbb3f23d2157e1ecc8224686535.ico" />
     <Resource Include="Resources\QRCodes\7f09a53bd669d32db250c8ead9e924d4.jpg" />
     <Resource Include="Resources\QRCodes\24aeaa7d3f01dd052ae11d91cd29eac1.jpg" />
+    <Resource Include="Resources\QRCodes\gzh.jpeg" />
     <Resource Include="Resources\Donate\596dd377-5795-4576-94f0-0d0865384f8c.png" />
   </ItemGroup>
 

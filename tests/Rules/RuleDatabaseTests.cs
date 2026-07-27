@@ -72,8 +72,8 @@ public class RuleDatabaseTests
     [InlineData("Recycle Bin")]
     [InlineData("User Temp")]
     [InlineData("Windows Temp")]
-    [InlineData("Edge Cache")]
-    [InlineData("Chrome Cache")]
+    [InlineData("Edge Cache (all profiles)")]
+    [InlineData("Chrome Cache (all profiles)")]
     public void GetAllRules_ContainsSpecificRuleName(string expectedName)
     {
         var rules = RuleDatabase.GetAllRules();

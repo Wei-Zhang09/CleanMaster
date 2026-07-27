@@ -10,12 +10,18 @@ public class ScanService : IScanService
 {
     public event Action<ScanProgress>? ProgressChanged;
     public event Action<ScanCategoryResult>? CategoryScanned;
+    public event Action<string>? AccessDenied;
 
     public async Task<List<ScanCategoryResult>> ScanAllAsync(CancellationToken ct = default)
     {
         var results = new List<ScanCategoryResult>();
         var rules = RuleDatabase.GetAllRules();
         var grouped = rules.GroupBy(r => r.Category).ToList();
+
+        // Weighted progress: each rule counts equally rather than each category,
+        // so a category with 30 rules doesn't get the same weight as one with 2.
+        int totalRules = rules.Count;
+        int scannedRules = 0;
 
         var progress = new ScanProgress { TotalCategories = grouped.Count };
 
@@ -24,6 +30,7 @@ public class ScanService : IScanService
             ct.ThrowIfCancellationRequested();
 
             progress.CurrentTask = GetCategoryName(group.Key);
+            progress.CategoriesScanned = scannedRules;
             ProgressChanged?.Invoke(progress);
 
             var result = await Task.Run(() => ScanCategory(group.Key, group.ToList()), ct);
@@ -34,7 +41,9 @@ public class ScanService : IScanService
                 CategoryScanned?.Invoke(result);
             }
 
-            progress.CategoriesScanned++;
+            scannedRules += group.Count();
+            progress.CategoriesScanned = scannedRules;
+            progress.TotalCategories = totalRules;
             ProgressChanged?.Invoke(progress);
         }
 
@@ -54,37 +63,55 @@ public class ScanService : IScanService
         {
             try
             {
-                var path = rule.GetResolvedPath();
-                if (string.IsNullOrEmpty(path) || !Directory.Exists(path) && !File.Exists(path))
-                    continue;
-
-                // 从规则名称中提取软件信息
-                var softwareName = ExtractSoftwareName(rule.Name);
-                var fileType = ExtractFileType(rule.Name, rule.Description);
-
-                if (Directory.Exists(path))
+                // Iterate over all resolved paths (1 for simple rules, N for multi-path rules)
+                foreach (var path in rule.GetResolvedPaths())
                 {
-                    ScanDirectory(path, rule, result, softwareName, fileType);
-                }
-                else if (File.Exists(path))
-                {
-                    var fi = new FileInfo(path);
-                    result.Items.Add(new CleanableItem
+                    if (string.IsNullOrEmpty(path)) continue;
+
+                    if (Directory.Exists(path))
                     {
-                        Name = fi.Name,
-                        FullPath = fi.FullName,
-                        SizeBytes = fi.Length,
-                        Safety = rule.Safety,
-                        Category = category,
-                        Description = rule.Description,
-                        SoftwareName = softwareName,
-                        FileType = fileType,
-                        LastModified = fi.LastWriteTime,
-                        IsDirectory = false
-                    });
+                        ScanDirectory(path, rule, result, ExtractSoftwareName(rule.Name), ExtractFileType(rule.Name, rule.Description));
+                    }
+                    else if (File.Exists(path))
+                    {
+                        var fi = new FileInfo(path);
+                        result.Items.Add(new CleanableItem
+                        {
+                            Name = fi.Name,
+                            FullPath = fi.FullName,
+                            SizeBytes = fi.Length,
+                            Safety = rule.Safety,
+                            Category = category,
+                            Description = rule.Description,
+                            SoftwareName = ExtractSoftwareName(rule.Name),
+                            FileType = ExtractFileType(rule.Name, rule.Description),
+                            LastModified = fi.LastWriteTime,
+                            IsDirectory = false
+                        });
+                    }
                 }
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                CleanMaster.App.LogError("ScanCategory-unauth", ex);
+                AccessDenied?.Invoke($"权限不足，无法扫描: {rule.GetResolvedPath()}");
+            }
             catch (Exception ex) { CleanMaster.App.LogError("ScanCategory", ex); }
+        }
+
+        // 默认选中策略:
+        // - Safe 项默认选中
+        // - Caution 项默认选中 (UI 显示黄色警告, 用户可手动取消)
+        // - Dangerous 项默认不选中 (UI 显示红色警告, 用户必须主动勾选)
+        foreach (var item in result.Items)
+        {
+            if (item.IsDangerous) item.IsSelected = false;
+        }
+
+        // 如果整个分类下所有项都是 Dangerous, 分类本身默认也不选
+        if (result.Items.Count > 0 && result.Items.All(i => i.IsDangerous))
+        {
+            result.IsSelected = false;
         }
 
         return result;
@@ -94,57 +121,110 @@ public class ScanService : IScanService
     {
         try
         {
-            var dirInfo = new DirectoryInfo(path);
-
             if (rule.FilePatterns != null && rule.FilePatterns.Length > 0)
             {
-                foreach (var pattern in rule.FilePatterns)
+                if (rule.PatternsAreDirectories)
                 {
-                    var subPath = Path.Combine(path, pattern);
-                    if (Directory.Exists(subPath))
+                    // Treat each pattern as a subdirectory name (or a glob for subdirectory selection)
+                    foreach (var pattern in rule.FilePatterns)
                     {
-                        var size = GetDirectorySize(subPath);
-                        if (size > 0)
+                        // If the pattern contains glob characters, enumerate matching subdirectories
+                        if (pattern.IndexOfAny(new[] { '*', '?' }) >= 0)
                         {
-                            result.Items.Add(new CleanableItem
+                            try
                             {
-                                Name = $"{rule.Name} - {pattern}",
-                                FullPath = subPath,
-                                SizeBytes = size,
-                                Safety = rule.Safety,
-                                Category = rule.Category,
-                                Description = rule.Description,
-                                SoftwareName = softwareName,
-                                FileType = fileType,
-                                LastModified = Directory.GetLastWriteTime(subPath),
-                                IsDirectory = true
-                            });
+                                foreach (var sub in Directory.EnumerateDirectories(path, pattern,
+                                    new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = false }))
+                                {
+                                    AddDirectoryItem(rule, result, sub, softwareName, fileType, $"{rule.Name} - {Path.GetFileName(sub)}");
+                                }
+                            }
+                            catch (Exception ex) { CleanMaster.App.LogError("ScanDirectory-dirs-glob", ex); }
                         }
+                        else
+                        {
+                            // Literal subdirectory
+                            var subPath = Path.Combine(path, pattern);
+                            if (Directory.Exists(subPath))
+                            {
+                                AddDirectoryItem(rule, result, subPath, softwareName, fileType, $"{rule.Name} - {pattern}");
+                            }
+                            else if (File.Exists(subPath))
+                            {
+                                AddFileItem(rule, result, subPath, softwareName, fileType);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Patterns are file globs (e.g. "thumbcache_*.db")
+                    foreach (var pattern in rule.FilePatterns)
+                    {
+                        try
+                        {
+                            foreach (var f in Directory.EnumerateFiles(path, pattern,
+                                new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = false }))
+                            {
+                                AddFileItem(rule, result, f, softwareName, fileType, $"{rule.Name} - {Path.GetFileName(f)}");
+                            }
+                        }
+                        catch (Exception ex) { CleanMaster.App.LogError("ScanDirectory-files-glob", ex); }
                     }
                 }
             }
             else
             {
-                var size = GetDirectorySize(path);
-                if (size > 0)
-                {
-                    result.Items.Add(new CleanableItem
-                    {
-                        Name = rule.Name,
-                        FullPath = path,
-                        SizeBytes = size,
-                        Safety = rule.Safety,
-                        Category = rule.Category,
-                        Description = rule.Description,
-                        SoftwareName = softwareName,
-                        FileType = fileType,
-                        LastModified = Directory.GetLastWriteTime(path),
-                        IsDirectory = true
-                    });
-                }
+                AddDirectoryItem(rule, result, path, softwareName, fileType, rule.Name);
             }
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            CleanMaster.App.LogError("ScanDirectory-unauth", ex);
+            AccessDenied?.Invoke($"权限不足，无法扫描: {path}");
+        }
         catch (Exception ex) { CleanMaster.App.LogError("ScanDirectory", ex); }
+    }
+
+    private static void AddDirectoryItem(CleanupRule rule, ScanCategoryResult result, string path, string softwareName, string fileType, string displayName)
+    {
+        var size = GetDirectorySize(path);
+        if (size <= 0) return;
+        result.Items.Add(new CleanableItem
+        {
+            Name = displayName,
+            FullPath = path,
+            SizeBytes = size,
+            Safety = rule.Safety,
+            Category = rule.Category,
+            Description = rule.Description,
+            SoftwareName = softwareName,
+            FileType = fileType,
+            LastModified = Directory.GetLastWriteTime(path),
+            IsDirectory = true
+        });
+    }
+
+    private static void AddFileItem(CleanupRule rule, ScanCategoryResult result, string file, string softwareName, string fileType, string? displayName = null)
+    {
+        try
+        {
+            var fi = new FileInfo(file);
+            result.Items.Add(new CleanableItem
+            {
+                Name = displayName ?? fi.Name,
+                FullPath = fi.FullName,
+                SizeBytes = fi.Length,
+                Safety = rule.Safety,
+                Category = rule.Category,
+                Description = rule.Description,
+                SoftwareName = softwareName,
+                FileType = fileType,
+                LastModified = fi.LastWriteTime,
+                IsDirectory = false
+            });
+        }
+        catch (Exception ex) { CleanMaster.App.LogError("AddFileItem", ex); }
     }
 
     public static long GetDirectorySize(string path, int maxDepth = -1)
@@ -152,11 +232,6 @@ public class ScanService : IScanService
 
     private static string ExtractSoftwareName(string ruleName)
     {
-        // 从规则名称中提取软件名称
-        // 例如 "Chrome Cache" -> "Chrome"
-        //      "WeChat Cache" -> "微信"
-        //      "QQ Temp" -> "QQ"
-
         var nameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             { "Chrome", "Chrome" },
@@ -211,7 +286,6 @@ public class ScanService : IScanService
 
     private static string ExtractFileType(string ruleName, string description)
     {
-        // 提取文件类型
         if (ruleName.Contains("Cache", StringComparison.OrdinalIgnoreCase) ||
             description.Contains("cache", StringComparison.OrdinalIgnoreCase))
             return "缓存";
@@ -280,18 +354,19 @@ public class ScanService : IScanService
         {
             var files = new List<LargeFileItem>();
 
-            // Directories to skip (system/important)
+            // Use drive-relative skip paths so the filter works on any selected drive.
+            // Previously these were hard-coded to C:\ and silently passed on other drives.
+            var driveRoot = Path.GetPathRoot(drive) ?? drive;
             var skipDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                @"C:\Windows",
-                @"C:\$Recycle.Bin",
-                @"C:\System Volume Information",
-                @"C:\ProgramData\Microsoft",
-                @"C:\ProgramData\Package Cache"
+                Path.Combine(driveRoot, "Windows").TrimEnd('\\'),
+                Path.Combine(driveRoot, "$Recycle.Bin"),
+                Path.Combine(driveRoot, "System Volume Information"),
+                Path.Combine(driveRoot, @"ProgramData\Microsoft"),
+                Path.Combine(driveRoot, @"ProgramData\Package Cache"),
+                Path.Combine(driveRoot, "Program Files").TrimEnd('\\'),
+                Path.Combine(driveRoot, "Program Files (x86)")
             };
-
-            var safeExts = FileExtensionConstants.SafeExtensions;
-            var cautionExts = FileExtensionConstants.CautionExtensions;
 
             try
             {
@@ -304,8 +379,8 @@ public class ScanService : IScanService
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    // Skip if in excluded directory
-                    var isInSkipDir = skipDirs.Any(d => file.StartsWith(d, StringComparison.OrdinalIgnoreCase));
+                    var isInSkipDir = skipDirs.Any(d => file.StartsWith(d + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                                                       || file.StartsWith(d, StringComparison.OrdinalIgnoreCase) && file.Length == d.Length);
                     if (isInSkipDir) continue;
 
                     try
@@ -346,7 +421,6 @@ public class ScanService : IScanService
         else if (FileExtensionConstants.CautionExtensions.Contains(ext)) safety = "caution";
         else if (FileExtensionConstants.DangerousExtensions.Contains(ext)) safety = "danger";
 
-        // Type and description
         string type, desc;
 
         if (lowerPath.Contains("\\temp\\"))

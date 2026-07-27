@@ -7,11 +7,12 @@ using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.ViewModels;
 
-public class SystemCleanupViewModel : INotifyPropertyChanged
+public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ISystemCleanupService _systemCleanupService;
     private readonly DiskInfoService _diskInfoService;
     private CancellationTokenSource? _cts;
+    private bool _disposed;
 
     public LangService Lang { get; } = LangService.Instance;
 
@@ -47,21 +48,22 @@ public class SystemCleanupViewModel : INotifyPropertyChanged
         _systemCleanupService = systemCleanupService;
         _diskInfoService = diskInfoService;
 
-        // Subscribe to real-time progress: parse percentage from output
-        _systemCleanupService.ProgressChanged += msg =>
-        {
-            App.Current.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                CleanupStatus = msg;
-                var percent = ParsePercent(msg);
-                if (percent >= 0)
-                    ProgressPercent = percent;
-            }));
-        };
+        _systemCleanupService.ProgressChanged += OnProgressChanged;
 
         RunDismCleanupCommand = new RelayCommand(async () => await RunDismCleanupAsync());
         RunSfcScanCommand = new RelayCommand(async () => await RunSfcScanAsync());
         FlushDnsCommand = new RelayCommand(async () => await FlushDnsAsync());
+    }
+
+    private void OnProgressChanged(string msg)
+    {
+        App.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            CleanupStatus = msg;
+            var percent = ParsePercent(msg);
+            if (percent >= 0)
+                ProgressPercent = percent;
+        }));
     }
 
     private static double ParsePercent(string msg)
@@ -154,4 +156,13 @@ public class SystemCleanupViewModel : INotifyPropertyChanged
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        try { _systemCleanupService.ProgressChanged -= OnProgressChanged; }
+        catch { }
+        GC.SuppressFinalize(this);
+    }
 }

@@ -6,6 +6,7 @@ public interface IScanService
 {
     event Action<ScanProgress>? ProgressChanged;
     event Action<ScanCategoryResult>? CategoryScanned;
+    event Action<string>? AccessDenied;
 
     Task<List<ScanCategoryResult>> ScanAllAsync(CancellationToken ct = default);
     DiskInfo GetDiskInfo(string drive);

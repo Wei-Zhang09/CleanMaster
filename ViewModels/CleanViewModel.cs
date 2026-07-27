@@ -9,12 +9,13 @@ using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.ViewModels;
 
-public class CleanViewModel : INotifyPropertyChanged
+public class CleanViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IScanService _scanService;
     private readonly ICleanService _cleanService;
     private readonly DiskInfoService _diskInfoService;
     private CancellationTokenSource? _cts;
+    private bool _disposed;
 
     public LangService Lang { get; } = LangService.Instance;
 
@@ -63,6 +64,9 @@ public class CleanViewModel : INotifyPropertyChanged
     private string _cleanCurrentFile = "";
     public string CleanCurrentFile { get => _cleanCurrentFile; set { _cleanCurrentFile = value; OnPropertyChanged(); } }
 
+    private string _cleanCurrentPath = "";
+    public string CleanCurrentPath { get => _cleanCurrentPath; set { _cleanCurrentPath = value; OnPropertyChanged(); } }
+
     private double _cleanProgressPercent;
     public double CleanProgressPercent { get => _cleanProgressPercent; set { _cleanProgressPercent = value; OnPropertyChanged(); } }
 
@@ -90,22 +94,85 @@ public class CleanViewModel : INotifyPropertyChanged
 
         StatusText = LangService.Instance["Ready"];
 
-        _scanService.ProgressChanged += p => { StatusText = p.CurrentTask; ProgressPercent = p.ProgressPercent; };
-        _scanService.CategoryScanned += cat =>
-        {
-            App.Current.Dispatcher.BeginInvoke(new Action(() => { ScanResults.Add(cat); TotalCleanableSize += cat.TotalSize; TotalItemCount += cat.ItemCount; }));
-        };
-        _cleanService.ProgressChanged += msg => { App.Current.Dispatcher.BeginInvoke(new Action(() => StatusText = msg)); };
-        _cleanService.ProgressUpdated += p =>
-        {
-            App.Current.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                CleanProgressText = $"{p.Current} / {p.Total}";
-                CleanCurrentFile = p.CurrentFile;
-                CleanProgressPercent = p.Percent;
-            }));
-        };
+        _scanService.ProgressChanged += OnScanProgressChanged;
+        _scanService.CategoryScanned += OnCategoryScanned;
+        _scanService.AccessDenied += OnAccessDenied;
+        _cleanService.ProgressChanged += OnCleanProgressChanged;
+        _cleanService.ProgressUpdated += OnCleanProgressUpdated;
+
+        // 订阅全局语言变更: 切换语言后刷新本地 Lang 属性 + 派生文本 (如 CleanResultText)
+        Lang.LanguageChanged += OnLanguageChanged;
     }
+
+    private void OnLanguageChanged()
+    {
+        try
+        {
+            App.Current?.Dispatcher?.BeginInvoke(new Action(() =>
+            {
+                OnPropertyChanged(nameof(Lang));
+                OnPropertyChanged(nameof(CleanResultText));
+                OnPropertyChanged(nameof(StatusText));
+            }));
+        }
+        catch
+        {
+            OnPropertyChanged(nameof(Lang));
+            OnPropertyChanged(nameof(CleanResultText));
+            OnPropertyChanged(nameof(StatusText));
+        }
+    }
+
+    private void OnScanProgressChanged(ScanProgress p)
+    {
+        App.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            StatusText = p.CurrentTask;
+            ProgressPercent = p.ProgressPercent;
+        }));
+    }
+
+    private void OnCategoryScanned(ScanCategoryResult cat)
+    {
+        App.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            ScanResults.Add(cat);
+            TotalCleanableSize += cat.TotalSize;
+            TotalItemCount += cat.ItemCount;
+        }));
+    }
+
+    private void OnAccessDenied(string message)
+    {
+        App.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            // Surface a non-blocking hint to the user (only once per scan to avoid spam)
+            if (!_accessDeniedShown)
+            {
+                _accessDeniedShown = true;
+                StatusText = "部分目录因权限不足被跳过，建议以管理员身份运行";
+            }
+            App.Log($"AccessDenied: {message}");
+        }));
+    }
+
+    private void OnCleanProgressChanged(string msg)
+    {
+        App.Current.Dispatcher.BeginInvoke(new Action(() => StatusText = msg));
+    }
+
+    private void OnCleanProgressUpdated(CleanProgress p)
+    {
+        App.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            CleanProgressText = $"{p.Current} / {p.Total}";
+            CleanCurrentFile = p.CurrentFile;
+            CleanCurrentPath = p.CurrentPath;
+            CleanProgressPercent = p.Percent;
+        }));
+    }
+
+    private bool _accessDeniedShown;
 
     #region Scan/Clean
 
@@ -116,6 +183,7 @@ public class CleanViewModel : INotifyPropertyChanged
         TotalCleanableSize = 0;
         TotalItemCount = 0;
         ProgressPercent = 0;
+        _accessDeniedShown = false;
         StatusText = LangService.Instance["Scanning"];
 
         _cts = new CancellationTokenSource();
@@ -157,6 +225,7 @@ public class CleanViewModel : INotifyPropertyChanged
         CleanProgressPercent = 0;
         CleanProgressText = "";
         CleanCurrentFile = "";
+        CleanCurrentPath = "";
         StatusText = LangService.Instance["Cleaning"];
         _cts = new CancellationTokenSource();
         try
@@ -178,7 +247,6 @@ public class CleanViewModel : INotifyPropertyChanged
     {
         if (category == null) return;
         category.IsExpanded = !category.IsExpanded;
-        OnPropertyChanged(nameof(ScanResults));
     }
 
     private static string FormatSize(long bytes) => bytes switch
@@ -190,4 +258,21 @@ public class CleanViewModel : INotifyPropertyChanged
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        try
+        {
+            _scanService.ProgressChanged -= OnScanProgressChanged;
+            _scanService.CategoryScanned -= OnCategoryScanned;
+            _scanService.AccessDenied -= OnAccessDenied;
+            _cleanService.ProgressChanged -= OnCleanProgressChanged;
+            _cleanService.ProgressUpdated -= OnCleanProgressUpdated;
+            Lang.LanguageChanged -= OnLanguageChanged;
+        }
+        catch { }
+        GC.SuppressFinalize(this);
+    }
 }

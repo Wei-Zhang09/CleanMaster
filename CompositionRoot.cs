@@ -17,11 +17,12 @@ public static class CompositionRoot
         services.AddSingleton<ILangService>(_ => LangService.Instance);
         services.AddSingleton<DiskInfoService>();
 
-        // LicenseService depends on SettingsService
+        // LicenseService depends on SettingsService + MachineIdService
         services.AddSingleton<ILicenseService>(sp =>
         {
             var settingsService = sp.GetRequiredService<ISettingsService>();
-            return new LicenseService(settingsService);
+            var machineIdService = sp.GetRequiredService<IMachineIdService>();
+            return new LicenseService(settingsService, machineIdService);
         });
 
         // Other singleton services

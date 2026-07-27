@@ -12,6 +12,7 @@ public class LicenseInfo
     public string SoftwareName { get; set; } = "";
     public DateTime ActivatedAt { get; set; }
     public bool IsValid { get; set; }
+    public string MachineId { get; set; } = "";
 }
 
 public class LicenseService : ILicenseService
@@ -23,12 +24,13 @@ public class LicenseService : ILicenseService
     private static readonly string ConfigFile = Path.Combine(ConfigDir, "license.json");
 
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
-    private readonly MachineIdService _machineIdService = new();
+    private readonly IMachineIdService _machineIdService;
     private readonly ISettingsService _settingsService;
 
-    public LicenseService(ISettingsService settingsService)
+    public LicenseService(ISettingsService settingsService, IMachineIdService machineIdService)
     {
         _settingsService = settingsService;
+        _machineIdService = machineIdService;
     }
 
     private string ApiBase => _settingsService.Get().LicenseApiUrl;
@@ -104,13 +106,14 @@ public class LicenseService : ILicenseService
                     KeyCode = keyCode.Trim().ToUpper(),
                     SoftwareName = softwareName,
                     ActivatedAt = DateTime.Now,
-                    IsValid = true
+                    IsValid = true,
+                    MachineId = machineId
                 };
                 SaveLocal(info);
                 return (true, message, info);
             }
 
-            return (false, error, null);
+            return (false, string.IsNullOrEmpty(error) ? message : error, null);
         }
         catch (HttpRequestException)
         {
@@ -132,13 +135,22 @@ public class LicenseService : ILicenseService
         if (local == null || string.IsNullOrEmpty(local.KeyCode))
             return (false, "未激活");
 
+        // Bind the cached license to the current machine id to prevent copying license.json
+        // between machines to bypass activation.
+        var currentMachineId = _machineIdService.GetMachineId();
+        if (!string.IsNullOrEmpty(local.MachineId)
+            && !string.Equals(local.MachineId, currentMachineId, StringComparison.OrdinalIgnoreCase))
+        {
+            ClearLocal();
+            return (false, "激活信息与当前设备不匹配");
+        }
+
         try
         {
-            var machineId = _machineIdService.GetMachineId();
             var payload = new
             {
                 key_code = local.KeyCode,
-                machine_id = machineId,
+                machine_id = currentMachineId,
                 software_slug = "cleanmaster"
             };
 
@@ -153,6 +165,7 @@ public class LicenseService : ILicenseService
             if (valid)
             {
                 local.IsValid = true;
+                local.MachineId = currentMachineId;
                 SaveLocal(local);
                 return (true, "已激活");
             }
@@ -163,11 +176,26 @@ public class LicenseService : ILicenseService
                 return (false, error);
             }
         }
+        catch (HttpRequestException)
+        {
+            // Offline: previously the code trusted local.IsValid, which allowed forging license.json.
+            // Now we refuse to consider the license valid unless we can verify it online.
+            // Exception: licenses activated within the last 7 days get a grace period.
+            if (local.IsValid && local.ActivatedAt != default
+                && (DateTime.Now - local.ActivatedAt).TotalDays < 7)
+            {
+                return (true, "已激活(离线宽限期)");
+            }
+            return (false, "无法连接服务器验证，请检查网络后重试");
+        }
+        catch (TaskCanceledException)
+        {
+            return (false, "连接超时，请稍后重试");
+        }
         catch (Exception ex)
         {
-            // Offline - trust local cache
             CleanMaster.App.LogError("CheckActivationAsync", ex);
-            return (local.IsValid, local.IsValid ? "已激活(离线)" : "验证失败");
+            return (false, "验证失败");
         }
     }
 }

@@ -88,6 +88,8 @@ public class SystemCleanupService : ISystemCleanupService
                     ? $"系统文件扫描完成 - {sfcMessage}"
                     : result.Message;
             }
+            // SFC does not free space (it repairs files), so FreedBytes remains 0.
+            // The UI shows "释放空间: 0 B" — we replace this with a friendlier message in the VM.
         }
 
         return result;
@@ -459,7 +461,7 @@ public class SystemCleanupService : ISystemCleanupService
     }
 
     /// <summary>
-    /// Parses SFC output to extract scan result message.
+    /// Parses SFC output to extract scan result message and (when available) freed space.
     /// </summary>
     private static string ParseSfcOutput(string output)
     {
@@ -483,6 +485,13 @@ public class SystemCleanupService : ISystemCleanupService
         }
         catch { }
 
-        return null;
+        return "";
     }
+
+    /// <summary>
+    /// Parses SFC output for any indication of repaired files (which don't report freed bytes),
+    /// returns a coarse estimate (0 since SFC doesn't free space — it repairs).
+    /// Kept for API symmetry with <see cref="ParseDismFreedSpace"/>.
+    /// </summary>
+    private static long ParseSfcFreedSpace(string output) => 0;
 }

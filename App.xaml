@@ -26,6 +26,7 @@
             <conv:BoolVisibilityConverter x:Key="BoolVisibilityConverter"/>
             <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <conv:NullVisibilityConverter x:Key="NullVisibilityConverter"/>
+            <conv:BoolToTextConverter x:Key="BoolToTextConverter"/>
             <conv:IconPathToImageSourceConverter x:Key="IconConverter"/>
             <conv:PercentToWidthConverter x:Key="PercentToWidthConverter" TotalWidth="400"/>
 

@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace CleanMaster.Models;
 
 public static class FileExtensionConstants
@@ -48,7 +51,7 @@ public enum CleanCategory
     DuplicateFiles
 }
 
-public class CleanableItem
+public class CleanableItem : INotifyPropertyChanged
 {
     public string Name { get; set; } = "";
     public string FullPath { get; set; } = "";
@@ -56,9 +59,33 @@ public class CleanableItem
     public CleanSafety Safety { get; set; }
     public CleanCategory Category { get; set; }
     public string Description { get; set; } = "";
-    public string SoftwareName { get; set; } = "";  // 所属软件名称
-    public string FileType { get; set; } = "";       // 文件类型（缓存、日志、临时文件等）
-    public bool IsSelected { get; set; } = true;
+    public string SoftwareName { get; set; } = "";
+    public string FileType { get; set; } = "";
+
+    private bool _isSelected = true;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 是否为危险项。用于 UI 显示醒目警告, 以及决定是否需要二次确认对话框。
+    /// </summary>
+    public bool IsDangerous => Safety == CleanSafety.Dangerous;
+
+    /// <summary>
+    /// 是否需要二次确认 (Caution + Dangerous 都需要)。
+    /// </summary>
+    public bool RequiresConfirmation => Safety != CleanSafety.Safe;
+
     public bool IsDirectory { get; set; }
     public DateTime LastModified { get; set; }
 
@@ -72,18 +99,22 @@ public class CleanableItem
 
     public string SafetyText => Safety switch
     {
-        CleanSafety.Safe => "Safe",
-        CleanSafety.Caution => "Caution",
-        CleanSafety.Dangerous => "Dangerous",
-        _ => "Unknown"
+        CleanSafety.Safe => "安全",
+        CleanSafety.Caution => "谨慎",
+        CleanSafety.Dangerous => "危险",
+        _ => "未知"
     };
 
     public string SoftwareInfo => !string.IsNullOrEmpty(SoftwareName)
         ? $"[{SoftwareName}] {FileType}"
         : FileType;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
-public class ScanCategoryResult
+public class ScanCategoryResult : INotifyPropertyChanged
 {
     public CleanCategory Category { get; set; }
     public string DisplayName { get; set; } = "";
@@ -91,8 +122,30 @@ public class ScanCategoryResult
     public List<CleanableItem> Items { get; set; } = new();
     public long TotalSize => Items.Sum(i => i.SizeBytes);
     public int ItemCount => Items.Count;
-    public bool IsSelected { get; set; } = true;
-    public bool IsExpanded { get; set; } = false;  // 是否展开显示详细文件
+
+    /// <summary>
+    /// 该分类是否包含危险项 (用于 UI 显示警告 + 决定 IsSelected 默认值)。
+    /// </summary>
+    public bool HasDangerousItems => Items.Any(i => i.IsDangerous);
+
+    /// <summary>
+    /// 该分类是否包含 Caution 项 (用于 UI 显示中等警告)。
+    /// </summary>
+    public bool HasCautionItems => Items.Any(i => i.Safety == CleanSafety.Caution);
+
+    private bool _isSelected = true;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set { if (_isSelected != value) { _isSelected = value; OnPropertyChanged(); } }
+    }
+
+    private bool _isExpanded = false;
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set { if (_isExpanded != value) { _isExpanded = value; OnPropertyChanged(); OnPropertyChanged(nameof(ExpandButtonText)); } }
+    }
 
     public string TotalSizeText => TotalSize switch
     {
@@ -102,6 +155,10 @@ public class ScanCategoryResult
     };
 
     public string ExpandButtonText => IsExpanded ? "收起" : "展开";
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 public class ScanProgress
@@ -141,17 +198,23 @@ public class DiskInfo
     public string FreeText => $"{FreeBytes / 1_073_741_824.0:F1} GB";
 }
 
-public class LargeFileItem
+public class LargeFileItem : INotifyPropertyChanged
 {
     public string FileName { get; set; } = "";
     public string FullPath { get; set; } = "";
     public long SizeBytes { get; set; }
     public DateTime LastModified { get; set; }
     public string Extension { get; set; } = "";
-    public bool IsSelected { get; set; }
     public string SafetyHint { get; set; } = "";
     public string FileType { get; set; } = "";
     public string FileDesc { get; set; } = "";
+
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set { if (_isSelected != value) { _isSelected = value; OnPropertyChanged(); } }
+    }
 
     public string SizeText => SizeBytes switch
     {
@@ -175,4 +238,8 @@ public class LargeFileItem
         "danger" => "谨慎删除",
         _ => ""
     };
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

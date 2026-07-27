@@ -60,9 +60,9 @@ public class CleanableItemTests
     }
 
     [Theory]
-    [InlineData(CleanSafety.Safe, "Safe")]
-    [InlineData(CleanSafety.Caution, "Caution")]
-    [InlineData(CleanSafety.Dangerous, "Dangerous")]
+    [InlineData(CleanSafety.Safe, "安全")]
+    [InlineData(CleanSafety.Caution, "谨慎")]
+    [InlineData(CleanSafety.Dangerous, "危险")]
     public void SafetyText_KnownValues_ReturnsExpectedLabel(CleanSafety safety, string expected)
     {
         var item = new CleanableItem { Safety = safety };
@@ -75,7 +75,7 @@ public class CleanableItemTests
         // default(CleanSafety) is CleanSafety.Safe (value 0),
         // so test an out-of-range cast instead
         var item = new CleanableItem { Safety = (CleanSafety)99 };
-        Assert.Equal("Unknown", item.SafetyText);
+        Assert.Equal("未知", item.SafetyText);
     }
 
     [Fact]

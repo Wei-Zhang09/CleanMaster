@@ -37,3 +37,10 @@ ehthumbs.db
 
 # Desktop.ini
 Desktop.ini
+
+# Installer output
+installer/
+
+# Local docs working folder
+docs/
+

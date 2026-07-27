@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Data;
@@ -152,6 +154,7 @@ public class DiskFilesViewModel : INotifyPropertyChanged
     public ICommand FindLargeFoldersCommand { get; }
     public ICommand FindEmptyFoldersCommand { get; }
     public ICommand DeleteEmptyFoldersCommand { get; }
+    public ICommand OpenFolderCommand { get; }
 
     #endregion
 
@@ -167,6 +170,84 @@ public class DiskFilesViewModel : INotifyPropertyChanged
         FindLargeFoldersCommand = new RelayCommand(async () => await FindLargeFoldersAsync());
         FindEmptyFoldersCommand = new RelayCommand(async () => await FindEmptyFoldersAsync());
         DeleteEmptyFoldersCommand = new RelayCommand(async () => await DeleteEmptyFoldersAsync());
+        OpenFolderCommand = new RelayCommand<string>(OpenFolder);
+
+        // 语言切换时刷新本地 Lang 属性, 让 {Binding Lang[...]} 重新求值
+        Lang.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged()
+    {
+        try
+        {
+            App.Current?.Dispatcher?.BeginInvoke(new Action(() =>
+            {
+                OnPropertyChanged(nameof(Lang));
+            }));
+        }
+        catch
+        {
+            OnPropertyChanged(nameof(Lang));
+        }
+    }
+
+    private static void OpenFolder(string? fullPath)
+    {
+        if (string.IsNullOrEmpty(fullPath)) return;
+
+        try
+        {
+            string? dirPath;
+            if (Directory.Exists(fullPath))
+            {
+                dirPath = fullPath;
+            }
+            else if (File.Exists(fullPath))
+            {
+                dirPath = Path.GetDirectoryName(fullPath);
+            }
+            else
+            {
+                // Fall back to the longest existing ancestor
+                var p = fullPath;
+                while (!string.IsNullOrEmpty(p) && !Directory.Exists(p) && !File.Exists(p))
+                {
+                    p = Path.GetDirectoryName(p);
+                }
+                dirPath = Directory.Exists(p) ? p : (File.Exists(p) ? Path.GetDirectoryName(p) : null);
+            }
+
+            if (string.IsNullOrEmpty(dirPath) || !Directory.Exists(dirPath))
+            {
+                System.Windows.MessageBox.Show("路径不存在或无法访问。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Use explorer.exe with the file path to select the file (if it's a file)
+            // Otherwise just open the directory.
+            if (File.Exists(fullPath))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{fullPath}\"",
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = dirPath,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("OpenFolder", ex);
+            System.Windows.MessageBox.Show($"无法打开目录: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     public void LoadDiskDrives()

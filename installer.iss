@@ -35,5 +35,5 @@ Name: "{group}\Uninstall CleanMaster"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\CleanMaster"; Filename: "{app}\CleanMaster.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\CleanMaster.exe"; Description: "Launch CleanMaster"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\CleanMaster.exe"; Description: "Launch CleanMaster"; Flags: nowait postinstall skipifsilent shellexec
 

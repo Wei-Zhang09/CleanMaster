@@ -44,3 +44,6 @@ installer/
 # Local docs working folder
 docs/
 
+# Hermes agent working files
+.hermes/
+

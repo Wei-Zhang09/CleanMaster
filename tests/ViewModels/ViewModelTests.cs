@@ -21,7 +21,8 @@ public class CleanViewModelTests
         _viewModel = new CleanViewModel(
             _mockScanService.Object,
             _mockCleanService.Object,
-            _mockDiskInfoService.Object);
+            _mockDiskInfoService.Object,
+            new LangService());
     }
 
     [Fact]
@@ -114,7 +115,7 @@ public class SoftwareViewModelTests
     public SoftwareViewModelTests()
     {
         _mockSoftwareService = new Mock<ISoftwareService>();
-        _viewModel = new SoftwareViewModel(_mockSoftwareService.Object);
+        _viewModel = new SoftwareViewModel(_mockSoftwareService.Object, new LangService());
     }
 
     [Fact]
@@ -186,7 +187,8 @@ public class SettingsViewModelTests
         _viewModel = new SettingsViewModel(
             _mockSettingsService.Object,
             _mockLicenseService.Object,
-            _mockScanService.Object);
+            _mockScanService.Object,
+            new LangService());
     }
 
     [Fact]

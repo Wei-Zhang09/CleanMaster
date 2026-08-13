@@ -94,3 +94,38 @@ public class BoolToTextConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
 }
+
+/// <summary>
+/// Converts a drive letter ("C:", "D:") to a display string with free space,
+/// e.g. "C: · 可用 197.8 GB". Used by the disk-selection ComboBoxes.
+/// </summary>
+public class DriveLetterToInfoConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not string letter || string.IsNullOrEmpty(letter))
+            return "";
+
+        try
+        {
+            var driveName = letter.TrimEnd('\\');
+            var di = new System.IO.DriveInfo(driveName);
+            if (!di.IsReady) return letter;
+
+            var free = di.AvailableFreeSpace;
+            var freeText = free switch
+            {
+                >= 1_073_741_824 => $"{free / 1_073_741_824.0:F1} GB",
+                >= 1_048_576 => $"{free / 1_048_576.0:F0} MB",
+                _ => $"{free / 1024.0:F0} KB"
+            };
+            return $"{letter}  ·  可用 {freeText}";
+        }
+        catch
+        {
+            return letter;
+        }
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+}

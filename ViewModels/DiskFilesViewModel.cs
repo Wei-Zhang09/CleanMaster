@@ -12,7 +12,7 @@ using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.ViewModels;
 
-public class DiskFilesViewModel : INotifyPropertyChanged
+public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IScanService _scanService;
     private readonly ICleanService _cleanService;
@@ -20,7 +20,7 @@ public class DiskFilesViewModel : INotifyPropertyChanged
     private readonly DiskInfoService _diskInfoService;
     private CancellationTokenSource? _cts;
 
-    public LangService Lang { get; } = LangService.Instance;
+    public ILangService Lang { get; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -158,12 +158,13 @@ public class DiskFilesViewModel : INotifyPropertyChanged
 
     #endregion
 
-    public DiskFilesViewModel(IScanService scanService, ICleanService cleanService, IFolderScanService folderScanService, DiskInfoService diskInfoService)
+    public DiskFilesViewModel(IScanService scanService, ICleanService cleanService, IFolderScanService folderScanService, DiskInfoService diskInfoService, ILangService langService)
     {
         _scanService = scanService;
         _cleanService = cleanService;
         _folderScanService = folderScanService;
         _diskInfoService = diskInfoService;
+        Lang = langService;
 
         FindLargeFilesCommand = new RelayCommand(async () => await FindLargeFilesAsync());
         DeleteLargeFilesCommand = new RelayCommand(async () => await DeleteLargeFilesAsync());
@@ -266,16 +267,17 @@ public class DiskFilesViewModel : INotifyPropertyChanged
     {
         IsFindingLargeFiles = true;
         LargeFiles.Clear();
-        LargeFileStatus = LangService.Instance["Searching"];
+        LargeFileStatus = Lang["Searching"];
 
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {
             var files = await _scanService.FindLargeFilesAsync(SelectedDrive + @"\", MinFileSizeBytes, _cts.Token);
             foreach (var f in files) LargeFiles.Add(f);
-            LargeFileStatus = $"{LangService.Instance["Found"]} {files.Count} {LangService.Instance["FilesLargerThan"]} {MinFileSizeText}";
+            LargeFileStatus = $"{Lang["Found"]} {files.Count} {Lang["FilesLargerThan"]} {MinFileSizeText}";
         }
-        catch (OperationCanceledException) { LargeFileStatus = LangService.Instance["Cancelled"]; App.Log("Find large files cancelled"); }
+        catch (OperationCanceledException) { LargeFileStatus = Lang["Cancelled"]; App.Log("Find large files cancelled"); }
         catch (Exception ex) { LargeFileStatus = ex.Message; App.LogError("FindLargeFilesAsync", ex); }
         finally { IsFindingLargeFiles = false; }
     }
@@ -301,11 +303,12 @@ public class DiskFilesViewModel : INotifyPropertyChanged
 
         if (confirm != MessageBoxResult.Yes) return;
 
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {
             var result = await _cleanService.CleanLargeFilesAsync(selected, _cts.Token);
-            LargeFileStatus = $"{LangService.Instance["Deleted"]} {result.FilesDeleted} {LangService.Instance["Files"]}, {LangService.Instance["Freed"]} {result.FreedText}";
+            LargeFileStatus = $"{Lang["Deleted"]} {result.FilesDeleted} {Lang["Files"]}, {Lang["Freed"]} {result.FreedText}";
             foreach (var f in selected) LargeFiles.Remove(f);
             _diskInfoService.Refresh("C:");
         }
@@ -321,6 +324,7 @@ public class DiskFilesViewModel : INotifyPropertyChanged
         IsScanningFolders = true;
         LargeFolders.Clear();
         FolderScanStatus = "正在扫描文件夹...";
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {
@@ -342,6 +346,7 @@ public class DiskFilesViewModel : INotifyPropertyChanged
         IsScanningEmpty = true;
         EmptyFolders.Clear();
         EmptyFolderStatus = "正在扫描空文件夹...";
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {
@@ -377,4 +382,13 @@ public class DiskFilesViewModel : INotifyPropertyChanged
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private bool _disposed;
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Lang.LanguageChanged -= OnLanguageChanged;
+        GC.SuppressFinalize(this);
+    }
 }

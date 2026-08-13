@@ -79,7 +79,7 @@ public class MachineIdService : IMachineIdService
         var combined = string.Join("-", parts);
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
         _cachedId = Convert.ToHexString(hash)[..32].ToUpper();
-        App.Log($"MachineId generated: {_cachedId}");
+        // 不记录完整机器码到日志，避免泄露设备标识
         return _cachedId;
     }
 }

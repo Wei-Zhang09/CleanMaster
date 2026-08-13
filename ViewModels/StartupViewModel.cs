@@ -7,13 +7,13 @@ using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.ViewModels;
 
-public class StartupViewModel : INotifyPropertyChanged
+public class StartupViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ISoftwareService _softwareService;
     private bool _isLoading;
     private string _statusText = "";
 
-    public LangService Lang { get; } = LangService.Instance;
+    public ILangService Lang { get; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -34,9 +34,10 @@ public class StartupViewModel : INotifyPropertyChanged
     public RelayCommand<StartupItem> ToggleStartupCommand { get; }
     public RelayCommand RefreshCommand { get; }
 
-    public StartupViewModel(ISoftwareService softwareService)
+    public StartupViewModel(ISoftwareService softwareService, ILangService langService)
     {
         _softwareService = softwareService;
+        Lang = langService;
         ToggleStartupCommand = new RelayCommand<StartupItem>(ToggleStartupItem);
         RefreshCommand = new RelayCommand(async () => await LoadStartupItemsAsync(forceRefresh: true));
 
@@ -65,7 +66,7 @@ public class StartupViewModel : INotifyPropertyChanged
     /// Used by MainViewModel.OnNavigatedTo — fire-and-forget load with cache.
     /// Subsequent navigations skip reloading unless forceRefresh is requested.
     /// </summary>
-    public async void LoadStartupItems()
+    public async Task LoadStartupItems()
     {
         await LoadStartupItemsAsync(forceRefresh: false);
     }
@@ -162,4 +163,13 @@ public class StartupViewModel : INotifyPropertyChanged
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private bool _disposed;
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Lang.LanguageChanged -= OnLanguageChanged;
+        GC.SuppressFinalize(this);
+    }
 }

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="CleanMaster" Height="750" Width="1100"
         WindowStartupLocation="CenterScreen"
-        Background="#F0F2F5"
+        Background="{StaticResource BgPrimaryBrush}"
         ResizeMode="CanResizeWithGrip"
         Icon="Resources/Icons/bebb7fbb3f23d2157e1ecc8224686535.ico">
 
@@ -95,7 +95,7 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="#10B981"/>
-                            <TextBlock FontSize="11" Foreground="#94A3B8" Text="{Binding LicenseStatusText}"/>
+                            <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Text="{Binding LicenseStatusText}"/>
                         </StackPanel>
                         <Button Command="{Binding ShowActivationCommand}" Margin="0,8,0,0" HorizontalAlignment="Stretch">
                             <Button.Style>
@@ -124,27 +124,33 @@
                 <!-- Disk Info -->
                 <Border DockPanel.Dock="Bottom" Margin="12" Padding="14" CornerRadius="8" Background="#1E293B">
                     <StackPanel>
-                        <TextBlock Text="C:" FontSize="11" Foreground="#64748B"/>
+                        <TextBlock Text="C:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
                         <TextBlock FontSize="20" FontWeight="Bold" Foreground="White" Text="{Binding DiskFreeText}" Margin="0,4,0,8"/>
-                        <Grid Height="5" Background="#334155" ClipToBounds="True">
+                        <Grid Height="5" Background="#1E293B" ClipToBounds="True">
                             <Border HorizontalAlignment="Left" Background="{StaticResource PrimaryBrush}" CornerRadius="3">
                                 <Border.RenderTransform><ScaleTransform ScaleX="{Binding DiskUsedPercent}" CenterX="0"/></Border.RenderTransform>
                             </Border>
                         </Grid>
-                        <TextBlock FontSize="10" Foreground="#64748B" Margin="0,4,0,0" Text="{Binding DiskUsageText}"/>
+                        <TextBlock FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" Text="{Binding DiskUsageText}"/>
                     </StackPanel>
                 </Border>
             </DockPanel>
         </Border>
 
-        <!-- Clean -->
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
-                      Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=Clean}">
-            <StackPanel Margin="28,20,28,28">
-                <Grid Margin="0,0,0,20">
+        <!-- Clean Page: 方案 C — 平滑滚动 + 滚动条常驻 -->
+        <Grid Grid.Column="1"
+              Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=Clean}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- 顶部操作栏 (固定不滚动) -->
+            <StackPanel Grid.Row="0" Margin="28,20,28,0">
+                <Grid Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Clean.Lang[CleanTitle]}"/>
-                        <TextBlock Text="{Binding Clean.StatusText}" FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                        <TextBlock FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Clean.Lang[CleanTitle]}"/>
+                        <TextBlock Text="{Binding Clean.StatusText}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
                         <Button Style="{StaticResource Btn}" Margin="0,0,8,0" Command="{Binding Clean.ScanCommand}" IsEnabled="{Binding Clean.CanScan}" Content="{Binding Clean.Lang[Scan]}"/>
@@ -152,72 +158,61 @@
                     </StackPanel>
                 </Grid>
 
-                <Border Height="3" CornerRadius="2" Background="#E2E8F0" Margin="0,0,0,18" Visibility="{Binding Clean.IsScanning, Converter={StaticResource BoolVisibilityConverter}}">
+                <!-- 进度条 (固定) -->
+                <Border Height="4" CornerRadius="2" Background="{StaticResource PrimaryLightBrush}" Margin="0,0,0,12" Visibility="{Binding Clean.IsScanning, Converter={StaticResource BoolVisibilityConverter}}">
                     <Border HorizontalAlignment="Left" CornerRadius="2" Background="{StaticResource PrimaryBrush}">
                         <Border.Width><MultiBinding StringFormat="{}{0}"><Binding Path="Clean.ProgressPercent"/></MultiBinding></Border.Width>
                     </Border>
                 </Border>
 
-                <!-- Clean Progress -->
-                <Border Margin="0,0,0,18" Visibility="{Binding Clean.IsCleanProgressVisible, Converter={StaticResource BoolVisibilityConverter}}">
+                <!-- 清理进度 (固定) -->
+                <Border Margin="0,0,0,12" Visibility="{Binding Clean.IsCleanProgressVisible, Converter={StaticResource BoolVisibilityConverter}}">
                     <StackPanel>
                         <Grid Margin="0,0,0,6">
-                            <TextBlock Text="{Binding Lang[Cleaning]}" FontSize="12" Foreground="#64748B"/>
-                            <TextBlock Text="{Binding Clean.CleanProgressText}" FontSize="12" Foreground="#64748B" HorizontalAlignment="Right"/>
+                            <TextBlock Text="{Binding Lang[Cleaning]}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Text="{Binding Clean.CleanProgressText}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
                         </Grid>
-                        <Border Height="6" CornerRadius="3" Background="#E2E8F0">
-                            <Border HorizontalAlignment="Left" CornerRadius="3" Background="#10B981">
+                        <Border Height="4" CornerRadius="2" Background="{StaticResource PrimaryLightBrush}">
+                            <Border HorizontalAlignment="Left" CornerRadius="2" Background="{StaticResource SuccessBrush}">
                                 <Border.Width><MultiBinding StringFormat="{}{0}"><Binding Path="Clean.CleanProgressPercent"/></MultiBinding></Border.Width>
                             </Border>
                         </Border>
-                        <TextBlock Text="{Binding Clean.CleanCurrentFile}" FontSize="11" Foreground="#475569" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" FontWeight="Medium"/>
-                        <TextBlock Text="{Binding Clean.CleanCurrentPath}" FontSize="10" Foreground="#94A3B8" Margin="0,1,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Clean.CleanCurrentPath}"/>
+                        <TextBlock Text="{Binding Clean.CleanCurrentFile}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" FontWeight="Medium"/>
+                        <TextBlock Text="{Binding Clean.CleanCurrentPath}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Clean.CleanCurrentPath}"/>
                     </StackPanel>
                 </Border>
 
-                <WrapPanel Margin="0,0,0,20">
-                    <Border Style="{StaticResource Card}" Margin="0,0,12,0" MinWidth="160">
+                <!-- 统计卡片 (固定) -->
+                <WrapPanel Margin="0,0,0,16">
+                    <Border Style="{StaticResource Card}" Margin="0,0,12,0" MinWidth="140">
                         <StackPanel>
-                            <TextBlock FontSize="11" Foreground="#94A3B8" Text="{Binding Clean.Lang[ItemsFound]}"/>
-                            <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Clean.TotalItemCount}"/>
+                            <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Text="{Binding Clean.Lang[ItemsFound]}"/>
+                            <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Clean.TotalItemCount}"/>
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource Card}" Margin="0,0,12,0" MinWidth="160">
+                    <Border Style="{StaticResource Card}" Margin="0,0,12,0" MinWidth="140">
                         <StackPanel>
-                            <TextBlock FontSize="11" Foreground="#94A3B8" Text="{Binding Clean.Lang[CleanableSize]}"/>
+                            <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Text="{Binding Clean.Lang[CleanableSize]}"/>
                             <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Text="{Binding Clean.TotalCleanableText}"/>
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource Card}" MinWidth="160">
+                    <Border Style="{StaticResource Card}" MinWidth="140">
                         <StackPanel>
-                            <TextBlock FontSize="11" Foreground="#94A3B8" Text="{Binding Clean.Lang[Categories]}"/>
-                            <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Clean.ScanResults.Count}"/>
+                            <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Text="{Binding Clean.Lang[Categories]}"/>
+                            <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Clean.ScanResults.Count}"/>
                         </StackPanel>
                     </Border>
                 </WrapPanel>
+            </StackPanel>
 
-                <ItemsControl ItemsSource="{Binding Clean.ScanResults}" MaxHeight="450">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <VirtualizingStackPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.Template>
-                        <ControlTemplate TargetType="ItemsControl">
-                            <Border Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    Padding="{TemplateBinding Padding}"
-                                    SnapsToDevicePixels="True">
-                                <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                    <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                                </ScrollViewer>
-                            </Border>
-                        </ControlTemplate>
-                    </ItemsControl.Template>
+            <!-- 分类列表 CanContentScroll=False → 平滑像素滚动 -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          CanContentScroll="False" Padding="28,0,28,28"
+                          PreviewMouseWheel="CleanPage_PreviewMouseWheel">
+                <ItemsControl ItemsSource="{Binding Clean.ScanResults}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="0">
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,8" Padding="0">
                                 <StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -227,12 +222,12 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="18,0,0,0"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,14,0,14">
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,12,0,12">
                                             <TextBlock Text="{Binding Icon}" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                             <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding DisplayName}" FontSize="14" FontWeight="SemiBold" Foreground="#1E293B"/>
-                                                <TextBlock FontSize="11" Foreground="#94A3B8" Text="{Binding ItemCount, StringFormat='{}{0} 项'}"/>
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Text="{Binding ItemCount, StringFormat='{}{0} 项'}"/>
                                             </StackPanel>
                                         </StackPanel>
                                         <Border Grid.Column="2" CornerRadius="4" Padding="8,3" Margin="0,0,10,0" VerticalAlignment="Center">
@@ -258,7 +253,7 @@
                                             </TextBlock>
                                         </Border>
                                         <TextBlock Grid.Column="3" Text="{Binding TotalSizeText}" FontSize="15" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <ToggleButton Grid.Column="4" IsChecked="{Binding IsExpanded}" VerticalAlignment="Center" Margin="0,0,18,0" Cursor="Hand">
+                                        <ToggleButton Grid.Column="4" IsChecked="{Binding IsExpanded}" VerticalAlignment="Center" Margin="0,0,16,0" Cursor="Hand">
                                             <ToggleButton.Style>
                                                 <Style TargetType="ToggleButton">
                                                     <Setter Property="Background" Value="Transparent"/>
@@ -268,7 +263,7 @@
                                                         <Setter.Value>
                                                             <ControlTemplate TargetType="ToggleButton">
                                                                 <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                                                                    <TextBlock x:Name="ArrowIcon" Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#64748B"/>
+                                                                    <TextBlock x:Name="ArrowIcon" Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
                                                                 </Border>
                                                                 <ControlTemplate.Triggers>
                                                                     <Trigger Property="IsChecked" Value="True">
@@ -283,38 +278,35 @@
                                         </ToggleButton>
                                     </Grid>
 
-                                    <!-- 危险项警告条: 仅当 HasDangerousItems 为 true 时显示 -->
+                                    <!-- 危险项警告条 -->
                                     <Border Visibility="{Binding HasDangerousItems, Converter={StaticResource BoolVisibilityConverter}}"
                                             Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1,0,1,1"
-                                            Margin="18,0,18,8" CornerRadius="4" Padding="10,6">
+                                            Margin="16,0,16,8" CornerRadius="4" Padding="10,6">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="&#xEA39;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="#DC2626" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                             <TextBlock FontSize="11" Foreground="#DC2626" FontWeight="Medium" Text="包含危险项：默认未选中。删除可能导致系统异常或软件损坏，请充分了解后果后再勾选。" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Border>
-                                    <!-- 谨慎项提示条: 仅当 HasCautionItems 且无危险项时显示 -->
+                                    <!-- 谨慎项提示条 -->
                                     <Border Visibility="{Binding HasCautionItems, Converter={StaticResource BoolVisibilityConverter}}"
                                             Background="#FFFBEB" BorderBrush="#FCD34D" BorderThickness="1,0,1,1"
-                                            Margin="18,0,18,8" CornerRadius="4" Padding="10,6">
+                                            Margin="16,0,16,8" CornerRadius="4" Padding="10,6">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="#CA8A04" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                             <TextBlock FontSize="11" Foreground="#CA8A04" FontWeight="Medium" Text="包含谨慎项：删除前请确认内容，可能包含有用数据。" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Expanded file list -->
-                                    <!-- 内层独立滚动区: MaxHeight 限制高度，超出时自身滚动；
-                                         鼠标停在内层时滚轮滚动内层，停在外层时滚动外层。 -->
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                  HorizontalScrollBarVisibility="Disabled"
-                                                  CanContentScroll="True"
-                                                  MaxHeight="240"
+                                    <!-- 展开文件列表 CanContentScroll=False 平滑滚动 -->
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                                  CanContentScroll="False" MaxHeight="240"
+                                                  PreviewMouseWheel="ExpandedItem_PreviewMouseWheel"
                                                   Visibility="{Binding IsExpanded, Converter={StaticResource BoolVisibilityConverter}}"
-                                                  Margin="18,0,18,14">
+                                                  Margin="16,0,16,12">
                                         <ItemsControl ItemsSource="{Binding Items}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Margin="0,0,0,2" Background="#F8FAFC" Padding="8,4">
+                                                    <Border Margin="0,0,0,2" Background="{StaticResource BgPrimaryBrush}" Padding="8,4" CornerRadius="3">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="Auto"/>
@@ -325,20 +317,18 @@
                                                             <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                                             <StackPanel Grid.Column="1">
                                                                 <StackPanel Orientation="Horizontal">
-                                                                    <TextBlock Text="{Binding Name}" FontSize="11" Foreground="#1E293B"/>
-                                                                    <!-- 单项危险标记 -->
+                                                                    <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource TextPrimaryBrush}"/>
                                                                     <TextBlock Text="⚠ 危险" FontSize="9" FontWeight="Bold" Foreground="#DC2626" Margin="6,0,0,0"
                                                                                Visibility="{Binding IsDangerous, Converter={StaticResource BoolVisibilityConverter}}"/>
                                                                 </StackPanel>
-                                                                <TextBlock Text="{Binding FullPath}" FontSize="9" Foreground="#94A3B8" TextTrimming="CharacterEllipsis"/>
-                                                                <!-- 描述行: 让用户知道删的是什么 -->
-                                                                <TextBlock Text="{Binding Description}" FontSize="9" Foreground="#64748B" TextWrapping="Wrap" MaxWidth="600" Margin="0,2,0,0"
+                                                                <TextBlock Text="{Binding FullPath}" FontSize="9" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Text="{Binding Description}" FontSize="9" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" MaxWidth="600" Margin="0,2,0,0"
                                                                            Visibility="{Binding Description, Converter={StaticResource NullVisibilityConverter}}"/>
                                                             </StackPanel>
-                                                            <Border Grid.Column="2" CornerRadius="3" Padding="4,1" Background="#E2E8F0" Margin="8,0">
-                                                                <TextBlock Text="{Binding SoftwareInfo}" FontSize="9" Foreground="#64748B"/>
+                                                            <Border Grid.Column="2" CornerRadius="3" Padding="4,1" Background="{StaticResource BorderBrush}" Margin="8,0">
+                                                                <TextBlock Text="{Binding SoftwareInfo}" FontSize="9" Foreground="{StaticResource TextSecondaryBrush}"/>
                                                             </Border>
-                                                            <TextBlock Grid.Column="3" Text="{Binding SizeText}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="3" Text="{Binding SizeText}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
                                                         </Grid>
                                                     </Border>
                                                 </DataTemplate>
@@ -350,33 +340,34 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+            </ScrollViewer>
 
-                <Border Style="{StaticResource Card}" Margin="0,10,0,0" Visibility="{Binding Clean.LastCleanResult, Converter={StaticResource NullVisibilityConverter}}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="22" Foreground="{StaticResource SuccessBrush}" Margin="0,0,10,0"/>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#1E293B" Text="{Binding Clean.Lang[LastCleanup]}"/>
-                            <TextBlock Text="{Binding Clean.CleanResultText}" FontSize="11" Foreground="#64748B"/>
-                        </StackPanel>
+            <!-- 上次清理结果 (固定在底部) -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="28,0,28,28" VerticalAlignment="Bottom"
+                    Visibility="{Binding Clean.LastCleanResult, Converter={StaticResource NullVisibilityConverter}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{StaticResource SuccessBrush}" Margin="0,0,10,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Clean.Lang[LastCleanup]}"/>
+                        <TextBlock Text="{Binding Clean.CleanResultText}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
-                </Border>
-            </StackPanel>
-        </ScrollViewer>
-
+                </StackPanel>
+            </Border>
+        </Grid>
         <!-- Large Files -->
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=LargeFiles}">
             <StackPanel Margin="28,20,28,28">
                 <Grid Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding DiskFiles.Lang[LargeFilesTitle]}"/>
-                        <TextBlock Text="{Binding DiskFiles.LargeFileStatus}" FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding DiskFiles.Lang[LargeFilesTitle]}"/>
+                        <TextBlock Text="{Binding DiskFiles.LargeFileStatus}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <ComboBox ItemsSource="{Binding DiskFiles.DiskDrives}" SelectedItem="{Binding DiskFiles.SelectedDrive}" Width="70" Padding="5,3" Margin="0,0,8,0"/>
-                        <TextBlock Text="{Binding DiskFiles.Lang[MinSize]}" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#64748B"/>
-                        <TextBox Text="{Binding DiskFiles.MinFileSizeInput, UpdateSourceTrigger=PropertyChanged}" Width="70" Padding="5,3"/>
-                        <TextBlock Text="MB" VerticalAlignment="Center" Margin="4,0,8,0" Foreground="#64748B"/>
+                        <ComboBox Style="{StaticResource DriveComboBox}" ItemsSource="{Binding DiskFiles.DiskDrives}" SelectedItem="{Binding DiskFiles.SelectedDrive}" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding DiskFiles.Lang[MinSize]}" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBox Style="{StaticResource InputBox}" Text="{Binding DiskFiles.MinFileSizeInput, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                        <TextBlock Text="MB" VerticalAlignment="Center" Margin="4,0,8,0" Foreground="{StaticResource TextSecondaryBrush}"/>
                         <Button Style="{StaticResource Btn}" Margin="8,0,0,0" Command="{Binding DiskFiles.FindLargeFilesCommand}" IsEnabled="{Binding DiskFiles.IsFindingLargeFiles, Converter={StaticResource InverseBoolConverter}}" Content="{Binding DiskFiles.Lang[Search]}"/>
                         <Button Style="{StaticResource DangerBtn}" Margin="8,0,0,0" Command="{Binding DiskFiles.DeleteLargeFilesCommand}" Content="{Binding DiskFiles.Lang[DeleteSelected]}"/>
                     </StackPanel>
@@ -397,11 +388,11 @@
                                     </Grid.ColumnDefinitions>
                                     <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium" Foreground="#1E293B"/>
+                                        <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding FileType}" FontSize="10" Foreground="#6366F1" FontWeight="Medium"/>
-                                            <TextBlock Text=" | " FontSize="10" Foreground="#CBD5E1"/>
-                                            <TextBlock Text="{Binding FileDesc}" FontSize="10" Foreground="#64748B" TextTrimming="CharacterEllipsis" MaxWidth="300"/>
+                                            <TextBlock Text=" | " FontSize="10" Foreground="{StaticResource TextTertiaryBrush}"/>
+                                            <TextBlock Text="{Binding FileDesc}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="300"/>
                                         </StackPanel>
                                     </StackPanel>
                                     <Border Grid.Column="2" CornerRadius="4" Padding="6,3" Margin="8,0" VerticalAlignment="Center">
@@ -426,7 +417,7 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </Border>
-                                    <TextBlock Grid.Column="3" Text="{Binding LastModified, StringFormat='yyyy-MM-dd'}" FontSize="10" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding LastModified, StringFormat='yyyy-MM-dd'}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
                                     <Button Grid.Column="4" Style="{StaticResource Btn}" Padding="10,4" FontSize="11" Margin="8,0"
                                             Command="{Binding DataContext.DiskFiles.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
                                             CommandParameter="{Binding FullPath}"
@@ -446,16 +437,16 @@
             <StackPanel Margin="28,20,28,28">
                 <Grid Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Software.Lang[SoftwareTitle]}"/>
-                        <TextBlock FontSize="12" Foreground="#64748B" Text="{Binding Software.SoftwareStatus}"/>
+                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Software.Lang[SoftwareTitle]}"/>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Text="{Binding Software.SoftwareStatus}"/>
                     </StackPanel>
                 </Grid>
 
                 <!-- Loading Indicator -->
                 <Border Margin="0,0,0,20" Visibility="{Binding Software.IsLoadingSoftware, Converter={StaticResource BoolVisibilityConverter}}">
                     <StackPanel HorizontalAlignment="Center" Margin="0,40,0,0">
-                        <TextBlock Text="{Binding Lang[SoftwareLoading]}" FontSize="14" Foreground="#94A3B8" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{Binding Lang[SoftwareLoadingHint]}" FontSize="12" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding Lang[SoftwareLoading]}" FontSize="14" Foreground="{StaticResource TextTertiaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang[SoftwareLoadingHint]}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
 
@@ -472,16 +463,16 @@
                                     </Grid.ColumnDefinitions>
                                     <!-- Icon -->
                                     <Image Grid.Column="0" Width="24" Height="24" Margin="0,0,12,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"
-                                           Source="{Binding IconPath, Converter={StaticResource IconConverter}}"/>
+                                           Source="{Binding IconPath, Converter={StaticResource IconConverter}, IsAsync=True}"/>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="#1E293B"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Publisher}" FontSize="10" Foreground="#94A3B8"/>
-                                            <TextBlock Text="{Binding Version}" FontSize="10" Foreground="#94A3B8" Margin="8,0,0,0"/>
+                                            <TextBlock Text="{Binding Publisher}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}"/>
+                                            <TextBlock Text="{Binding Version}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" Margin="8,0,0,0"/>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding InstallLocation}" FontSize="9" Foreground="#CBD5E1" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" Visibility="{Binding InstallLocation, Converter={StaticResource NullVisibilityConverter}}"/>
+                                        <TextBlock Text="{Binding InstallLocation}" FontSize="9" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" Visibility="{Binding InstallLocation, Converter={StaticResource NullVisibilityConverter}}"/>
                                     </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" Margin="12,0"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="12,0"/>
                                     <Button Grid.Column="3" Style="{StaticResource DangerBtn}" Padding="12,5" FontSize="11" Command="{Binding DataContext.Software.UninstallCommand, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" CommandParameter="{Binding}">
                                         <TextBlock Text="{Binding DataContext.Lang[Uninstall], RelativeSource={RelativeSource AncestorType=ScrollViewer}}"/>
                                     </Button>
@@ -499,8 +490,8 @@
             <StackPanel Margin="28,20,28,28">
                 <Grid Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Startup.Lang[StartupTitle]}"/>
-                        <TextBlock FontSize="12" Foreground="#64748B" Text="{Binding Startup.StatusText}"/>
+                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Startup.Lang[StartupTitle]}"/>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Text="{Binding Startup.StatusText}"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
                         <Button Style="{StaticResource Btn}" Padding="12,6" FontSize="12"
@@ -513,8 +504,8 @@
                 <!-- Loading Indicator -->
                 <Border Margin="0,0,0,20" Visibility="{Binding Startup.IsLoading, Converter={StaticResource BoolVisibilityConverter}}">
                     <StackPanel HorizontalAlignment="Center" Margin="0,40,0,0">
-                        <TextBlock Text="{Binding Startup.Lang[StartupLoading]}" FontSize="14" Foreground="#94A3B8" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{Binding Startup.Lang[StartupLoadingHint]}" FontSize="12" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding Startup.Lang[StartupLoading]}" FontSize="14" Foreground="{StaticResource TextTertiaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Startup.Lang[StartupLoadingHint]}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
 
@@ -530,16 +521,29 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <Image Grid.Column="0" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"
-                                           Source="{Binding IconPath, Converter={StaticResource IconConverter}}"/>
+                                           Source="{Binding IconPath, Converter={StaticResource IconConverter}, IsAsync=True}"/>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="#1E293B"/>
-                                        <TextBlock Text="{Binding Command}" FontSize="10" Foreground="#94A3B8" TextTrimming="CharacterEllipsis" MaxWidth="450"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding Command}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="450"/>
                                     </StackPanel>
                                     <Border Grid.Column="2" CornerRadius="3" Padding="6,2" Background="#F1F5F9" VerticalAlignment="Center" Margin="12,0">
-                                        <TextBlock Text="{Binding Source}" FontSize="10" Foreground="#64748B"/>
+                                        <TextBlock Text="{Binding Source}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
                                     </Border>
-                                    <Button Grid.Column="3" Style="{StaticResource DangerBtn}" Padding="12,5" FontSize="11" Command="{Binding DataContext.Startup.ToggleStartupCommand, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" CommandParameter="{Binding}">
-                                        <TextBlock Text="{Binding IsEnabled, Converter={StaticResource BoolToTextConverter}, ConverterParameter='禁用|启用', FallbackValue='禁用'}"/>
+                                    <Button Grid.Column="3" Padding="12,5" FontSize="11"
+                                            Command="{Binding DataContext.Startup.ToggleStartupCommand, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource Btn}">
+                                                <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+                                                <Setter Property="Content" Value="禁用"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                        <Setter Property="Background" Value="#10B981"/>
+                                                        <Setter Property="Content" Value="启用"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
                                     </Button>
                                 </Grid>
                             </Border>
@@ -555,15 +559,15 @@
             <StackPanel Margin="28,20,28,28">
                 <Grid Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Lang[LargeFoldersTitle]}"/>
-                        <TextBlock Text="{Binding DiskFiles.FolderScanStatus}" FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[LargeFoldersTitle]}"/>
+                        <TextBlock Text="{Binding DiskFiles.FolderScanStatus}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <ComboBox ItemsSource="{Binding DiskFiles.DiskDrives}" SelectedItem="{Binding DiskFiles.SelectedDrive}" Width="70" Padding="5,3" Margin="0,0,8,0"/>
+                        <ComboBox Style="{StaticResource DriveComboBox}" ItemsSource="{Binding DiskFiles.DiskDrives}" SelectedItem="{Binding DiskFiles.SelectedDrive}" Margin="0,0,8,0"/>
                         <Button Style="{StaticResource Btn}" Command="{Binding DiskFiles.FindLargeFoldersCommand}" IsEnabled="{Binding DiskFiles.IsScanningFolders, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[Scan]}"/>
                     </StackPanel>
                 </Grid>
-                <TextBlock Text="{Binding Lang[LargeFoldersHint]}" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,16"/>
+                <TextBlock Text="{Binding Lang[LargeFoldersHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,16"/>
                 <ItemsControl ItemsSource="{Binding DiskFiles.LargeFolders}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -576,10 +580,10 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding FolderName}" FontSize="13" FontWeight="Medium" Foreground="#1E293B"/>
-                                        <TextBlock Text="{Binding FolderPath}" FontSize="10" Foreground="#94A3B8" TextTrimming="CharacterEllipsis" MaxWidth="500"/>
+                                        <TextBlock Text="{Binding FolderName}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding FolderPath}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="500"/>
                                     </StackPanel>
-                                    <TextBlock Grid.Column="1" Text="{Binding Description}" FontSize="10" Foreground="#64748B" VerticalAlignment="Center" Margin="12,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Description}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="12,0"/>
                                     <Button Grid.Column="2" Style="{StaticResource Btn}" Padding="10,4" FontSize="11" Margin="8,0"
                                             Command="{Binding DataContext.DiskFiles.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
                                             CommandParameter="{Binding FolderPath}"
@@ -599,16 +603,16 @@
             <StackPanel Margin="28,20,28,28">
                 <Grid Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Lang[EmptyFoldersTitle]}"/>
-                        <TextBlock Text="{Binding DiskFiles.EmptyFolderStatus}" FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[EmptyFoldersTitle]}"/>
+                        <TextBlock Text="{Binding DiskFiles.EmptyFolderStatus}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <ComboBox ItemsSource="{Binding DiskFiles.DiskDrives}" SelectedItem="{Binding DiskFiles.SelectedDrive}" Width="70" Padding="5,3" Margin="0,0,8,0"/>
+                        <ComboBox Style="{StaticResource DriveComboBox}" ItemsSource="{Binding DiskFiles.DiskDrives}" SelectedItem="{Binding DiskFiles.SelectedDrive}" Margin="0,0,8,0"/>
                         <Button Style="{StaticResource Btn}" Margin="0,0,8,0" Command="{Binding DiskFiles.FindEmptyFoldersCommand}" IsEnabled="{Binding DiskFiles.IsScanningEmpty, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[Scan]}"/>
                         <Button Style="{StaticResource DangerBtn}" Command="{Binding DiskFiles.DeleteEmptyFoldersCommand}" Content="{Binding Lang[DeleteSelected]}"/>
                     </StackPanel>
                 </Grid>
-                <TextBlock Text="{Binding Lang[EmptyFoldersHint]}" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,16"/>
+                <TextBlock Text="{Binding Lang[EmptyFoldersHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,16"/>
                 <ItemsControl ItemsSource="{Binding DiskFiles.EmptyFolders}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -620,8 +624,8 @@
                                     </Grid.ColumnDefinitions>
                                     <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding FolderName}" FontSize="13" FontWeight="Medium" Foreground="#1E293B"/>
-                                        <TextBlock Text="{Binding FolderPath}" FontSize="10" Foreground="#94A3B8" TextTrimming="CharacterEllipsis" MaxWidth="600"/>
+                                        <TextBlock Text="{Binding FolderName}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding FolderPath}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="600"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -635,33 +639,38 @@
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=DiskAnalysis}">
             <StackPanel Margin="28,20,28,28">
-                <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[DiskAnalysisTitle]}"/>
-                <TextBlock Text="{Binding Settings.AnalysisStatus}" FontSize="12" Foreground="#64748B" Margin="0,0,0,20"/>
+                <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[DiskAnalysisTitle]}"/>
+                <TextBlock Text="{Binding Settings.AnalysisStatus}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,20"/>
 
                 <Grid Margin="0,0,0,20">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Lang[DiskAnalysisSelectDrive]}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#64748B"/>
-                        <ComboBox ItemsSource="{Binding Settings.AvailableDrives}" SelectedItem="{Binding Settings.AnalyzedDrive}"
-                                  Width="70" Padding="5,3" Margin="0,0,12,0"/>
+                        <TextBlock Text="{Binding Lang[DiskAnalysisSelectDrive]}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <ComboBox Style="{StaticResource DriveComboBox}" ItemsSource="{Binding Settings.AvailableDrives}" SelectedItem="{Binding Settings.AnalyzedDrive}" Margin="0,0,12,0"/>
                         <Button Style="{StaticResource Btn}" Padding="16,8"
                                 Command="{Binding Settings.AnalyzeDiskCommand}" IsEnabled="{Binding Settings.IsAnalyzing, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[DiskAnalysisStart]}"/>
                     </StackPanel>
                 </Grid>
 
-                <TextBlock Text="{Binding Lang[DiskAnalysisHint]}" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,24"/>
+                <TextBlock Text="{Binding Lang[DiskAnalysisHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,24"/>
 
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <!-- Space visualization bar -->
-                        <Border Height="30" CornerRadius="6" Background="#E2E8F0" Margin="0,0,0,20" ClipToBounds="True">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="{Binding Settings.DiskSpaceCategories[0].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[0].Color}" Height="30"/>
-                                <Border Width="{Binding Settings.DiskSpaceCategories[1].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[1].Color}" Height="30"/>
-                                <Border Width="{Binding Settings.DiskSpaceCategories[2].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[2].Color}" Height="30"/>
-                                <Border Width="{Binding Settings.DiskSpaceCategories[3].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[3].Color}" Height="30"/>
-                                <Border Width="{Binding Settings.DiskSpaceCategories[4].Percentage, Converter={StaticResource PercentToWidthConverter}}" Background="{Binding Settings.DiskSpaceCategories[4].Color}" Height="30"/>
-                            </StackPanel>
-                        </Border>
+                        <!-- Space visualization bar — dynamic: no hardcoded index binding -->
+                        <ItemsControl ItemsSource="{Binding Settings.DiskSpaceCategories}" Margin="0,0,0,20">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Height="30" CornerRadius="0"
+                                            Width="{Binding Percentage, Converter={StaticResource PercentToWidthConverter}}"
+                                            Background="{Binding Color}"
+                                            ToolTip="{Binding Name}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
                         <!-- Category list -->
                         <ItemsControl ItemsSource="{Binding Settings.DiskSpaceCategories}">
@@ -675,9 +684,9 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <Ellipse Grid.Column="0" Width="14" Height="14" Fill="{Binding Color}" Margin="0,0,10,0"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="14" Foreground="#1E293B"/>
-                                        <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="14" FontWeight="Medium" Foreground="#1E293B" Margin="16,0"/>
-                                        <TextBlock Grid.Column="3" Text="{Binding Percentage, StringFormat='{}{0:F1}%'}" FontSize="13" Foreground="#64748B" Width="60" TextAlignment="Right"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="14" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="14" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}" Margin="16,0"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Percentage, StringFormat='{}{0:F1}%'}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Width="60" TextAlignment="Right"/>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -691,14 +700,14 @@
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=SystemCleanup}">
             <StackPanel Margin="28,20,28,28">
-                <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[SystemCleanupTitle]}"/>
-                <TextBlock Text="{Binding SystemCleanup.CleanupStatus}" FontSize="12" Foreground="#64748B" Margin="0,0,0,12"/>
+                <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[SystemCleanupTitle]}"/>
+                <TextBlock Text="{Binding SystemCleanup.CleanupStatus}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
 
                 <!-- Progress bar -->
                 <Border Margin="0,0,0,16" Visibility="{Binding SystemCleanup.IsProgressVisible, Converter={StaticResource BoolVisibilityConverter}}">
                     <StackPanel>
                         <Grid Margin="0,0,0,6">
-                            <TextBlock Text="{Binding Lang[SystemCleanupProgressTitle]}" FontSize="12" Foreground="#64748B"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupProgressTitle]}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
                             <TextBlock Text="{Binding SystemCleanup.ProgressText}" FontSize="12" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Right"/>
                         </Grid>
                         <Border Height="8" CornerRadius="4" Background="#E2E8F0">
@@ -713,7 +722,7 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Text="{Binding Lang[SystemCleanupHint]}" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,24"/>
+                <TextBlock Text="{Binding Lang[SystemCleanupHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,24"/>
 
                 <!-- DISM Cleanup -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,12">
@@ -723,9 +732,9 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding Lang[SystemCleanupDismTitle]}" FontSize="15" FontWeight="SemiBold" Foreground="#1E293B"/>
-                            <TextBlock Text="{Binding Lang[SystemCleanupDismDesc]}" FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
-                            <TextBlock Text="{Binding Lang[SystemCleanupDismMeta]}" FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupDismTitle]}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupDismDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupDismMeta]}" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                         <Button Grid.Column="1" Style="{StaticResource Btn}" Command="{Binding SystemCleanup.RunDismCleanupCommand}" IsEnabled="{Binding SystemCleanup.IsRunningCleanup, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[SystemCleanupDismBtn]}" VerticalAlignment="Center"/>
                     </Grid>
@@ -739,9 +748,9 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding Lang[SystemCleanupSfcTitle]}" FontSize="15" FontWeight="SemiBold" Foreground="#1E293B"/>
-                            <TextBlock Text="{Binding Lang[SystemCleanupSfcDesc]}" FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
-                            <TextBlock Text="{Binding Lang[SystemCleanupSfcMeta]}" FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupSfcTitle]}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupSfcDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupSfcMeta]}" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                         <Button Grid.Column="1" Style="{StaticResource Btn}" Command="{Binding SystemCleanup.RunSfcScanCommand}" IsEnabled="{Binding SystemCleanup.IsRunningCleanup, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[SystemCleanupSfcBtn]}" VerticalAlignment="Center"/>
                     </Grid>
@@ -755,9 +764,9 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding Lang[SystemCleanupDnsTitle]}" FontSize="15" FontWeight="SemiBold" Foreground="#1E293B"/>
-                            <TextBlock Text="{Binding Lang[SystemCleanupDnsDesc]}" FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
-                            <TextBlock Text="{Binding Lang[SystemCleanupDnsMeta]}" FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupDnsTitle]}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupDnsDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Lang[SystemCleanupDnsMeta]}" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                         <Button Grid.Column="1" Style="{StaticResource Btn}" Command="{Binding SystemCleanup.FlushDnsCommand}" IsEnabled="{Binding SystemCleanup.IsRunningCleanup, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[SystemCleanupDnsBtn]}" VerticalAlignment="Center"/>
                     </Grid>
@@ -771,8 +780,8 @@
             <StackPanel Margin="28,20,28,28">
                 <Grid Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Lang[RegistryCleanerTitle]}"/>
-                        <TextBlock Text="{Binding RegistryCleaner.StatusText}" FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[RegistryCleanerTitle]}"/>
+                        <TextBlock Text="{Binding RegistryCleaner.StatusText}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
                         <Button Style="{StaticResource Btn}" Margin="0,0,8,0" Command="{Binding RegistryCleaner.ScanCommand}" IsEnabled="{Binding RegistryCleaner.IsScanning, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[Scan]}"/>
@@ -780,7 +789,7 @@
                     </StackPanel>
                 </Grid>
 
-                <TextBlock Text="{Binding Lang[RegistryCleanerHint]}" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,16"/>
+                <TextBlock Text="{Binding Lang[RegistryCleanerHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,16"/>
 
                 <ItemsControl ItemsSource="{Binding RegistryCleaner.Issues}">
                     <ItemsControl.ItemTemplate>
@@ -796,10 +805,10 @@
                                         <TextBlock Text="{Binding Type}" FontSize="10" FontWeight="Medium" Foreground="#DC2626"/>
                                     </Border>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="#1E293B"/>
-                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="#94A3B8" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{Binding Key}" FontSize="9" Foreground="#CBD5E1" VerticalAlignment="Center" MaxWidth="200" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Key}" FontSize="9" Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center" MaxWidth="200" TextTrimming="CharacterEllipsis"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>
@@ -814,8 +823,8 @@
             <StackPanel Margin="28,20,28,28">
                 <Grid Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Lang[PrivacyCleanerTitle]}"/>
-                        <TextBlock Text="{Binding PrivacyCleaner.StatusText}" FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[PrivacyCleanerTitle]}"/>
+                        <TextBlock Text="{Binding PrivacyCleaner.StatusText}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
                         <Button Style="{StaticResource Btn}" Margin="0,0,8,0" Command="{Binding PrivacyCleaner.ScanCommand}" IsEnabled="{Binding PrivacyCleaner.IsScanning, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[Scan]}"/>
@@ -823,7 +832,7 @@
                     </StackPanel>
                 </Grid>
 
-                <TextBlock Text="{Binding Lang[PrivacyCleanerHint]}" FontSize="13" Foreground="#94A3B8" Margin="0,0,0,16"/>
+                <TextBlock Text="{Binding Lang[PrivacyCleanerHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,16"/>
 
                 <ItemsControl ItemsSource="{Binding PrivacyCleaner.Items}">
                     <ItemsControl.ItemTemplate>
@@ -839,10 +848,10 @@
                                         <TextBlock Text="{Binding Type}" FontSize="10" FontWeight="Medium" Foreground="#CA8A04"/>
                                     </Border>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="#1E293B"/>
-                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="#94A3B8"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}"/>
                                     </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{Binding Path}" FontSize="9" Foreground="#CBD5E1" VerticalAlignment="Center" MaxWidth="250" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Path}" FontSize="9" Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center" MaxWidth="250" TextTrimming="CharacterEllipsis"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>
@@ -855,12 +864,12 @@
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=Guide}">
             <StackPanel Margin="28,20,28,28" MaxWidth="700">
-                <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,24" Text="{Binding Lang[GuideTitle]}"/>
+                <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,24" Text="{Binding Lang[GuideTitle]}"/>
 
                 <!-- Safety Levels -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,12" Text="{Binding Lang[GuideSafetyTitle]}"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" Text="{Binding Lang[GuideSafetyTitle]}"/>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -869,7 +878,7 @@
                             <Border Grid.Column="0" CornerRadius="4" Padding="8,3" Background="#DCFCE7" Margin="0,0,12,0">
                                 <TextBlock Text="{Binding Lang[Safe]}" FontSize="11" FontWeight="Medium" Foreground="#16A34A"/>
                             </Border>
-                            <TextBlock Grid.Column="1" Text="{Binding Lang[GuideSafetySafeDesc]}" FontSize="13" Foreground="#64748B"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Lang[GuideSafetySafeDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                         </Grid>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
@@ -879,7 +888,7 @@
                             <Border Grid.Column="0" CornerRadius="4" Padding="8,3" Background="#FEF9C3" Margin="0,0,12,0">
                                 <TextBlock Text="{Binding Lang[Caution]}" FontSize="11" FontWeight="Medium" Foreground="#CA8A04"/>
                             </Border>
-                            <TextBlock Grid.Column="1" Text="{Binding Lang[GuideSafetyCautionDesc]}" FontSize="13" Foreground="#64748B"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Lang[GuideSafetyCautionDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                         </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -889,7 +898,7 @@
                             <Border Grid.Column="0" CornerRadius="4" Padding="8,3" Background="#FEE2E2" Margin="0,0,12,0">
                                 <TextBlock Text="{Binding Lang[Dangerous]}" FontSize="11" FontWeight="Medium" Foreground="#DC2626"/>
                             </Border>
-                            <TextBlock Grid.Column="1" Text="{Binding Lang[GuideSafetyDangerousDesc]}" FontSize="13" Foreground="#64748B"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Lang[GuideSafetyDangerousDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -897,16 +906,16 @@
                 <!-- Disk Cleanup -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[GuideCleanTitle]}"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanDesc]}" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanScope]}" FontSize="13" FontWeight="Medium" Foreground="#1E293B" Margin="0,0,0,4"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanScopeRecycleBin]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanScopeTemp]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanScopeUpdate]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanScopeBrowser]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanScopeDev]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanScopeApp]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideCleanScopeLog]}" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[GuideCleanTitle]}"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanScope]}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanScopeRecycleBin]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanScopeTemp]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanScopeUpdate]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanScopeBrowser]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanScopeDev]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanScopeApp]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideCleanScopeLog]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                         <TextBlock Text="" FontSize="8"/>
                         <TextBlock Text="{Binding Lang[GuideCleanTip]}" FontSize="12" Foreground="#3B82F6"/>
                     </StackPanel>
@@ -915,60 +924,60 @@
                 <!-- Large Files -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[GuideLargeFilesTitle]}"/>
-                        <TextBlock Text="{Binding Lang[GuideLargeFilesDesc]}" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding Lang[GuideLargeFilesNote]}" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[GuideLargeFilesTitle]}"/>
+                        <TextBlock Text="{Binding Lang[GuideLargeFilesDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding Lang[GuideLargeFilesNote]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Software Management -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[GuideSoftwareTitle]}"/>
-                        <TextBlock Text="{Binding Lang[GuideSoftwareDesc]}" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding Lang[GuideSoftwareNote]}" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[GuideSoftwareTitle]}"/>
+                        <TextBlock Text="{Binding Lang[GuideSoftwareDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding Lang[GuideSoftwareNote]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Startup Management -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[GuideStartupTitle]}"/>
-                        <TextBlock Text="{Binding Lang[GuideStartupDesc]}" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding Lang[GuideStartupNote]}" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[GuideStartupTitle]}"/>
+                        <TextBlock Text="{Binding Lang[GuideStartupDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding Lang[GuideStartupNote]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Large Folders -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[GuideLargeFoldersTitle]}"/>
-                        <TextBlock Text="{Binding Lang[GuideLargeFoldersDesc]}" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding Lang[GuideLargeFoldersNote]}" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[GuideLargeFoldersTitle]}"/>
+                        <TextBlock Text="{Binding Lang[GuideLargeFoldersDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding Lang[GuideLargeFoldersNote]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Disk Analysis -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[GuideDiskAnalysisTitle]}"/>
-                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisDesc]}" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScope]}" FontSize="13" FontWeight="Medium" Foreground="#1E293B" Margin="0,0,0,4"/>
-                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScopeWindows]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScopeProgramFiles]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScopeUsers]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScopeOther]}" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[GuideDiskAnalysisTitle]}"/>
+                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScope]}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScopeWindows]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScopeProgramFiles]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScopeUsers]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideDiskAnalysisScopeOther]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- System Cleanup -->
                 <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,8" Text="{Binding Lang[GuideSystemCleanupTitle]}"/>
-                        <TextBlock Text="{Binding Lang[GuideSystemCleanupDesc]}" FontSize="13" Foreground="#64748B" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding Lang[GuideSystemCleanupDism]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideSystemCleanupSfc]}" FontSize="13" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding Lang[GuideSystemCleanupDns]}" FontSize="13" Foreground="#64748B"/>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Lang[GuideSystemCleanupTitle]}"/>
+                        <TextBlock Text="{Binding Lang[GuideSystemCleanupDesc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding Lang[GuideSystemCleanupDism]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideSystemCleanupSfc]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Lang[GuideSystemCleanupDns]}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                         <TextBlock Text="" FontSize="8"/>
                         <TextBlock Text="{Binding Lang[SystemCleanupAdminNote]}" FontSize="12" Foreground="#F59E0B"/>
                     </StackPanel>
@@ -980,12 +989,12 @@
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=Settings}">
             <StackPanel Margin="28,20,28,28">
-                <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,24" Text="{Binding Settings.Lang[SettingsTitle]}"/>
+                <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,24" Text="{Binding Settings.Lang[SettingsTitle]}"/>
 
                 <!-- Language -->
                 <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,16" Text="{Binding Settings.Lang[Language]}"/>
+                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,16" Text="{Binding Settings.Lang[Language]}"/>
                         <StackPanel Orientation="Horizontal">
                             <RadioButton Margin="0,0,24,0" IsChecked="{Binding Settings.IsChinese}" GroupName="Lang">
                                 <TextBlock Text="中文" FontSize="14"/>
@@ -1000,8 +1009,8 @@
                 <!-- Website Info -->
                 <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,12" Text="{Binding Settings.Lang[OfficialWebsite]}"/>
-                        <TextBlock FontSize="13" Foreground="#64748B" TextWrapping="Wrap" Text="{Binding Settings.Lang[WebsiteTip]}"/>
+                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" Text="{Binding Settings.Lang[OfficialWebsite]}"/>
+                        <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Text="{Binding Settings.Lang[WebsiteTip]}"/>
                     </StackPanel>
                 </Border>
 
@@ -1010,25 +1019,25 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#07C160" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#1E293B" Text="{Binding Settings.Lang[WechatOfficial]}"/>
+                            <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Settings.Lang[WechatOfficial]}"/>
                             <TextBlock FontSize="15" FontWeight="Bold" Foreground="#07C160" Margin="8,0,0,0" Text="{Binding Settings.Lang[WechatOfficialName]}"/>
                         </StackPanel>
-                        <TextBlock FontSize="13" Foreground="#1E293B" TextWrapping="Wrap" Text="{Binding Settings.Lang[WechatOfficialTip]}"/>
-                        <TextBlock FontSize="12" Foreground="#64748B" TextWrapping="Wrap" Margin="0,8,0,0" Text="{Binding Settings.Lang[WechatOfficialGuide]}"/>
-                        <TextBlock FontSize="11" Foreground="#94A3B8" Margin="0,8,0,0" Text="二维码见左侧「关注作者」页面"/>
+                        <TextBlock FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" Text="{Binding Settings.Lang[WechatOfficialTip]}"/>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,8,0,0" Text="{Binding Settings.Lang[WechatOfficialGuide]}"/>
+                        <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,8,0,0" Text="二维码见左侧「关注作者」页面"/>
                     </StackPanel>
                 </Border>
 
                 <!-- About -->
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,12" Text="{Binding Settings.Lang[About]}"/>
+                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" Text="{Binding Settings.Lang[About]}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                             <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,10,0"/>
-                            <TextBlock FontSize="18" FontWeight="Bold" Foreground="#1E293B" Text="{Binding Settings.Lang[AppTitle]}"/>
+                            <TextBlock FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Settings.Lang[AppTitle]}"/>
                         </StackPanel>
-                        <TextBlock FontSize="12" Foreground="#64748B" Text="{Binding Settings.Lang[Version]}"/>
-                        <TextBlock FontSize="12" Foreground="#64748B" Margin="0,4,0,0" Text="{Binding Settings.Lang[Description]}"/>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Text="{Binding Settings.Lang[Version]}"/>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" Text="{Binding Settings.Lang[Description]}"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -1038,12 +1047,12 @@
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=FollowAuthor}">
             <StackPanel Margin="28,20,28,28">
-                <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,20" Text="{Binding Lang[FollowAuthorTitle]}"/>
+                <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,20" Text="{Binding Lang[FollowAuthorTitle]}"/>
 
                 <Border Style="{StaticResource Card}" Padding="24">
                     <StackPanel HorizontalAlignment="Center">
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" TextAlignment="Center" Margin="0,0,0,8" Text="{Binding Lang[FollowAuthorHeading]}"/>
-                        <TextBlock FontSize="13" Foreground="#64748B" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,24" MaxWidth="400"
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" TextAlignment="Center" Margin="0,0,0,8" Text="{Binding Lang[FollowAuthorHeading]}"/>
+                        <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,24" MaxWidth="400"
                                    Text="{Binding Lang[FollowAuthorDesc]}"/>
 
                         <Grid>
@@ -1059,7 +1068,7 @@
                             <Border Grid.Column="0" Background="White" CornerRadius="16" Padding="14">
                                 <StackPanel HorizontalAlignment="Center">
                                     <Image Source="Resources/QRCodes/7f09a53bd669d32db250c8ead9e924d4.jpg" Width="180" Height="180" Stretch="Uniform" Margin="0,0,0,12"/>
-                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#1E293B" Text="{Binding Lang[FollowAuthorDouyin]}"/>
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[FollowAuthorDouyin]}"/>
                                 </StackPanel>
                             </Border>
 
@@ -1067,7 +1076,7 @@
                             <Border Grid.Column="2" Background="White" CornerRadius="16" Padding="14">
                                 <StackPanel HorizontalAlignment="Center">
                                     <Image Source="Resources/QRCodes/24aeaa7d3f01dd052ae11d91cd29eac1.jpg" Width="180" Height="180" Stretch="Uniform" Margin="0,0,0,12"/>
-                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#1E293B" Text="{Binding Lang[FollowAuthorBilibili]}"/>
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[FollowAuthorBilibili]}"/>
                                 </StackPanel>
                             </Border>
 
@@ -1081,7 +1090,7 @@
                         </Grid>
 
                         <!-- Note -->
-                        <Border Background="#F8FAFC" CornerRadius="12" Padding="20" Margin="0,24,0,0" MaxWidth="420">
+                        <Border Background="{StaticResource BgPrimaryBrush}" CornerRadius="12" Padding="20" Margin="0,24,0,0" MaxWidth="420">
                             <TextBlock FontSize="13" Foreground="#F59E0B" TextWrapping="Wrap"
                                        Text="{Binding Lang[FollowAuthorNote]}"/>
                         </Border>
@@ -1094,7 +1103,7 @@
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=Donate}">
             <StackPanel Margin="28,20,28,28">
-                <TextBlock FontSize="24" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,20" Text="{Binding Lang[DonateTitle]}"/>
+                <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,20" Text="{Binding Lang[DonateTitle]}"/>
 
                 <Border Style="{StaticResource Card}" Padding="32">
                     <StackPanel HorizontalAlignment="Center">
@@ -1104,8 +1113,8 @@
                         <Border Background="#07C160" CornerRadius="6" Padding="16,6" Margin="0,0,0,24">
                             <TextBlock FontSize="13" Foreground="White" Text="{Binding Lang[DonateWechatPay]}"/>
                         </Border>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="#1E293B" TextAlignment="Center" Margin="0,0,0,8" Text="{Binding Lang[DonateHeading]}"/>
-                        <TextBlock FontSize="14" Foreground="#64748B" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400"
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" TextAlignment="Center" Margin="0,0,0,8" Text="{Binding Lang[DonateHeading]}"/>
+                        <TextBlock FontSize="14" Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400"
                                    Text="{Binding Lang[DonateDesc]}"/>
                     </StackPanel>
                 </Border>

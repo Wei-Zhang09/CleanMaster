@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CleanMaster.Models;
 using CleanMaster.Services;
+using CleanMaster.Services.Interfaces;
 
 
 namespace CleanMaster.ViewModels;
@@ -10,7 +11,7 @@ namespace CleanMaster.ViewModels;
 public class MainViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly DiskInfoService _diskInfoService;
-    public LangService Lang { get; } = LangService.Instance;
+    public ILangService Lang { get; }
 
     // Child ViewModels
     public CleanViewModel Clean { get; }
@@ -65,7 +66,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         SoftwareViewModel softwareViewModel,
         StartupViewModel startupViewModel,
         SystemCleanupViewModel systemCleanupViewModel,
-        SettingsViewModel settingsViewModel)
+        SettingsViewModel settingsViewModel,
+        ILangService langService)
     {
         _diskInfoService = diskInfoService;
 
@@ -75,6 +77,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         Startup = startupViewModel;
         SystemCleanup = systemCleanupViewModel;
         Settings = settingsViewModel;
+        Lang = langService;
 
         _diskInfoService.PropertyChanged += OnDiskInfoChanged;
 
@@ -124,10 +127,18 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
                     DiskFiles.LoadDiskDrives();
                     break;
                 case "Software":
-                    _ = Software.LoadInstalledSoftwareAsync();
+                    _ = Software.LoadInstalledSoftwareAsync().ContinueWith(t =>
+                    {
+                        if (t.IsFaulted && t.Exception != null)
+                            App.LogError("Nav-Software", t.Exception);
+                    }, TaskContinuationOptions.OnlyOnFaulted);
                     break;
                 case "Startup":
-                    _ = Startup.LoadStartupItemsAsync(forceRefresh: false);
+                    _ = Startup.LoadStartupItemsAsync(forceRefresh: false).ContinueWith(t =>
+                    {
+                        if (t.IsFaulted && t.Exception != null)
+                            App.LogError("Nav-Startup", t.Exception);
+                    }, TaskContinuationOptions.OnlyOnFaulted);
                     break;
             }
         }
@@ -151,6 +162,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             (Clean as IDisposable)?.Dispose();
             (SystemCleanup as IDisposable)?.Dispose();
             (Software as IDisposable)?.Dispose();
+            (DiskFiles as IDisposable)?.Dispose();
+            (Startup as IDisposable)?.Dispose();
+            (Settings as IDisposable)?.Dispose();
         }
         catch { }
         GC.SuppressFinalize(this);

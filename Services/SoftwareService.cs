@@ -264,6 +264,10 @@ public class SoftwareService : ISoftwareService
             {
                 foreach (var file in Directory.GetFiles(startupFolder))
                 {
+                    // Skip .disabled backups — they're handled separately below
+                    if (file.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
                     items.Add(new StartupItem
                     {
                         Name = Path.GetFileNameWithoutExtension(file),
@@ -307,6 +311,22 @@ public class SoftwareService : ISoftwareService
         try
         {
             if (!string.IsNullOrEmpty(item.IconPath)) return item.IconPath;
+
+            // Startup folder items are .lnk shortcuts — resolve to target .exe
+            if (item.Source == "StartupFolder"
+                && !string.IsNullOrEmpty(item.Command)
+                && item.Command.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)
+                && File.Exists(item.Command))
+            {
+                var target = ResolveShortcutTarget(item.Command);
+                if (!string.IsNullOrEmpty(target) && File.Exists(target))
+                {
+                    item.IconPath = target;
+                    return item.IconPath;
+                }
+            }
+
+            // Direct .exe in startup folder
             if (item.Source == "StartupFolder"
                 && !string.IsNullOrEmpty(item.Command)
                 && item.Command.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
@@ -315,6 +335,8 @@ public class SoftwareService : ISoftwareService
                 item.IconPath = item.Command;
                 return item.IconPath;
             }
+
+            // Registry-based startup: extract exe from command line
             item.IconPath = ExtractExePath(item.Command);
             return item.IconPath;
         }
@@ -322,6 +344,26 @@ public class SoftwareService : ISoftwareService
         {
             CleanMaster.App.LogError("GetStartupItemIconPath", ex);
             return "";
+        }
+    }
+
+    /// <summary>
+    /// Resolves a .lnk shortcut file to its target exe using Shell32 COM.
+    /// </summary>
+    private static string? ResolveShortcutTarget(string lnkPath)
+    {
+        try
+        {
+            // Use dynamic COM to avoid adding a project reference to IWshRuntimeLibrary
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType == null) return null;
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            dynamic shortcut = shell.CreateShortcut(lnkPath);
+            return shortcut.TargetPath as string;
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -843,30 +885,43 @@ public class SoftwareService : ISoftwareService
         {
             var cmd = command.Trim();
 
+            // Handle quoted paths: "C:\Program Files\App\app.exe" /arg
             if (cmd.StartsWith("\""))
             {
                 var endQuote = cmd.IndexOf('"', 1);
                 if (endQuote > 0)
                 {
                     var path = cmd.Substring(1, endQuote - 1);
+                    // Expand environment variables first
+                    var expanded = Environment.ExpandEnvironmentVariables(path);
+                    if (File.Exists(expanded)) return expanded;
                     if (File.Exists(path)) return path;
                 }
             }
 
+            // Handle unquoted paths: app.exe /arg or %ProgramFiles%\App\app.exe
             var parts = cmd.Split(' ', 2);
             var possiblePath = Environment.ExpandEnvironmentVariables(parts[0]);
 
             if (File.Exists(possiblePath)) return possiblePath;
 
+            // Search common program directories
             var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
             var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
             var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            var system32 = Path.Combine(windows, "System32");
+            var syswow64 = Path.Combine(windows, "SysWOW64");
 
-            foreach (var baseDir in new[] { programFiles, programFilesX86, windows })
+            foreach (var baseDir in new[] { programFiles, programFilesX86, windows, system32, syswow64 })
             {
                 var fullPath = Path.Combine(baseDir, possiblePath);
                 if (File.Exists(fullPath)) return fullPath;
             }
+
+            // Fallback: return expanded path even if file doesn't exist yet
+            // (IconExtractor will handle the actual icon extraction with fallback)
+            if (!string.IsNullOrEmpty(possiblePath) && possiblePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                return possiblePath;
         }
         catch (Exception ex) { CleanMaster.App.LogError("ExtractExePath", ex); }
 

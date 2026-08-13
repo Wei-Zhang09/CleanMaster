@@ -175,7 +175,11 @@ public class CleanResult
     public int FoldersDeleted { get; set; }
     public long BytesFreed { get; set; }
     public List<string> Errors { get; set; } = new();
+    public List<string> Warnings { get; set; } = new();
     public List<CleanableItem> DeletedItems { get; set; } = new();
+
+    /// <summary>是否报告了任何错误或警告</summary>
+    public bool HasIssues => Errors.Count > 0 || Warnings.Count > 0;
 
     public string FreedText => BytesFreed switch
     {

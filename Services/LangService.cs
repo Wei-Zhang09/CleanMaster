@@ -6,7 +6,6 @@ namespace CleanMaster.Services;
 
 public class LangService : ILangService, INotifyPropertyChanged
 {
-    public static LangService Instance { get; } = new();
 
     /// <summary>
     /// Raised when the active language changes. ViewModels subscribe to this and

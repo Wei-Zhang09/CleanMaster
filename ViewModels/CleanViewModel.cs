@@ -17,7 +17,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
     private CancellationTokenSource? _cts;
     private bool _disposed;
 
-    public LangService Lang { get; } = LangService.Instance;
+    public ILangService Lang { get; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -52,7 +52,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
     public CleanResult? LastCleanResult { get => _lastCleanResult; set { _lastCleanResult = value; OnPropertyChanged(); OnPropertyChanged(nameof(CleanResultText)); } }
 
     public string CleanResultText => _lastCleanResult != null
-        ? $"{LangService.Instance["Freed"]} {_lastCleanResult.FreedText} ({_lastCleanResult.FilesDeleted} {LangService.Instance["Files"]})"
+        ? $"{Lang["Freed"]} {_lastCleanResult.FreedText} ({_lastCleanResult.FilesDeleted} {Lang["Files"]})"
         : "";
 
     private bool _isCleanProgressVisible;
@@ -81,18 +81,19 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
 
     #endregion
 
-    public CleanViewModel(IScanService scanService, ICleanService cleanService, DiskInfoService diskInfoService)
+    public CleanViewModel(IScanService scanService, ICleanService cleanService, DiskInfoService diskInfoService, ILangService langService)
     {
         _scanService = scanService;
         _cleanService = cleanService;
         _diskInfoService = diskInfoService;
+        Lang = langService;
 
         ScanCommand = new RelayCommand(async () => await StartScanAsync());
         CleanCommand = new RelayCommand(async () => await StartCleanAsync());
         CancelCommand = new RelayCommand(() => _cts?.Cancel());
         ToggleExpandCommand = new RelayCommand<ScanCategoryResult>(ToggleExpand);
 
-        StatusText = LangService.Instance["Ready"];
+        StatusText = Lang["Ready"];
 
         _scanService.ProgressChanged += OnScanProgressChanged;
         _scanService.CategoryScanned += OnCategoryScanned;
@@ -184,15 +185,16 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         TotalItemCount = 0;
         ProgressPercent = 0;
         _accessDeniedShown = false;
-        StatusText = LangService.Instance["Scanning"];
+        StatusText = Lang["Scanning"];
 
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {
             await _scanService.ScanAllAsync(_cts.Token);
-            StatusText = $"{LangService.Instance["ScanComplete"]}. {TotalItemCount} {LangService.Instance["Items"]} ({TotalCleanableText})";
+            StatusText = $"{Lang["ScanComplete"]}. {TotalItemCount} {Lang["Items"]} ({TotalCleanableText})";
         }
-        catch (OperationCanceledException) { StatusText = LangService.Instance["Cancelled"]; App.Log("Scan cancelled by user"); }
+        catch (OperationCanceledException) { StatusText = Lang["Cancelled"]; App.Log("Scan cancelled by user"); }
         catch (Exception ex) { StatusText = ex.Message; App.LogError("StartScanAsync", ex); }
         finally { IsScanning = false; _diskInfoService.Refresh("C:"); }
     }
@@ -206,6 +208,11 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         var totalSize = toClean.Sum(c => c.TotalSize);
         var totalItems = toClean.Sum(c => c.Items.Count(i => i.IsSelected));
 
+        // 检测是否选中了危险项 — 危险项需要更强的警告
+        var dangerousItems = toClean
+            .SelectMany(c => c.Items.Where(i => i.IsSelected && i.IsDangerous))
+            .ToList();
+
         var previewMsg = "即将清理以下内容：\n\n";
         foreach (var cat in toClean.Take(10))
         {
@@ -215,9 +222,22 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
             previewMsg += $"... 等 {toClean.Count} 个分类\n";
 
         previewMsg += $"\n总计: {totalItems} 项，约 {FormatSize(totalSize)}";
+
+        if (dangerousItems.Count > 0)
+        {
+            previewMsg += "\n\n⚠️ 警告：您选中了危险项，删除可能影响系统功能：\n";
+            foreach (var item in dangerousItems.Take(5))
+                previewMsg += $"  - {item.Name}\n";
+            previewMsg += "\n请确认您了解后果后再继续！";
+        }
+
         previewMsg += "\n\n是否继续清理？";
 
-        var confirm = System.Windows.MessageBox.Show(previewMsg, "清理确认", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        var confirm = System.Windows.MessageBox.Show(
+            previewMsg,
+            dangerousItems.Count > 0 ? "危险操作确认" : "清理确认",
+            MessageBoxButton.YesNo,
+            dangerousItems.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
 
         IsCleaning = true;
@@ -226,17 +246,18 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         CleanProgressText = "";
         CleanCurrentFile = "";
         CleanCurrentPath = "";
-        StatusText = LangService.Instance["Cleaning"];
+        StatusText = Lang["Cleaning"];
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {
             LastCleanResult = await _cleanService.CleanAsync(toClean, _cts.Token);
-            StatusText = $"{LangService.Instance["CleanComplete"]}. {CleanResultText}";
+            StatusText = $"{Lang["CleanComplete"]}. {CleanResultText}";
             ScanResults.Clear();
             TotalCleanableSize = 0;
             TotalItemCount = 0;
         }
-        catch (OperationCanceledException) { StatusText = LangService.Instance["Cancelled"]; App.Log("Clean cancelled by user"); }
+        catch (OperationCanceledException) { StatusText = Lang["Cancelled"]; App.Log("Clean cancelled by user"); }
         catch (Exception ex) { StatusText = ex.Message; App.LogError("StartCleanAsync", ex); }
         finally { IsCleaning = false; IsCleanProgressVisible = false; _diskInfoService.Refresh("C:"); }
     }

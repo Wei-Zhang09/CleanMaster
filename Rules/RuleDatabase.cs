@@ -73,6 +73,8 @@ public class CleanupRule
 
 public static class RuleDatabase
 {
+    private static readonly string SystemDrive = Path.GetPathRoot(
+        Environment.GetFolderPath(Environment.SpecialFolder.Windows)) ?? @"C:";
     public static List<CleanupRule> GetAllRules()
     {
         var rules = new List<CleanupRule>();
@@ -101,7 +103,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Recycle Bin",
-            Path = @"C:\$Recycle.Bin",
+            Path = $@"{SystemDrive}$Recycle.Bin",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.RecycleBin,
             Description = "回收站中的文件。这些是用户主动删除的内容，清空后无法恢复。"        }
@@ -123,7 +125,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows Temp",
-            Path = @"C:\Windows\Temp",
+            Path = $@"{SystemDrive}Windows\Temp",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.TempFiles,
             Description = "Windows 系统临时文件。系统服务和后台进程产生，可安全删除。"
@@ -131,7 +133,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Prefetch",
-            Path = @"C:\Windows\Prefetch",
+            Path = $@"{SystemDrive}Windows\Prefetch",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.TempFiles,
             Description = "应用启动预读取缓存。Windows 会根据使用习惯自动重建，删除后前几次启动略慢。"
@@ -139,7 +141,7 @@ public static class RuleDatabase
         new()
         {
             Name = "LocalService Temp",
-            Path = @"C:\Windows\ServiceProfiles\LocalService\AppData\Local\Temp",
+            Path = $@"{SystemDrive}Windows\ServiceProfiles\LocalService\AppData\Local\Temp",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.TempFiles,
             Description = "LocalService 系统账户的临时文件。系统服务运行时产生，可安全删除。"
@@ -147,7 +149,7 @@ public static class RuleDatabase
         new()
         {
             Name = "NetworkService Temp",
-            Path = @"C:\Windows\ServiceProfiles\NetworkService\AppData\Local\Temp",
+            Path = $@"{SystemDrive}Windows\ServiceProfiles\NetworkService\AppData\Local\Temp",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.TempFiles,
             Description = "NetworkService 系统账户的临时文件。网络相关服务运行时产生，可安全删除。"
@@ -162,7 +164,7 @@ public static class RuleDatabase
         new()
         {
             Name = "WU Download Cache",
-            Path = @"C:\Windows\SoftwareDistribution\Download",
+            Path = $@"{SystemDrive}Windows\SoftwareDistribution\Download",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsUpdate,
             Description = "Windows 更新下载缓存。已安装完成的更新对应的下载文件，可安全删除。未安装完的更新会重新下载。"
@@ -170,7 +172,7 @@ public static class RuleDatabase
         new()
         {
             Name = "WU DataStore",
-            Path = @"C:\Windows\SoftwareDistribution\DataStore",
+            Path = $@"{SystemDrive}Windows\SoftwareDistribution\DataStore",
             Safety = CleanSafety.Caution,
             Category = CleanCategory.WindowsUpdate,
             Description = "Windows 更新数据库。记录已安装更新列表。清理后更新历史记录会被清空，但不影响已安装的更新本身。"
@@ -178,7 +180,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Delivery Optimization",
-            Path = @"C:\Windows\SoftwareDistribution\DeliveryOptimization",
+            Path = $@"{SystemDrive}Windows\SoftwareDistribution\DeliveryOptimization",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsUpdate,
             Description = "Windows 更新分发优化文件。用于局域网内分摊更新下载流量，可安全删除。"
@@ -186,7 +188,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows.old",
-            Path = @"C:\Windows.old",
+            Path = $@"{SystemDrive}Windows.old",
             Safety = CleanSafety.Caution,
             Category = CleanCategory.WindowsUpdate,
             Description = "Windows 升级备份（Windows.old）。用于回退到旧版本。清理后无法回退，建议升级满 10 天后再清理。"
@@ -205,7 +207,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows Logs (top-level)",
-            Path = @"C:\Windows\Logs",
+            Path = $@"{SystemDrive}Windows\Logs",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "C:\\Windows\\Logs 下的顶层日志文件。",
@@ -215,7 +217,7 @@ public static class RuleDatabase
         new()
         {
             Name = "CBS Logs",
-            Path = @"C:\Windows\Logs\CBS",
+            Path = $@"{SystemDrive}Windows\Logs\CBS",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "Component-Based Servicing 日志。"
@@ -223,7 +225,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows Logs Compressed",
-            Path = @"C:\Windows\Logs\Compressed",
+            Path = $@"{SystemDrive}Windows\Logs\Compressed",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "已压缩的旧日志文件。"
@@ -231,7 +233,7 @@ public static class RuleDatabase
         new()
         {
             Name = "DISM Logs",
-            Path = @"C:\Windows\Logs\DISM",
+            Path = $@"{SystemDrive}Windows\Logs\DISM",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "DISM 工具日志。"
@@ -239,7 +241,7 @@ public static class RuleDatabase
         new()
         {
             Name = "DPX Logs",
-            Path = @"C:\Windows\Logs\DPX",
+            Path = $@"{SystemDrive}Windows\Logs\DPX",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "DPX 文件日志。"
@@ -247,7 +249,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Setup Logs (Panther)",
-            Path = @"C:\Windows\Panther",
+            Path = $@"{SystemDrive}Windows\Panther",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "Windows 安装与升级日志。"
@@ -255,7 +257,7 @@ public static class RuleDatabase
         new()
         {
             Name = "SysReset Logs",
-            Path = @"C:\$SysReset",
+            Path = $@"{SystemDrive}$SysReset",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "系统重置日志。"
@@ -263,7 +265,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows LogFiles",
-            Path = @"C:\Windows\System32\LogFiles",
+            Path = $@"{SystemDrive}Windows\System32\LogFiles",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "HTTP/sys、IIS 等系统服务的日志文件。"
@@ -271,7 +273,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows Debug",
-            Path = @"C:\Windows\debug",
+            Path = $@"{SystemDrive}Windows\debug",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "系统调试转储文件。"
@@ -279,7 +281,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Security Logs",
-            Path = @"C:\Windows\security\logs",
+            Path = $@"{SystemDrive}Windows\security\logs",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "Windows 安全日志文件。"
@@ -287,7 +289,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows Defender History",
-            Path = @"C:\ProgramData\Microsoft\Windows Defender\Scans\History",
+            Path = $@"{SystemDrive}ProgramData\Microsoft\Windows Defender\Scans\History",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.WindowsLogs,
             Description = "Windows Defender 扫描历史记录。"
@@ -1087,7 +1089,7 @@ public static class RuleDatabase
         new()
         {
             Name = "System Package Cache",
-            Path = @"C:\ProgramData\Package Cache",
+            Path = $@"{SystemDrive}ProgramData\Package Cache",
             Safety = CleanSafety.Caution,
             Category = CleanCategory.InstallerCache,
             Description = "Visual Studio 等安装程序缓存。卸载或修复软件时可能需要这些文件，建议空间紧张时再清理。"
@@ -1105,7 +1107,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows Installer Patch Cache",
-            Path = @"C:\Windows\Installer\$PatchCache$",
+            Path = $@"{SystemDrive}Windows\Installer\$PatchCache$",
             Safety = CleanSafety.Caution,
             Category = CleanCategory.InstallerCache,
             Description = "Windows Installer 补丁缓存。清理后修复已安装软件可能需要原始安装包。"
@@ -1113,7 +1115,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Downloaded Program Files",
-            Path = @"C:\Windows\Downloaded Program Files",
+            Path = $@"{SystemDrive}Windows\Downloaded Program Files",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.InstallerCache,
             Description = "IE/旧版 ActiveX 下载的程序文件。现代浏览器已不使用，可安全删除。"
@@ -1138,7 +1140,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows Error Reporting (root)",
-            Path = @"C:\ProgramData\Microsoft\Windows\WER",
+            Path = $@"{SystemDrive}ProgramData\Microsoft\Windows\WER",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.CrashDumps,
             Description = "Windows 错误报告根目录临时文件。",
@@ -1148,7 +1150,7 @@ public static class RuleDatabase
         new()
         {
             Name = "WER ReportArchive",
-            Path = @"C:\ProgramData\Microsoft\Windows\WER\ReportArchive",
+            Path = $@"{SystemDrive}ProgramData\Microsoft\Windows\WER\ReportArchive",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.CrashDumps,
             Description = "Windows 错误报告归档。"
@@ -1156,7 +1158,7 @@ public static class RuleDatabase
         new()
         {
             Name = "WER ReportQueue",
-            Path = @"C:\ProgramData\Microsoft\Windows\WER\ReportQueue",
+            Path = $@"{SystemDrive}ProgramData\Microsoft\Windows\WER\ReportQueue",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.CrashDumps,
             Description = "Windows 错误报告队列。"
@@ -1164,7 +1166,7 @@ public static class RuleDatabase
         new()
         {
             Name = "LiveKernelReports",
-            Path = @"C:\Windows\LiveKernelReports",
+            Path = $@"{SystemDrive}Windows\LiveKernelReports",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.CrashDumps,
             Description = "实时内核错误报告。"
@@ -1172,7 +1174,7 @@ public static class RuleDatabase
         new()
         {
             Name = "MEMORY.DMP",
-            PathFactory = () => @"C:\Windows\MEMORY.DMP",
+            PathFactory = () => $@"{SystemDrive}Windows\MEMORY.DMP",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.CrashDumps,
             Description = "系统崩溃时的完整内存转储文件，用于调试分析。"
@@ -1180,7 +1182,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Minidump",
-            Path = @"C:\Windows\Minidump",
+            Path = $@"{SystemDrive}Windows\Minidump",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.CrashDumps,
             Description = "系统崩溃时的小型转储文件。"
@@ -1195,7 +1197,7 @@ public static class RuleDatabase
         new()
         {
             Name = "程序兼容性缓存 (AppCompat)",
-            Path = @"C:\Windows\AppCompat\Programs",
+            Path = $@"{SystemDrive}Windows\AppCompat\Programs",
             Safety = CleanSafety.Dangerous,
             Category = CleanCategory.AppCache,
             Description = "兼容性数据库 (.sdb)。删除可能破坏已注册的程序兼容性设置，谨慎操作。"
@@ -1203,7 +1205,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Windows Search Index",
-            Path = @"C:\ProgramData\Microsoft\Search\Data",
+            Path = $@"{SystemDrive}ProgramData\Microsoft\Search\Data",
             Safety = CleanSafety.Caution,
             Category = CleanCategory.AppCache,
             Description = "Windows 搜索索引数据。删除后索引会重建（搜索会暂时变慢）。"
@@ -1211,7 +1213,7 @@ public static class RuleDatabase
         new()
         {
             Name = "Font Cache",
-            Path = @"C:\Windows\ServiceProfiles\LocalService\AppData\Local\FontCache",
+            Path = $@"{SystemDrive}Windows\ServiceProfiles\LocalService\AppData\Local\FontCache",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.AppCache,
             Description = "Windows 字体缓存。删除后会自动重建。"

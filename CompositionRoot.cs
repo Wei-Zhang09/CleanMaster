@@ -14,7 +14,7 @@ public static class CompositionRoot
         // Singleton services (stateful: events, HttpClient, caches)
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IMachineIdService, MachineIdService>();
-        services.AddSingleton<ILangService>(_ => LangService.Instance);
+        services.AddSingleton<ILangService, LangService>();
         services.AddSingleton<DiskInfoService>();
 
         // LicenseService depends on SettingsService + MachineIdService
@@ -44,7 +44,8 @@ public static class CompositionRoot
             var settingsService = sp.GetRequiredService<ISettingsService>();
             var licenseService = sp.GetRequiredService<ILicenseService>();
             var scanService = sp.GetRequiredService<IScanService>();
-            return new SettingsViewModel(settingsService, licenseService, scanService);
+            var langService = sp.GetRequiredService<ILangService>();
+            return new SettingsViewModel(settingsService, licenseService, scanService, langService);
         });
 
         return services.BuildServiceProvider();

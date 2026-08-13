@@ -13,7 +13,7 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ISoftwareService _softwareService;
 
-    public LangService Lang { get; } = LangService.Instance;
+    public ILangService Lang { get; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -94,9 +94,10 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
 
     public RelayCommand<InstalledSoftware> UninstallCommand { get; }
 
-    public SoftwareViewModel(ISoftwareService softwareService)
+    public SoftwareViewModel(ISoftwareService softwareService, ILangService langService)
     {
         _softwareService = softwareService;
+        Lang = langService;
         UninstallCommand = new RelayCommand<InstalledSoftware>(async (s) => await UninstallSoftwareAsync(s));
 
         // 订阅语言变更, 让 {Binding Lang[Key]} 在中英切换时立即刷新

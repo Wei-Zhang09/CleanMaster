@@ -5,18 +5,21 @@ namespace CleanMaster.Tests.Services;
 public class LangServiceTests
 {
     [Fact]
-    public void Instance_IsSingleton_ReturnsSameReference()
+    public void Instance_IsIndependent_TwoInstancesHaveSeparateState()
     {
-        var instance1 = LangService.Instance;
-        var instance2 = LangService.Instance;
-        Assert.Same(instance1, instance2);
+        var instance1 = new LangService();
+        var instance2 = new LangService();
+        // Two separately created instances are independent objects
+        Assert.NotSame(instance1, instance2);
+        // But they share the same default state
+        Assert.Equal(instance1.IsChinese, instance2.IsChinese);
     }
 
     [Fact]
     public void Default_IsChinese_IsTrue()
     {
         // Reset to known state: Chinese is the default
-        var service = LangService.Instance;
+        var service = new LangService();
         service.IsChinese = true;
         Assert.True(service.IsChinese);
     }
@@ -24,7 +27,7 @@ public class LangServiceTests
     [Fact]
     public void Toggle_SwitchesIsChinese()
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         var original = service.IsChinese;
 
         service.Toggle();
@@ -37,7 +40,7 @@ public class LangServiceTests
     [Fact]
     public void IsChinese_SetFalse_SwitchesToEnglish()
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         service.IsChinese = false;
         Assert.False(service.IsChinese);
     }
@@ -45,7 +48,7 @@ public class LangServiceTests
     [Fact]
     public void IsChinese_SetTrue_SwitchesToChinese()
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         service.IsChinese = true;
         Assert.True(service.IsChinese);
     }
@@ -53,7 +56,7 @@ public class LangServiceTests
     [Fact]
     public void Indexer_Chinese_ReturnsChineseText()
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         service.IsChinese = true;
         var text = service["AppTitle"];
         Assert.Equal("清理大师", text);
@@ -62,7 +65,7 @@ public class LangServiceTests
     [Fact]
     public void Indexer_English_ReturnsEnglishText()
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         service.IsChinese = false;
         var text = service["AppTitle"];
         Assert.Equal("CleanMaster", text);
@@ -83,7 +86,7 @@ public class LangServiceTests
     [InlineData("Scanning", false, "Scanning...")]
     public void Indexer_CommonKeys_ReturnCorrectText(string key, bool isChinese, string expected)
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         service.IsChinese = isChinese;
         var text = service[key];
         Assert.Equal(expected, text);
@@ -92,7 +95,7 @@ public class LangServiceTests
     [Fact]
     public void Indexer_UnknownKeyChinese_ReturnsKeyItself()
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         service.IsChinese = true;
         var text = service["NonExistentKey"];
         Assert.Equal("NonExistentKey", text);
@@ -101,7 +104,7 @@ public class LangServiceTests
     [Fact]
     public void Indexer_UnknownKeyEnglish_ReturnsKeyItself()
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         service.IsChinese = false;
         var text = service["NonExistentKey"];
         Assert.Equal("NonExistentKey", text);
@@ -110,7 +113,7 @@ public class LangServiceTests
     [Fact]
     public void Toggle_FiresPropertyChangedForIsChinese()
     {
-        var service = LangService.Instance;
+        var service = new LangService();
         var fired = false;
         var handler = new System.ComponentModel.PropertyChangedEventHandler((s, e) =>
         {

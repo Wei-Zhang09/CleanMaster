@@ -14,7 +14,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
     private CancellationTokenSource? _cts;
     private bool _disposed;
 
-    public LangService Lang { get; } = LangService.Instance;
+    public ILangService Lang { get; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -43,10 +43,11 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
     public RelayCommand RunSfcScanCommand { get; }
     public RelayCommand FlushDnsCommand { get; }
 
-    public SystemCleanupViewModel(ISystemCleanupService systemCleanupService, DiskInfoService diskInfoService)
+    public SystemCleanupViewModel(ISystemCleanupService systemCleanupService, DiskInfoService diskInfoService, ILangService langService)
     {
         _systemCleanupService = systemCleanupService;
         _diskInfoService = diskInfoService;
+        Lang = langService;
 
         _systemCleanupService.ProgressChanged += OnProgressChanged;
 
@@ -88,6 +89,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
         IsRunningCleanup = true;
         ProgressPercent = 0;
         CleanupStatus = "正在准备 Windows 组件清理...";
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {
@@ -112,6 +114,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
         IsRunningCleanup = true;
         ProgressPercent = 0;
         CleanupStatus = "正在准备系统文件扫描...";
+        _cts?.Dispose();
         _cts = new CancellationTokenSource();
         try
         {

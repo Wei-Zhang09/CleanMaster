@@ -17,7 +17,7 @@ public class DiskSpaceCategory
     public string Color { get; set; } = "";
 }
 
-public class SettingsViewModel : INotifyPropertyChanged
+public class SettingsViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ISettingsService _settingsService;
     private readonly ILicenseService _licenseService;
@@ -25,7 +25,7 @@ public class SettingsViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public LangService Lang { get; } = LangService.Instance;
+    public ILangService Lang { get; }
 
     public bool IsChinese
     {
@@ -78,11 +78,12 @@ public class SettingsViewModel : INotifyPropertyChanged
     public RelayCommand OpenWebsiteCommand { get; }
     public RelayCommand SaveWebsiteUrlCommand { get; }
 
-    public SettingsViewModel(ISettingsService settingsService, ILicenseService licenseService, IScanService scanService)
+    public SettingsViewModel(ISettingsService settingsService, ILicenseService licenseService, IScanService scanService, ILangService langService)
     {
         _settingsService = settingsService;
         _licenseService = licenseService;
         _scanService = scanService;
+        Lang = langService;
         WebsiteUrl = _settingsService.Get().WebsiteUrl;
 
         // 反向订阅 LangService.LanguageChanged: 即使语言被其它地方切换,
@@ -141,84 +142,79 @@ public class SettingsViewModel : INotifyPropertyChanged
                 var diskInfo = _scanService.GetDiskInfo(AnalyzedDrive);
                 TotalUsedBytes = diskInfo.UsedBytes;
 
-                // Analyze different categories
                 var categories = new List<DiskSpaceCategory>();
+                var driveRoot = AnalyzedDrive.TrimEnd('\\') + "\\";
 
-                // Windows folder
-                var windowsSize = GetDirectorySize($@"{AnalyzedDrive}\Windows");
-                categories.Add(new DiskSpaceCategory
+                // ── 动态扫描所选盘符的顶层目录 (不再硬编码 Windows/Program Files/Users) ──
+                var dirSizes = new List<(string Name, long Size)>();
+
+                try
                 {
-                    Name = "Windows 系统",
-                    SizeBytes = windowsSize,
-                    Color = "#3B82F6"
-                });
+                    foreach (var dir in Directory.GetDirectories(driveRoot))
+                    {
+                        try
+                        {
+                            var name = Path.GetFileName(dir.TrimEnd('\\'));
+                            if (string.IsNullOrEmpty(name)) continue;
+                            var size = GetDirectorySize(dir);
+                            dirSizes.Add((name, size));
+                        }
+                        catch { /* 跳过无法访问的目录 */ }
+                    }
+                }
+                catch (Exception ex) { CleanMaster.App.LogError("AnalyzeDiskSpace-enum", ex); }
 
-                // Program Files
-                var programFilesSize = GetDirectorySize($@"{AnalyzedDrive}\Program Files");
-                categories.Add(new DiskSpaceCategory
+                // 按大小降序，取前 12 个最大的目录作为分类
+                var topDirs = dirSizes.OrderByDescending(d => d.Size).Take(12).ToList();
+
+                var palette = new[]
                 {
-                    Name = "Program Files",
-                    SizeBytes = programFilesSize,
-                    Color = "#10B981"
-                });
+                    "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6",
+                    "#EC4899", "#14B8A6", "#F97316", "#6366F1", "#84CC16",
+                    "#0EA5E9", "#A855F7"
+                };
 
-                // Program Files (x86)
-                var programFilesX86Size = GetDirectorySize($@"{AnalyzedDrive}\Program Files (x86)");
-                categories.Add(new DiskSpaceCategory
+                for (int i = 0; i < topDirs.Count; i++)
                 {
-                    Name = "Program Files (x86)",
-                    SizeBytes = programFilesX86Size,
-                    Color = "#F59E0B"
-                });
+                    categories.Add(new DiskSpaceCategory
+                    {
+                        Name = topDirs[i].Name,
+                        SizeBytes = topDirs[i].Size,
+                        Color = palette[i % palette.Length]
+                    });
+                }
 
-                // Users folder
-                var usersSize = GetDirectorySize($@"{AnalyzedDrive}\Users");
-                categories.Add(new DiskSpaceCategory
+                // 根目录下的散落文件 + 未计入的小目录 → "其他文件"
+                long rootFilesSize = 0;
+                try
                 {
-                    Name = "用户数据",
-                    SizeBytes = usersSize,
-                    Color = "#EF4444"
-                });
+                    foreach (var file in Directory.GetFiles(driveRoot))
+                    {
+                        try { rootFilesSize += new FileInfo(file).Length; } catch { }
+                    }
+                }
+                catch { }
 
-                // Other
-                var knownSize = windowsSize + programFilesSize + programFilesX86Size + usersSize;
-                var otherSize = Math.Max(0, diskInfo.UsedBytes - knownSize);
+                var accounted = topDirs.Sum(d => d.Size) + rootFilesSize;
+                var otherSize = Math.Max(0, diskInfo.UsedBytes - accounted);
                 categories.Add(new DiskSpaceCategory
                 {
                     Name = "其他文件",
                     SizeBytes = otherSize,
-                    Color = "#8B5CF6"
+                    Color = "#94A3B8"
                 });
 
-                // Calculate percentages
+                // 移除零大小分类
+                categories.RemoveAll(c => c.SizeBytes <= 0);
+
+                // 计算百分比
                 foreach (var cat in categories)
                 {
                     cat.Percentage = diskInfo.UsedBytes > 0 ? (double)cat.SizeBytes / diskInfo.UsedBytes * 100 : 0;
                     cat.SizeText = FormatSize(cat.SizeBytes);
                 }
 
-                // Note: some directories are skipped due to permissions, so knownSize may
-                // undercount UsedBytes. We display "其他文件" as the residual (always >=0)
-                // and surface a note when the residual looks suspiciously large vs known.
-                var knownSum = categories.Sum(c => c.SizeBytes);
-                var residual = diskInfo.UsedBytes - knownSum;
-                if (residual < 0)
-                {
-                    // Permission skipping produced an undercount; clamp and add a note category
-                    var otherCat = categories.First(c => c.Name == "其他文件");
-                    otherCat.SizeBytes = 0;
-                    otherCat.SizeText = "0 B（含无法访问的目录）";
-                    otherCat.Percentage = 0;
-                }
-                else
-                {
-                    var otherCat = categories.First(c => c.Name == "其他文件");
-                    otherCat.SizeBytes = residual;
-                    otherCat.SizeText = FormatSize(residual);
-                    otherCat.Percentage = diskInfo.UsedBytes > 0 ? (double)residual / diskInfo.UsedBytes * 100 : 0;
-                }
-
-                // Sort by size descending
+                // 按大小降序
                 categories.Sort((a, b) => b.SizeBytes.CompareTo(a.SizeBytes));
 
                 App.Current.Dispatcher.BeginInvoke(new Action(() =>
@@ -227,7 +223,8 @@ public class SettingsViewModel : INotifyPropertyChanged
                 }));
             });
 
-            AnalysisStatus = $"{AnalyzedDrive} 分析完成";        }
+            AnalysisStatus = $"{AnalyzedDrive} 分析完成";
+        }
         catch (Exception ex)
         {
             AnalysisStatus = $"分析失败: {ex.Message}";
@@ -282,7 +279,11 @@ public class SettingsViewModel : INotifyPropertyChanged
 
             if (dialog.ActivationSuccessful)
             {
-                _ = CheckLicenseAsync();
+                _ = CheckLicenseAsync().ContinueWith(t =>
+                {
+                    if (t.IsFaulted && t.Exception != null)
+                        App.LogError("Activation-CheckLicense", t.Exception);
+                }, TaskContinuationOptions.OnlyOnFaulted);
             }
         }
         catch (Exception ex)
@@ -338,4 +339,13 @@ public class SettingsViewModel : INotifyPropertyChanged
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private bool _disposed;
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Lang.LanguageChanged -= OnLanguageChanged;
+        GC.SuppressFinalize(this);
+    }
 }

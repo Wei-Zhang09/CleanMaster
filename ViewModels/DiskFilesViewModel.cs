@@ -135,25 +135,11 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
 
     #endregion
 
-    #region Empty Folders
-
-    public ObservableCollection<EmptyFolderItem> EmptyFolders { get; } = new();
-
-    private bool _isScanningEmpty;
-    public bool IsScanningEmpty { get => _isScanningEmpty; set { _isScanningEmpty = value; OnPropertyChanged(); } }
-
-    private string _emptyFolderStatus = "";
-    public string EmptyFolderStatus { get => _emptyFolderStatus; set { _emptyFolderStatus = value; OnPropertyChanged(); } }
-
-    #endregion
-
     #region Commands
 
     public ICommand FindLargeFilesCommand { get; }
     public ICommand DeleteLargeFilesCommand { get; }
     public ICommand FindLargeFoldersCommand { get; }
-    public ICommand FindEmptyFoldersCommand { get; }
-    public ICommand DeleteEmptyFoldersCommand { get; }
     public ICommand OpenFolderCommand { get; }
 
     #endregion
@@ -169,8 +155,6 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
         FindLargeFilesCommand = new RelayCommand(async () => await FindLargeFilesAsync());
         DeleteLargeFilesCommand = new RelayCommand(async () => await DeleteLargeFilesAsync());
         FindLargeFoldersCommand = new RelayCommand(async () => await FindLargeFoldersAsync());
-        FindEmptyFoldersCommand = new RelayCommand(async () => await FindEmptyFoldersAsync());
-        DeleteEmptyFoldersCommand = new RelayCommand(async () => await DeleteEmptyFoldersAsync());
         OpenFolderCommand = new RelayCommand<string>(OpenFolder);
 
         // 语言切换时刷新本地 Lang 属性, 让 {Binding Lang[...]} 重新求值
@@ -335,47 +319,6 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
         catch (OperationCanceledException) { FolderScanStatus = "已取消"; App.Log("Large folder scan cancelled"); }
         catch (Exception ex) { FolderScanStatus = ex.Message; App.LogError("FindLargeFoldersAsync", ex); }
         finally { IsScanningFolders = false; }
-    }
-
-    #endregion
-
-    #region Empty Folders Methods
-
-    private async Task FindEmptyFoldersAsync()
-    {
-        IsScanningEmpty = true;
-        EmptyFolders.Clear();
-        EmptyFolderStatus = "正在扫描空文件夹...";
-        _cts?.Dispose();
-        _cts = new CancellationTokenSource();
-        try
-        {
-            var folders = await _folderScanService.ScanEmptyFoldersAsync(SelectedDrive + @"\", _cts.Token);
-            foreach (var f in folders) EmptyFolders.Add(f);
-            EmptyFolderStatus = $"扫描完成，发现 {folders.Count} 个空文件夹";
-        }
-        catch (OperationCanceledException) { EmptyFolderStatus = "已取消"; App.Log("Empty folder scan cancelled"); }
-        catch (Exception ex) { EmptyFolderStatus = ex.Message; App.LogError("FindEmptyFoldersAsync", ex); }
-        finally { IsScanningEmpty = false; }
-    }
-
-    private async Task DeleteEmptyFoldersAsync()
-    {
-        var selected = EmptyFolders.Where(f => f.IsSelected).ToList();
-        if (selected.Count == 0) return;
-
-        var confirm = System.Windows.MessageBox.Show($"确定删除 {selected.Count} 个空文件夹？", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.Yes) return;
-
-        await Task.Run(() =>
-        {
-            var deleted = _folderScanService.DeleteEmptyFolders(selected);
-            App.Current.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                foreach (var f in selected) EmptyFolders.Remove(f);
-                EmptyFolderStatus = $"已删除 {deleted} 个空文件夹";
-            }));
-        });
     }
 
     #endregion

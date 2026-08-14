@@ -269,10 +269,10 @@ public class LargeFileItemTests
     [Theory]
     [InlineData("unknown")]
     [InlineData("")]
-    public void SafetyText_UnknownValues_ReturnsEmpty(string hint)
+    public void SafetyText_UnknownValues_ReturnsConfirm(string hint)
     {
         var item = new LargeFileItem { SafetyHint = hint };
-        Assert.Equal("", item.SafetyText);
+        Assert.Equal("请确认", item.SafetyText);
     }
 
     [Fact]

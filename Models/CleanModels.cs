@@ -19,7 +19,11 @@ public static class FileExtensionConstants
     public static readonly HashSet<string> CautionExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".vmdk", ".vhd", ".vhdx", ".qcow2",
-        ".pst", ".ost", ".db", ".sqlite"
+        ".pst", ".ost", ".db", ".sqlite",
+        // 二进制文件 / AI 模型权重（用途不明或重要，删除前需确认）
+        ".bin", ".dat", ".safetensors", ".ckpt", ".pt", ".pth", ".onnx",
+        // 分卷压缩包片段（删除任一片会破坏整个压缩包）
+        ".001", ".002", ".003", ".004", ".005", ".006", ".007", ".008", ".009"
     };
 
     public static readonly HashSet<string> DangerousExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -240,7 +244,7 @@ public class LargeFileItem : INotifyPropertyChanged
         "safe" => "可安全删除",
         "caution" => "请确认后删除",
         "danger" => "谨慎删除",
-        _ => ""
+        _ => "请确认"
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;

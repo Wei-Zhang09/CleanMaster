@@ -22,6 +22,7 @@ public class CleanViewModelTests
             _mockScanService.Object,
             _mockCleanService.Object,
             _mockDiskInfoService.Object,
+            new DuplicateService(),
             new LangService());
     }
 

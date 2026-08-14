@@ -1,7 +1,7 @@
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 AppName=CleanMaster
-AppVersion=2.0.0
+AppVersion=2.3.0
 AppPublisher=AWe-SoftWare
 AppPublisherURL=https://awe-software-production.up.railway.app
 AppSupportURL=https://awe-software-production.up.railway.app
@@ -9,7 +9,7 @@ DefaultDirName={autopf}\CleanMaster
 DefaultGroupName=CleanMaster
 AllowNoIcons=yes
 OutputDir=installer
-OutputBaseFilename=CleanMaster-Setup-v2.0.0
+OutputBaseFilename=CleanMaster-Setup-v2.3.0
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

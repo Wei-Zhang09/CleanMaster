@@ -20,13 +20,6 @@ public class LargeFolderItem
     };
 }
 
-public class EmptyFolderItem
-{
-    public string FolderPath { get; set; } = "";
-    public string FolderName { get; set; } = "";
-    public bool IsSelected { get; set; } = true;
-}
-
 public class FolderScanService : IFolderScanService
 {
     public event Action<string>? ProgressChanged;
@@ -146,136 +139,6 @@ public class FolderScanService : IFolderScanService
         }, ct);
     }
 
-    public async Task<List<EmptyFolderItem>> ScanEmptyFoldersAsync(string drive = @"C:\", CancellationToken ct = default)
-    {
-        return await Task.Run(() =>
-        {
-            var results = new List<EmptyFolderItem>();
-            var skipDirs = GetSkipDirs(drive);
-
-            // Walk recursively, but only report a directory if it AND all its descendants
-            // are empty (i.e. it's a leaf-empty subtree). We collapse chains of empty folders
-            // so the user sees the topmost empty directory instead of just the deepest one.
-            foreach (var dir in GetDirectoriesSafe(drive))
-            {
-                ct.ThrowIfCancellationRequested();
-                if (IsInSkipDir(dir, skipDirs)) continue;
-
-                try
-                {
-                    var dirInfo = new DirectoryInfo(dir);
-                    if (dirInfo.Attributes.HasFlag(FileAttributes.Hidden)) continue;
-                    if (dirInfo.Attributes.HasFlag(FileAttributes.System)) continue;
-
-                    ProgressChanged?.Invoke(dirInfo.Name);
-
-                    // Find topmost empty directories within this subtree
-                    foreach (var empty in FindTopmostEmptyDirs(dir))
-                    {
-                        results.Add(new EmptyFolderItem
-                        {
-                            FolderPath = empty,
-                            FolderName = Path.GetFileName(empty)
-                        });
-                    }
-                }
-                catch (Exception ex) { CleanMaster.App.LogError("ScanEmptyFoldersAsync", ex); }
-            }
-
-            return results.OrderBy(r => r.FolderPath).ToList();
-        }, ct);
-    }
-
-    /// <summary>
-    /// Returns directories that are empty (no files anywhere in their subtree).
-    /// If a directory is empty, its ancestors are not returned (we return the topmost).
-    /// </summary>
-    private static IEnumerable<string> FindTopmostEmptyDirs(string root)
-    {
-        var stack = new Stack<string>();
-        stack.Push(root);
-
-        while (stack.Count > 0)
-        {
-            var current = stack.Pop();
-            if (!Directory.Exists(current)) continue;
-
-            bool hasFiles = false;
-            var subdirs = Array.Empty<string>();
-            try
-            {
-                // Check direct file entries only (fast)
-                if (Directory.EnumerateFiles(current, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }).Any())
-                    hasFiles = true;
-            }
-            catch (Exception ex) { CleanMaster.App.LogError("FindTopmostEmptyDirs-files", ex); }
-
-            if (!hasFiles)
-            {
-                // Whole subtree has no files. Verify directory exists and yield it.
-                yield return current;
-                continue; // don't descend into children — they'd all be empty too
-            }
-
-            try { subdirs = Directory.GetDirectories(current); }
-            catch (Exception ex) { CleanMaster.App.LogError("FindTopmostEmptyDirs-dirs", ex); }
-
-            foreach (var sd in subdirs)
-            {
-                try
-                {
-                    var info = new DirectoryInfo(sd);
-                    if (info.Attributes.HasFlag(FileAttributes.Hidden)) continue;
-                    if (info.Attributes.HasFlag(FileAttributes.System)) continue;
-                }
-                catch { continue; }
-                stack.Push(sd);
-            }
-        }
-    }
-
-    public int DeleteEmptyFolders(List<EmptyFolderItem> folders)
-    {
-        int deleted = 0;
-        foreach (var folder in folders.Where(f => f.IsSelected))
-        {
-            try
-            {
-                if (Directory.Exists(folder.FolderPath) && IsEmptyDirectory(folder.FolderPath))
-                {
-                    Directory.Delete(folder.FolderPath);
-                    deleted++;
-                }
-            }
-            catch (Exception ex) { CleanMaster.App.LogError("DeleteEmptyFolders", ex); }
-        }
-
-        // After deletion, attempt to remove now-empty parents (best-effort, no error reporting)
-        var parentsToDelete = folders
-            .Where(f => f.IsSelected)
-            .Select(f => Path.GetDirectoryName(f.FolderPath))
-            .Where(p => !string.IsNullOrEmpty(p))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        foreach (var parent in parentsToDelete)
-        {
-            try
-            {
-                if (!string.IsNullOrEmpty(parent) && Directory.Exists(parent) && IsEmptyDirectory(parent))
-                {
-                    // Only delete if parent is also under user folder (safety)
-                    var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                    if (parent.StartsWith(userProfile, StringComparison.OrdinalIgnoreCase))
-                        Directory.Delete(parent);
-                }
-            }
-            catch (Exception ex) { CleanMaster.App.LogError("DeleteEmptyFolders-parent", ex); }
-        }
-
-        return deleted;
-    }
-
     private static (long size, int count) GetDirectoryInfo(string path)
     {
         long size = 0;
@@ -289,16 +152,6 @@ public class FolderScanService : IFolderScanService
         }
         catch (Exception ex) { CleanMaster.App.LogError("GetDirectoryInfo", ex); }
         return (size, count);
-    }
-
-    private static bool IsEmptyDirectory(string path)
-    {
-        try
-        {
-            // Empty means: no files anywhere in the subtree AND no non-empty subdirectories
-            return !Directory.EnumerateFileSystemEntries(path, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }).Any();
-        }
-        catch (Exception ex) { CleanMaster.App.LogError("IsEmptyDirectory", ex); return false; }
     }
 
     private static IEnumerable<string> GetDirectoriesSafe(string path)

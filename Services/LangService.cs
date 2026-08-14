@@ -183,18 +183,6 @@ public class LangService : ILangService, INotifyPropertyChanged
         "DonateDesc" => "如果这款软件对您有帮助，欢迎请我喝杯咖啡。您的支持是我持续更新的动力！",
         "DonateWechatPay" => "微信支付",
 
-        // Empty folders
-        "EmptyFoldersTitle" => "空文件夹清理",
-        "EmptyFoldersHint" => "扫描并清理空文件夹，保持文件系统整洁。空文件夹不占用空间，但会影响查找效率。",
-
-        // Registry Cleaner
-        "RegistryCleanerTitle" => "注册表清理",
-        "RegistryCleanerHint" => "扫描并清理无效的注册表项，提升系统稳定性。清理前会自动备份。",
-
-        // Privacy Cleaner
-        "PrivacyCleanerTitle" => "隐私清理",
-        "PrivacyCleanerHint" => "清理浏览记录、最近文档、搜索历史等隐私数据，保护个人隐私。",
-
         // Duplicates
         "DuplicatesTitle" => "重复文件查找",
         "ScanDuplicates" => "扫描重复文件",
@@ -245,7 +233,7 @@ public class LangService : ILangService, INotifyPropertyChanged
         "WechatOfficial" => "公众号",
         "WechatOfficialName" => "AWe-software",
         "WechatOfficialTip" => "关注公众号获取最新软件动态、使用技巧和问题解答。在微信搜索「AWe-software」即可找到我们。",
-        "WechatOfficialGuide" => "长按识别下方二维码，或在微信中搜索「AWe-software」关注我们",
+        "WechatOfficialGuide" => "在微信中搜索「AWe-software」，或者扫描下方二维码关注我们",
         "PathNotExist" => "路径不存在或无法访问。",
         "OpenFolderError" => "无法打开目录: {0}",
 
@@ -392,17 +380,6 @@ public class LangService : ILangService, INotifyPropertyChanged
         "DonateDesc" => "If this software helps you, please buy me a coffee. Your support keeps me updating!",
         "DonateWechatPay" => "WeChat Pay",
 
-        // Empty folders
-        "EmptyFoldersTitle" => "Empty Folder Cleanup",
-        "EmptyFoldersHint" => "Scan and clean empty folders to keep the filesystem tidy. Empty folders don't consume space but slow down searches.",
-
-        // Registry Cleaner
-        "RegistryCleanerTitle" => "Registry Cleaner",
-        "RegistryCleanerHint" => "Scan and clean invalid registry entries to improve system stability. Auto-backup before cleaning.",
-
-        // Privacy Cleaner
-        "PrivacyCleanerTitle" => "Privacy Cleaner",
-        "PrivacyCleanerHint" => "Clean browsing history, recent documents, search history, and other private data to protect your privacy.",
         "DuplicatesTitle" => "Duplicate Files",
         "ScanDuplicates" => "Scan Duplicates",
         "DeleteDuplicates" => "Delete Duplicates",
@@ -448,7 +425,7 @@ public class LangService : ILangService, INotifyPropertyChanged
         "WechatOfficial" => "WeChat Official Account",
         "WechatOfficialName" => "AWe-software",
         "WechatOfficialTip" => "Follow our WeChat official account for the latest updates, tips, and support. Search 'AWe-software' in WeChat to find us.",
-        "WechatOfficialGuide" => "Long-press the QR code below or search 'AWe-software' in WeChat to follow us",
+        "WechatOfficialGuide" => "Search 'AWe-software' in WeChat, or scan the QR code below to follow us",
         _ => key
     };
 

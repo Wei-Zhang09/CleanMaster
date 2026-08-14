@@ -14,6 +14,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
     private readonly IScanService _scanService;
     private readonly ICleanService _cleanService;
     private readonly DiskInfoService _diskInfoService;
+    private readonly DuplicateService _duplicateService;
     private CancellationTokenSource? _cts;
     private bool _disposed;
 
@@ -81,11 +82,12 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
 
     #endregion
 
-    public CleanViewModel(IScanService scanService, ICleanService cleanService, DiskInfoService diskInfoService, ILangService langService)
+    public CleanViewModel(IScanService scanService, ICleanService cleanService, DiskInfoService diskInfoService, DuplicateService duplicateService, ILangService langService)
     {
         _scanService = scanService;
         _cleanService = cleanService;
         _diskInfoService = diskInfoService;
+        _duplicateService = duplicateService;
         Lang = langService;
 
         ScanCommand = new RelayCommand(async () => await StartScanAsync());
@@ -192,11 +194,69 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         try
         {
             await _scanService.ScanAllAsync(_cts.Token);
+
+            // 扫描重复文件（作为磁盘清理的补充分类，标注"重复文件·请确认"）
+            await ScanDuplicatesAsync(_cts.Token);
+
             StatusText = $"{Lang["ScanComplete"]}. {TotalItemCount} {Lang["Items"]} ({TotalCleanableText})";
         }
         catch (OperationCanceledException) { StatusText = Lang["Cancelled"]; App.Log("Scan cancelled by user"); }
         catch (Exception ex) { StatusText = ex.Message; App.LogError("StartScanAsync", ex); }
         finally { IsScanning = false; _diskInfoService.Refresh("C:"); }
+    }
+
+    /// <summary>
+    /// 扫描用户目录下的重复文件，结果作为"重复文件"分类追加到扫描结果中。
+    /// 每个重复项标注为 Caution（请确认后删除），并说明与哪个保留副本重复。
+    /// </summary>
+    private async Task ScanDuplicatesAsync(CancellationToken ct)
+    {
+        try
+        {
+            StatusText = "正在扫描重复文件...";
+            var groups = await _duplicateService.FindDuplicatesAsync(ct: ct);
+            if (groups.Count == 0) return;
+
+            var category = new ScanCategoryResult
+            {
+                Category = CleanCategory.DuplicateFiles,
+                DisplayName = "重复文件",
+                Icon = "\uE8C8" // Segoe MDL2 复制图标
+            };
+
+            int groupIndex = 0;
+            foreach (var group in groups)
+            {
+                groupIndex++;
+                var keptFile = group.Files.FirstOrDefault(f => f.IsKept);
+                foreach (var file in group.Files.Where(f => !f.IsKept))
+                {
+                    category.Items.Add(new CleanableItem
+                    {
+                        Name = file.FileName,
+                        FullPath = file.FullPath,
+                        SizeBytes = file.SizeBytes,
+                        Safety = CleanSafety.Caution,
+                        Category = CleanCategory.DuplicateFiles,
+                        Description = $"重复组 #{groupIndex}：内容与保留副本「{keptFile?.FileName ?? "?"}」完全相同，删除后释放 {file.SizeText}",
+                        SoftwareName = $"重复组 #{groupIndex}",
+                        FileType = "重复文件",
+                        LastModified = file.LastModified,
+                        IsDirectory = false,
+                        IsSelected = true
+                    });
+                }
+            }
+
+            if (category.Items.Count > 0)
+            {
+                ScanResults.Add(category);
+                TotalCleanableSize += category.TotalSize;
+                TotalItemCount += category.ItemCount;
+            }
+        }
+        catch (OperationCanceledException) { /* 用户取消扫描，静默处理 */ }
+        catch (Exception ex) { App.LogError("ScanDuplicatesAsync", ex); }
     }
 
     private async Task StartCleanAsync()

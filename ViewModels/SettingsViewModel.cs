@@ -33,6 +33,11 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         set { Lang.IsChinese = value; OnPropertyChanged(); OnPropertyChanged(nameof(Lang)); }
     }
 
+    /// <summary>
+    /// 应用版本号。与 installer.iss 的 AppVersion 保持一致，发布新版本时手动更新。
+    /// </summary>
+    public string AppVersion => "2.3.0";
+
     private string _websiteUrl = "";
     public string WebsiteUrl { get => _websiteUrl; set { _websiteUrl = value; OnPropertyChanged(); } }
 

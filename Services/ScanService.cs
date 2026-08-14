@@ -370,12 +370,7 @@ public class ScanService : IScanService
 
             try
             {
-                foreach (var file in Directory.EnumerateFiles(drive, "*", new EnumerationOptions
-                {
-                    IgnoreInaccessible = true,
-                    RecurseSubdirectories = true,
-                    AttributesToSkip = FileAttributes.System
-                }))
+                foreach (var file in EnumerateFilesRecursive(drive))
                 {
                     ct.ThrowIfCancellationRequested();
 
@@ -410,6 +405,47 @@ public class ScanService : IScanService
             catch (Exception ex) { CleanMaster.App.LogError("FindLargeFilesAsync", ex); }
             return files.OrderByDescending(f => f.SizeBytes).Take(500).ToList();
         }, ct);
+    }
+
+    /// <summary>
+    /// 健壮地递归枚举目录下的所有文件。与 Directory.EnumerateFiles(RecurseSubdirectories=true)
+    /// 不同，这里每个目录单独 try-catch：单个目录枚举失败（如文件在枚举期间被删除、权限变化）
+    /// 不会中断整个扫描，避免"Could not find file"异常导致扫描结果为空。
+    /// </summary>
+    private static IEnumerable<string> EnumerateFilesRecursive(string root)
+    {
+        // 枚举当前目录的文件（不递归）
+        string[] files;
+        try
+        {
+            files = Directory.GetFiles(root, "*", new EnumerationOptions
+            {
+                IgnoreInaccessible = true,
+                RecurseSubdirectories = false,
+                AttributesToSkip = FileAttributes.System
+            });
+        }
+        catch { yield break; }
+
+        foreach (var f in files) yield return f;
+
+        // 递归子目录（跳过 reparse point 防循环）
+        string[] dirs;
+        try
+        {
+            dirs = Directory.GetDirectories(root, "*", new EnumerationOptions
+            {
+                IgnoreInaccessible = true,
+                RecurseSubdirectories = false,
+                AttributesToSkip = FileAttributes.System | FileAttributes.ReparsePoint
+            });
+        }
+        catch { yield break; }
+
+        foreach (var d in dirs)
+        {
+            foreach (var f in EnumerateFilesRecursive(d)) yield return f;
+        }
     }
 
     private static (string safety, string type, string desc) GetFileInfo(string ext, string fullPath)
@@ -455,8 +491,10 @@ public class ScanService : IScanService
                 ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" => ("图片文件", "图片文件，请确认不需要后再删除"),
                 ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => ("压缩包", "压缩文件，已解压后可安全删除"),
                 ".iso" or ".img" => ("磁盘镜像", "光盘或磁盘镜像，已使用后可安全删除"),
-                ".exe" or ".msi" => ("安装程序", "软件安装包，安装完成后可安全删除"),
-                ".dll" or ".sys" or ".drv" => ("系统文件", "Windows系统文件，删除可能导致系统异常，请勿删除"),
+                ".exe" => ("可执行程序", "可执行程序，可能是软件安装包或程序本体，请确认用途后再删除"),
+                ".msi" => ("安装包", "Windows 安装包，安装完成后可安全删除"),
+                ".dll" => ("动态链接库", "程序动态链接库，删除可能导致依赖它的软件异常"),
+                ".sys" or ".drv" => ("驱动文件", "设备驱动文件，删除可能导致硬件异常，请勿删除"),
                 ".log" or ".etl" or ".evtx" => ("日志文件", "程序运行日志，删除不影响功能"),
                 ".tmp" or ".temp" or ".cache" => ("临时文件", "临时数据，可安全删除"),
                 ".dmp" or ".mdmp" => ("崩溃转储", "程序崩溃时生成的报告文件，可安全删除"),

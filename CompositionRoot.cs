@@ -31,6 +31,7 @@ public static class CompositionRoot
         services.AddSingleton<ISoftwareService, SoftwareService>();
         services.AddSingleton<IFolderScanService, FolderScanService>();
         services.AddSingleton<ISystemCleanupService, SystemCleanupService>();
+        services.AddSingleton<DuplicateService>();
 
         // Transient ViewModels
         services.AddTransient<MainViewModel>();

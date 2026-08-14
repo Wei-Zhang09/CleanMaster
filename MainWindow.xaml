@@ -76,12 +76,6 @@
                             <TextBlock Text="{Binding Lang[NavSettings]}"/>
                         </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="FollowAuthor">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0"/>
-                            <TextBlock Text="{Binding Lang[NavFollowAuthor]}"/>
-                        </StackPanel>
-                    </RadioButton>
                     <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Donate">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xEB51;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0"/>
@@ -398,14 +392,28 @@
                                     <Border Grid.Column="2" CornerRadius="4" Padding="6,3" Margin="8,0" VerticalAlignment="Center">
                                         <Border.Style>
                                             <Style TargetType="Border">
-                                                <Setter Property="Background" Value="#DCFCE7"/>
+                                                <Setter Property="Background" Value="#E2E8F0"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SafetyHint}" Value="safe">
+                                                        <Setter Property="Background" Value="#DCFCE7"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SafetyHint}" Value="caution">
+                                                        <Setter Property="Background" Value="#FEF9C3"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SafetyHint}" Value="danger">
+                                                        <Setter Property="Background" Value="#FEE2E2"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
                                             </Style>
                                         </Border.Style>
                                         <TextBlock Text="{Binding SafetyText}" FontSize="9" FontWeight="Medium">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="#16A34A"/>
+                                                    <Setter Property="Foreground" Value="#64748B"/>
                                                     <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SafetyHint}" Value="safe">
+                                                            <Setter Property="Foreground" Value="#16A34A"/>
+                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding SafetyHint}" Value="caution">
                                                             <Setter Property="Foreground" Value="#CA8A04"/>
                                                         </DataTrigger>
@@ -597,44 +605,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Empty Folders -->
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
-                      Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=EmptyFolders}">
-            <StackPanel Margin="28,20,28,28">
-                <Grid Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[EmptyFoldersTitle]}"/>
-                        <TextBlock Text="{Binding DiskFiles.EmptyFolderStatus}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <ComboBox Style="{StaticResource DriveComboBox}" ItemsSource="{Binding DiskFiles.DiskDrives}" SelectedItem="{Binding DiskFiles.SelectedDrive}" Margin="0,0,8,0"/>
-                        <Button Style="{StaticResource Btn}" Margin="0,0,8,0" Command="{Binding DiskFiles.FindEmptyFoldersCommand}" IsEnabled="{Binding DiskFiles.IsScanningEmpty, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[Scan]}"/>
-                        <Button Style="{StaticResource DangerBtn}" Command="{Binding DiskFiles.DeleteEmptyFoldersCommand}" Content="{Binding Lang[DeleteSelected]}"/>
-                    </StackPanel>
-                </Grid>
-                <TextBlock Text="{Binding Lang[EmptyFoldersHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,16"/>
-                <ItemsControl ItemsSource="{Binding DiskFiles.EmptyFolders}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="White" CornerRadius="6" Padding="14,10" Margin="0,0,0,3">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding FolderName}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
-                                        <TextBlock Text="{Binding FolderPath}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="600"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </ScrollViewer>
-
         <!-- Disk Analysis -->
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=DiskAnalysis}">
@@ -771,92 +741,6 @@
                         <Button Grid.Column="1" Style="{StaticResource Btn}" Command="{Binding SystemCleanup.FlushDnsCommand}" IsEnabled="{Binding SystemCleanup.IsRunningCleanup, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[SystemCleanupDnsBtn]}" VerticalAlignment="Center"/>
                     </Grid>
                 </Border>
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- Registry Cleaner -->
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
-                      Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=RegistryCleaner}">
-            <StackPanel Margin="28,20,28,28">
-                <Grid Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[RegistryCleanerTitle]}"/>
-                        <TextBlock Text="{Binding RegistryCleaner.StatusText}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <Button Style="{StaticResource Btn}" Margin="0,0,8,0" Command="{Binding RegistryCleaner.ScanCommand}" IsEnabled="{Binding RegistryCleaner.IsScanning, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[Scan]}"/>
-                        <Button Style="{StaticResource DangerBtn}" Command="{Binding RegistryCleaner.CleanCommand}" IsEnabled="{Binding RegistryCleaner.IsScanning, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[DeleteSelected]}"/>
-                    </StackPanel>
-                </Grid>
-
-                <TextBlock Text="{Binding Lang[RegistryCleanerHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,16"/>
-
-                <ItemsControl ItemsSource="{Binding RegistryCleaner.Issues}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="White" CornerRadius="6" Padding="14,10" Margin="0,0,0,3">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" CornerRadius="4" Padding="6,3" Margin="0,0,12,0" Background="#FEE2E2">
-                                        <TextBlock Text="{Binding Type}" FontSize="10" FontWeight="Medium" Foreground="#DC2626"/>
-                                    </Border>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
-                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis"/>
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{Binding Key}" FontSize="9" Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center" MaxWidth="200" TextTrimming="CharacterEllipsis"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- Privacy Cleaner -->
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
-                      Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=PrivacyCleaner}">
-            <StackPanel Margin="28,20,28,28">
-                <Grid Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Lang[PrivacyCleanerTitle]}"/>
-                        <TextBlock Text="{Binding PrivacyCleaner.StatusText}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <Button Style="{StaticResource Btn}" Margin="0,0,8,0" Command="{Binding PrivacyCleaner.ScanCommand}" IsEnabled="{Binding PrivacyCleaner.IsScanning, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[Scan]}"/>
-                        <Button Style="{StaticResource DangerBtn}" Command="{Binding PrivacyCleaner.CleanCommand}" IsEnabled="{Binding PrivacyCleaner.IsScanning, Converter={StaticResource InverseBoolConverter}}" Content="{Binding Lang[DeleteSelected]}"/>
-                    </StackPanel>
-                </Grid>
-
-                <TextBlock Text="{Binding Lang[PrivacyCleanerHint]}" FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,0,16"/>
-
-                <ItemsControl ItemsSource="{Binding PrivacyCleaner.Items}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="White" CornerRadius="6" Padding="14,10" Margin="0,0,0,3">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" CornerRadius="4" Padding="6,3" Margin="0,0,12,0" Background="#FEF9C3">
-                                        <TextBlock Text="{Binding Type}" FontSize="10" FontWeight="Medium" Foreground="#CA8A04"/>
-                                    </Border>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
-                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}"/>
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{Binding Path}" FontSize="9" Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center" MaxWidth="250" TextTrimming="CharacterEllipsis"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 
@@ -1024,7 +908,48 @@
                         </StackPanel>
                         <TextBlock FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" Text="{Binding Settings.Lang[WechatOfficialTip]}"/>
                         <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,8,0,0" Text="{Binding Settings.Lang[WechatOfficialGuide]}"/>
-                        <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,8,0,0" Text="二维码见左侧「关注作者」页面"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 关注作者 -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" Text="{Binding Settings.Lang[FollowAuthorTitle]}"/>
+                        <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,16" Text="{Binding Settings.Lang[FollowAuthorDesc]}"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Douyin -->
+                            <Border Grid.Column="0" Background="{StaticResource BgPrimaryBrush}" CornerRadius="8" Padding="12">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Image Source="Resources/QRCodes/7f09a53bd669d32db250c8ead9e924d4.jpg" Height="170" Stretch="Uniform" Margin="0,0,0,8" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" Text="{Binding Settings.Lang[FollowAuthorDouyin]}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Bilibili -->
+                            <Border Grid.Column="2" Background="{StaticResource BgPrimaryBrush}" CornerRadius="8" Padding="12">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Image Source="Resources/QRCodes/24aeaa7d3f01dd052ae11d91cd29eac1.jpg" Height="170" Stretch="Uniform" Margin="0,0,0,8" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" Text="{Binding Settings.Lang[FollowAuthorBilibili]}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- WeChat Official Account -->
+                            <Border Grid.Column="4" Background="{StaticResource BgPrimaryBrush}" CornerRadius="8" Padding="12">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Image Source="Resources/QRCodes/gzh.jpeg" Height="170" Stretch="Uniform" Margin="0,0,0,8" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#07C160" HorizontalAlignment="Center" Text="{Binding Settings.Lang[FollowAuthorWechat]}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
@@ -1036,7 +961,9 @@
                             <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,10,0"/>
                             <TextBlock FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Settings.Lang[AppTitle]}"/>
                         </StackPanel>
-                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Text="{Binding Settings.Lang[Version]}"/>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
+                            <Run Text="{Binding Settings.Lang[Version], Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding Settings.AppVersion, Mode=OneWay}"/>
+                        </TextBlock>
                         <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" Text="{Binding Settings.Lang[Description]}"/>
                     </StackPanel>
                 </Border>

@@ -123,7 +123,6 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             {
                 case "LargeFiles":
                 case "LargeFolders":
-                case "EmptyFolders":
                     DiskFiles.LoadDiskDrives();
                     break;
                 case "Software":

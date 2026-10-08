@@ -18,13 +18,7 @@ public class InstalledSoftware
     public DateTime? InstallDate { get; set; }
     public bool IsSelected { get; set; }
 
-    public string SizeText => EstimatedSize switch
-    {
-        >= 1073741824 => $"{EstimatedSize / 1073741824.0:F2} GB",
-        >= 1048576 => $"{EstimatedSize / 1048576.0:F1} MB",
-        >= 1024 => $"{EstimatedSize / 1024.0:F1} KB",
-        _ => "未知"
-    };
+    public string SizeText => EstimatedSize > 0 ? ByteSizeFormatter.Format(EstimatedSize) : "未知";
 }
 
 public class StartupItem : INotifyPropertyChanged
@@ -60,13 +54,7 @@ public class UninstallResult
     public List<string> LeftoverRegistryKeys { get; set; } = new();
     public long LeftoverSize { get; set; }
 
-    public string LeftoverSizeText => LeftoverSize switch
-    {
-        >= 1073741824 => $"{LeftoverSize / 1073741824.0:F2} GB",
-        >= 1048576 => $"{LeftoverSize / 1048576.0:F1} MB",
-        >= 1024 => $"{LeftoverSize / 1024.0:F1} KB",
-        _ => "0 B"
-    };
+    public string LeftoverSizeText => ByteSizeFormatter.Format(LeftoverSize);
 }
 
 public class SoftwareService : ISoftwareService
@@ -240,13 +228,23 @@ public class SoftwareService : ISoftwareService
 
                 foreach (var name in key.GetValueNames())
                 {
+                    if (string.IsNullOrEmpty(name)) continue;
                     var command = key.GetValue(name) as string ?? "";
+
+                    // 剥离所有历史遗留的 "Disabled_" 前缀，得到规范化显示名。
+                    // 早期版本反复禁用/启用在注册表里堆积出 Disabled_Disabled_... 脏键，
+                    // 只剥一层会导致启用/禁用时按错名找备份，反复切换最终报"需要管理员权限"。
+                    var isDisabled = name.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase);
+                    var displayName = name;
+                    while (displayName.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
+                        displayName = displayName.Substring("Disabled_".Length);
+
                     items.Add(new StartupItem
                     {
-                        Name = name,
+                        Name = displayName,
                         Command = command,
                         Location = path,
-                        IsEnabled = true,
+                        IsEnabled = !isDisabled,
                         Source = source,
                         // 图标延迟加载, 加快列表呈现
                         IconPath = ""
@@ -377,10 +375,15 @@ public class SoftwareService : ISoftwareService
         {
             if (item.Source == "StartupFolder")
             {
-                if (!File.Exists(item.Command)) return false;
-                var disabledPath = item.Command + ".disabled";
+                // 从启动文件夹 + 名称动态推导路径，不依赖 item.Command（切换后可能陈旧）。
+                var folder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+                var lnkPath = Path.Combine(folder, item.Name + ".lnk");
+                var disabledPath = lnkPath + ".disabled";
+
+                // 若 .lnk 不存在（可能已是被禁用状态），尝试 .lnk.disabled 也算成功场景由调用方决定。
+                if (!File.Exists(lnkPath)) return false;
                 if (File.Exists(disabledPath)) File.Delete(disabledPath);
-                File.Move(item.Command, disabledPath);
+                File.Move(lnkPath, disabledPath);
                 return true;
             }
 
@@ -390,13 +393,29 @@ public class SoftwareService : ISoftwareService
             using var key = regInfo.Value.Root.OpenSubKey(regInfo.Value.Path, true);
             if (key == null) return false;
 
-            // Back up the value under a "Disabled_" name so we can re-enable later
-            var existing = key.GetValue(item.Name);
+            // 用规范化干净名（无 Disabled_ 前缀）作为备份键，避免反复切换堆前缀。
+            var cleanName = item.Name;
+            while (cleanName.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
+                cleanName = cleanName.Substring("Disabled_".Length);
+
+            var existing = key.GetValue(cleanName);
             if (existing == null) return false;
 
-            var backupName = "Disabled_" + item.Name;
-            key.SetValue(backupName, existing, key.GetValueKind(item.Name));
-            key.DeleteValue(item.Name, false);
+            var backupName = "Disabled_" + cleanName;
+            key.SetValue(backupName, existing, key.GetValueKind(cleanName));
+            key.DeleteValue(cleanName, false);
+
+            // 清理历史遗留的多层前缀脏键（如 Disabled_Disabled_xxx），只保留单层备份键。
+            foreach (var candidate in key.GetValueNames().ToList())
+            {
+                if (!candidate.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase)) continue;
+                if (string.Equals(candidate, backupName, StringComparison.OrdinalIgnoreCase)) continue;
+                var stripped = candidate;
+                while (stripped.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
+                    stripped = stripped.Substring("Disabled_".Length);
+                if (string.Equals(stripped, cleanName, StringComparison.OrdinalIgnoreCase))
+                    key.DeleteValue(candidate, false);
+            }
             return true;
         }
         catch (Exception ex) { CleanMaster.App.LogError("DisableStartupItem", ex); }
@@ -412,14 +431,15 @@ public class SoftwareService : ISoftwareService
         {
             if (item.Source == "StartupFolder")
             {
-                // item.Command points to the .disabled path when disabled
-                var disabledPath = item.Command;
-                if (disabledPath.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
-                    && File.Exists(disabledPath))
+                // 从启动文件夹 + 名称动态推导 .lnk.disabled 路径，不依赖 item.Command。
+                var folder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+                var lnkPath = Path.Combine(folder, item.Name + ".lnk");
+                var disabledPath = lnkPath + ".disabled";
+
+                if (File.Exists(disabledPath))
                 {
-                    var restored = disabledPath[..^(".disabled".Length)];
-                    if (File.Exists(restored)) File.Delete(restored);
-                    File.Move(disabledPath, restored);
+                    if (File.Exists(lnkPath)) File.Delete(lnkPath);
+                    File.Move(disabledPath, lnkPath);
                     return true;
                 }
                 return false;
@@ -431,12 +451,41 @@ public class SoftwareService : ISoftwareService
             using var key = regInfo.Value.Root.OpenSubKey(regInfo.Value.Path, true);
             if (key == null) return false;
 
-            var backupName = "Disabled_" + item.Name;
-            var backup = key.GetValue(backupName);
-            if (backup == null) return false;
+            // 用规范化干净名找备份键，与 DisableStartupItem 对齐。
+            var cleanName = item.Name;
+            while (cleanName.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
+                cleanName = cleanName.Substring("Disabled_".Length);
 
-            key.SetValue(item.Name, backup, key.GetValueKind(backupName));
-            key.DeleteValue(backupName, false);
+            // 优先找单层备份键；找不到则扫描所有 Disabled_ 前缀键（容忍历史多层脏数据）。
+            string? backupKeyName = null;
+            object? backup = null;
+            var expected = "Disabled_" + cleanName;
+            if (key.GetValue(expected) != null)
+            {
+                backupKeyName = expected;
+                backup = key.GetValue(expected);
+            }
+            else
+            {
+                foreach (var candidate in key.GetValueNames())
+                {
+                    if (!candidate.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase)) continue;
+                    var stripped = candidate;
+                    while (stripped.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
+                        stripped = stripped.Substring("Disabled_".Length);
+                    if (string.Equals(stripped, cleanName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        backupKeyName = candidate;
+                        backup = key.GetValue(candidate);
+                        break;
+                    }
+                }
+            }
+
+            if (backupKeyName == null || backup == null) return false;
+
+            key.SetValue(cleanName, backup, key.GetValueKind(backupKeyName));
+            key.DeleteValue(backupKeyName, false);
             return true;
         }
         catch (Exception ex) { CleanMaster.App.LogError("EnableStartupItem", ex); }

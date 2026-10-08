@@ -28,8 +28,10 @@ public class CleanServiceRegressionsTests : IDisposable
     }
 
     [Fact]
-    public async Task CleanLargeFilesAsync_DangerLevelFile_IsRefusedAndReportedAsError()
+    public async Task CleanLargeFilesAsync_DangerLevelFile_DeletesWhenExplicitlySelected()
     {
+        // P0-7：危险项不再被 service 显式拒绝；统一为"默认不勾选 + 用户主动勾选后强确认"。
+        // service 层只负责执行已勾选项的删除，拦截在 ViewModel 确认框。
         var dll = Path.Combine(_testDirectory, "system.dll");
         File.WriteAllText(dll, "PE\0\0dummy");
 
@@ -44,10 +46,10 @@ public class CleanServiceRegressionsTests : IDisposable
 
         var result = await _cleanService.CleanLargeFilesAsync(new List<LargeFileItem> { file });
 
-        Assert.Equal(0, result.BytesFreed);
-        Assert.Equal(0, result.FilesDeleted);
-        Assert.NotEmpty(result.Errors);
-        Assert.True(File.Exists(dll), "Danger file must NOT be deleted");
+        Assert.Equal(1, result.FilesDeleted);
+        Assert.True(result.BytesFreed > 0);
+        Assert.Empty(result.Errors);
+        Assert.False(File.Exists(dll));
     }
 
     [Fact]

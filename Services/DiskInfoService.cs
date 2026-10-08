@@ -15,8 +15,9 @@ public class DiskInfoService : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public void Refresh(string drive = "C:")
+    public void Refresh(string? drive = null)
     {
+        drive ??= SystemPaths.SystemDrive;
         var di = new DriveInfo(drive);
         DiskInfo = new DiskInfo
         {

@@ -1,5 +1,6 @@
 using System.IO;
 using CleanMaster.Models;
+using CleanMaster.Services;
 
 namespace CleanMaster.Rules;
 
@@ -10,6 +11,16 @@ public class CleanupRule
     public CleanSafety Safety { get; set; }
     public CleanCategory Category { get; set; }
     public string Description { get; set; } = "";
+
+    /// <summary>
+    /// 软件名（如 "微信"、"Chrome"）。显式填写优先；为空时 ScanService 回退到按规则名推断。
+    /// </summary>
+    public string? SoftwareName { get; set; }
+
+    /// <summary>
+    /// 文件类型（如 "缓存"、"日志"、"临时文件"）。显式填写优先；为空时回退到推断。
+    /// </summary>
+    public string? FileType { get; set; }
 
     /// <summary>
     /// Returns a single resolved path. Mutually exclusive with <see cref="PathFactoryMulti"/>.
@@ -73,8 +84,7 @@ public class CleanupRule
 
 public static class RuleDatabase
 {
-    private static readonly string SystemDrive = Path.GetPathRoot(
-        Environment.GetFolderPath(Environment.SpecialFolder.Windows)) ?? @"C:";
+    private static readonly string SystemDrive = SystemPaths.SystemDrive;
     public static List<CleanupRule> GetAllRules()
     {
         var rules = new List<CleanupRule>();
@@ -106,7 +116,10 @@ public static class RuleDatabase
             Path = $@"{SystemDrive}$Recycle.Bin",
             Safety = CleanSafety.Safe,
             Category = CleanCategory.RecycleBin,
-            Description = "回收站中的文件。这些是用户主动删除的内容，清空后无法恢复。"        }
+            Description = "回收站中的文件。这些是用户主动删除的内容，清空后无法恢复。",
+            SoftwareName = "",
+            FileType = "回收站"
+        }
     ];
 
     // ──────────────────────────────────────────────────────────────────

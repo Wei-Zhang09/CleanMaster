@@ -6,18 +6,18 @@ namespace CleanMaster.Tests.Services;
 public class GetCategoryNameTests
 {
     [Theory]
-    [InlineData(CleanCategory.RecycleBin, "Recycle Bin")]
-    [InlineData(CleanCategory.TempFiles, "Temporary Files")]
-    [InlineData(CleanCategory.WindowsUpdate, "Windows Update")]
-    [InlineData(CleanCategory.WindowsLogs, "System Logs")]
-    [InlineData(CleanCategory.BrowserCache, "Browser Cache")]
-    [InlineData(CleanCategory.DevToolCache, "Dev Tool Cache")]
-    [InlineData(CleanCategory.AppCache, "App Cache")]
-    [InlineData(CleanCategory.InstallerCache, "Installer Cache")]
-    [InlineData(CleanCategory.CrashDumps, "Crash Dumps")]
-    [InlineData(CleanCategory.DesktopInstallers, "Desktop Installers")]
-    [InlineData(CleanCategory.LargeFiles, "Large Files")]
-    [InlineData(CleanCategory.DuplicateFiles, "Duplicate Files")]
+    [InlineData(CleanCategory.RecycleBin, "回收站")]
+    [InlineData(CleanCategory.TempFiles, "临时文件")]
+    [InlineData(CleanCategory.WindowsUpdate, "Windows 更新")]
+    [InlineData(CleanCategory.WindowsLogs, "系统日志")]
+    [InlineData(CleanCategory.BrowserCache, "浏览器缓存")]
+    [InlineData(CleanCategory.DevToolCache, "开发工具缓存")]
+    [InlineData(CleanCategory.AppCache, "应用缓存")]
+    [InlineData(CleanCategory.InstallerCache, "安装程序缓存")]
+    [InlineData(CleanCategory.CrashDumps, "崩溃转储")]
+    [InlineData(CleanCategory.DesktopInstallers, "桌面安装包")]
+    [InlineData(CleanCategory.LargeFiles, "大文件")]
+    [InlineData(CleanCategory.DuplicateFiles, "重复文件")]
     public void GetCategoryName_EachKnownCategory_ReturnsCorrectName(CleanCategory category, string expected)
     {
         var result = ScanService.GetCategoryName(category);
@@ -28,7 +28,7 @@ public class GetCategoryNameTests
     public void GetCategoryName_UnknownCategory_ReturnsUnknown()
     {
         var result = ScanService.GetCategoryName((CleanCategory)99);
-        Assert.Equal("Unknown", result);
+        Assert.Equal("未知", result);
     }
 
     [Fact]

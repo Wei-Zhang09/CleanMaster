@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [ main, develop ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
 
@@ -50,11 +51,55 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Publish
-      run: dotnet publish -c Release -o ./publish --self-contained true -r win-x64 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+    - name: Publish (self-contained single file)
+      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o ./publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: publish
         path: publish
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish (self-contained single file)
+      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o ./publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+
+    - name: Install Inno Setup
+      shell: pwsh
+      run: |
+        if (-not (Get-Command iscc.exe -ErrorAction SilentlyContinue)) {
+          choco install innosetup -y --no-progress
+        }
+
+    - name: Read version from tag
+      shell: pwsh
+      run: |
+        $v = "${{ github.ref_name }}".TrimStart('v')
+        echo "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+    - name: Build installer
+      shell: pwsh
+      run: |
+        & iscc.exe /DAppVersion=$env:VERSION installer.iss
+        Get-ChildItem installer\*.exe
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: installer/*.exe
+        generate_release_notes: true

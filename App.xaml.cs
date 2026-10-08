@@ -5,7 +5,9 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows;
+using CleanMaster.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CleanMaster;
@@ -14,17 +16,18 @@ public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
 
-    // 诊断日志统一写到 %APPDATA%\CleanMaster\logs\startup.log
-    // 故意写两份路径变量: LogDir 是用户可见目录, CrashFile 是崩溃快照
+    // 统一日志实现（带滚动）。静态 Log/LogError/DiagnosticLog 方法内部转调它，
+    // 使服务层既可通过注入 IAppLogger 使用，也可继续调用 App 静态方法（向后兼容）。
+    private static readonly FileAppLogger _logger = new();
+
+    /// <summary>暴露给 DI 容器复用，避免同一文件出现两个 logger 实例。</summary>
+    public static IAppLogger Logger => _logger;
+
     private static readonly string LogDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "CleanMaster", "logs");
 
     private static readonly string LogFile = Path.Combine(LogDir, "startup.log");
-    private static readonly string CrashFile = Path.Combine(LogDir, "crash.log");
-
-    // 互斥锁保证同一时刻只有一个 CleanMaster 实例在写日志 (多线程异常并行场景)
-    private static readonly object LogLock = new();
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -83,6 +86,9 @@ public partial class App : Application
         // 单文件模式下, 到这里说明 hostfxr 已经成功加载了 .NET 运行时
         DiagnosticLog("==== App constructor enter ====");
 
+        // 真正的单实例：命名 Mutex。清理类工具并发运行有风险（重复删除/进度串台）。
+        EnsureSingleInstance();
+
         try
         {
             // Register encoding provider for GBK and other non-Unicode encodings
@@ -106,6 +112,31 @@ public partial class App : Application
         {
             LogError("App constructor", ex);
             throw;
+        }
+    }
+
+    private static Mutex? _singleInstanceMutex;
+
+    /// <summary>
+    /// 用命名 Mutex 实现单实例。已有实例运行时，新进程直接退出（exit code 0），
+    /// 避免多个清理进程并发删除同一批文件。
+    /// </summary>
+    private static void EnsureSingleInstance()
+    {
+        try
+        {
+            _singleInstanceMutex = new Mutex(true, @"Global\CleanMaster.SingleInstance", out var createdNew);
+            if (!createdNew)
+            {
+                DiagnosticLog("Another instance already running — exiting");
+                // App 构造函数阶段 Application 尚未就绪，用 Environment.Exit 直接退出。
+                Environment.Exit(0);
+            }
+        }
+        catch (Exception ex)
+        {
+            // 单实例锁失败不应阻止启动（例如无法创建 Global mutex），仅记录。
+            LogError("EnsureSingleInstance", ex);
         }
     }
 
@@ -145,7 +176,7 @@ public partial class App : Application
             try
             {
                 var isTerminating = e.IsTerminating;
-                File.WriteAllText(CrashFile,
+                _logger.WriteCrashSnapshot(
                     $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] AppDomain UnhandledException (Terminating={isTerminating})\n" +
                     $"{ex}\n\n" +
                     $"--- Runtime Info ---\n{GetRuntimeSnapshot()}\n");
@@ -242,50 +273,16 @@ public partial class App : Application
     /// </summary>
     public static void DiagnosticLog(string message)
     {
-        try
-        {
-            lock (LogLock)
-            {
-                Directory.CreateDirectory(LogDir);
-                File.AppendAllText(LogFile,
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [DIAG] {message}\n",
-                    Encoding.UTF8);
-            }
-        }
-        catch
-        {
-            // 故意吞掉, 诊断日志不能让进程崩
-        }
+        _logger.Diagnostic(message);
     }
 
     public static void Log(string message)
     {
-        try
-        {
-            lock (LogLock)
-            {
-                Directory.CreateDirectory(LogDir);
-                File.AppendAllText(LogFile,
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}\n",
-                    Encoding.UTF8);
-            }
-        }
-        catch { }
+        _logger.Info(message);
     }
 
     public static void LogError(string context, Exception? ex)
     {
-        try
-        {
-            lock (LogLock)
-            {
-                Directory.CreateDirectory(LogDir);
-                var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR [{context}]: {ex?.Message}\n";
-                if (ex?.StackTrace != null) msg += ex.StackTrace + "\n";
-                if (ex?.InnerException != null) msg += $"  Inner: {ex.InnerException.Message}\n";
-                File.AppendAllText(LogFile, msg + "\n", Encoding.UTF8);
-            }
-        }
-        catch { }
+        _logger.Error(context, ex);
     }
 }

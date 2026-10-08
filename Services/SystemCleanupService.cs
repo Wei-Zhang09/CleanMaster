@@ -13,12 +13,7 @@ public class SystemCleanupResult
     public string Output { get; set; } = "";
     public long FreedBytes { get; set; }
 
-    public string FreedText => FreedBytes switch
-    {
-        >= 1_073_741_824 => $"{FreedBytes / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{FreedBytes / 1_048_576.0:F1} MB",
-        _ => $"{FreedBytes / 1024.0:F1} KB"
-    };
+    public string FreedText => ByteSizeFormatter.Format(FreedBytes);
 }
 
 public class SystemCleanupService : ISystemCleanupService
@@ -118,109 +113,33 @@ public class SystemCleanupService : ISystemCleanupService
     /// <summary>
     /// Runs a command via cmd.exe with UTF-8 code page (65001) to ensure correct encoding.
     /// </summary>
-    private async Task<SystemCleanupResult> RunCommandWithUtf8Async(
+    private Task<SystemCleanupResult> RunCommandWithUtf8Async(
         string fileName, string arguments, string operationName, CancellationToken ct)
     {
-        var result = new SystemCleanupResult();
-
-        try
-        {
-            ProgressChanged?.Invoke($"正在执行: {operationName}...");
-
-            // Use cmd.exe with chcp 65001 to force UTF-8 encoding
-            var cmdArguments = $"/c \"chcp 65001 >nul && {fileName} {arguments}\"";
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = cmdArguments,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8,
-                CreateNoWindow = true
-            };
-
-            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
-            var outputBuilder = new StringBuilder();
-
-            process.OutputDataReceived += (s, e) =>
-            {
-                if (!string.IsNullOrWhiteSpace(e.Data))
-                {
-                    outputBuilder.AppendLine(e.Data);
-                    var line = e.Data.Length > 100 ? e.Data[..100] + "..." : e.Data;
-                    ProgressChanged?.Invoke(line);
-                }
-            };
-
-            process.ErrorDataReceived += (s, e) =>
-            {
-                if (!string.IsNullOrWhiteSpace(e.Data))
-                    outputBuilder.AppendLine("[ERR] " + e.Data);
-            };
-
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            try
-            {
-                await process.WaitForExitAsync(ct);
-            }
-            catch (OperationCanceledException)
-            {
-                try { process.Kill(entireProcessTree: true); } catch { }
-                result.Success = false;
-                result.Message = "操作已取消";
-                ProgressChanged?.Invoke(result.Message);
-                return result;
-            }
-
-            process.WaitForExit();
-            result.Output = outputBuilder.ToString();
-            result.Success = process.ExitCode == 0;
-
-            if (result.Success)
-            {
-                result.Message = $"{operationName}完成";
-            }
-            else
-            {
-                var code = process.ExitCode;
-                result.Message = code switch
-                {
-                    5 => $"{operationName}失败 (拒绝访问)。请以管理员身份运行本软件。",
-                    740 => $"{operationName}失败 (需要提权)。请以管理员身份运行本软件。",
-                    _ => $"{operationName}失败 (退出码: {code})"
-                };
-            }
-
-            ProgressChanged?.Invoke(result.Message);
-        }
-        catch (OperationCanceledException)
-        {
-            result.Success = false;
-            result.Message = "操作已取消";
-        }
-        catch (Exception ex)
-        {
-            result.Success = false;
-            result.Message = $"操作失败: {ex.Message}";
-            ProgressChanged?.Invoke(result.Message);
-        }
-
-        return result;
+        // Use cmd.exe with chcp 65001 to force UTF-8 encoding
+        var cmdArguments = $"/c \"chcp 65001 >nul && {fileName} {arguments}\"";
+        return RunWithShellAsync("cmd.exe", cmdArguments, operationName, ct);
     }
 
     /// <summary>
     /// Runs a command via PowerShell with forced UTF-8 encoding.
     /// This ensures the output is correctly encoded regardless of the child process's encoding.
     /// </summary>
-    private async Task<SystemCleanupResult> RunWithPowerShellUtf8Async(
+    private Task<SystemCleanupResult> RunWithPowerShellUtf8Async(
         string fileName, string arguments, string operationName, CancellationToken ct)
+    {
+        // Use PowerShell to run the command with forced UTF-8 output encoding
+        var psCommand = $"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & '{fileName}' {arguments}";
+        var psArgs = $"-NoProfile -NonInteractive -Command \"{psCommand}\"";
+        return RunWithShellAsync("powershell.exe", psArgs, operationName, ct);
+    }
+
+    /// <summary>
+    /// 通过外壳进程（cmd.exe / powershell.exe）执行命令，统一处理 UTF-8 编码、
+    /// 输出流读取、取消与退出码错误文案。
+    /// </summary>
+    private async Task<SystemCleanupResult> RunWithShellAsync(
+        string shellExe, string shellArgs, string operationName, CancellationToken ct)
     {
         var result = new SystemCleanupResult();
 
@@ -228,13 +147,10 @@ public class SystemCleanupService : ISystemCleanupService
         {
             ProgressChanged?.Invoke($"正在执行: {operationName}...");
 
-            // Use PowerShell to run the command with forced UTF-8 output encoding
-            var psCommand = $"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & '{fileName}' {arguments}";
-
             var psi = new ProcessStartInfo
             {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -NonInteractive -Command \"{psCommand}\"",
+                FileName = shellExe,
+                Arguments = shellArgs,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -297,105 +213,6 @@ public class SystemCleanupService : ISystemCleanupService
                     740 => $"{operationName}失败 (需要提权)。请以管理员身份运行本软件。",
                     _ => $"{operationName}失败 (退出码: {code})"
                 };
-            }
-
-            ProgressChanged?.Invoke(result.Message);
-        }
-        catch (OperationCanceledException)
-        {
-            result.Success = false;
-            result.Message = "操作已取消";
-        }
-        catch (Exception ex)
-        {
-            result.Success = false;
-            result.Message = $"操作失败: {ex.Message}";
-            ProgressChanged?.Invoke(result.Message);
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Runs a command directly without cmd.exe wrapper.
-    /// Reads raw bytes and tries multiple decodings.
-    /// </summary>
-    private async Task<SystemCleanupResult> RunDirectCommandAsync(
-        string fileName, string arguments, string operationName, CancellationToken ct)
-    {
-        var result = new SystemCleanupResult();
-
-        try
-        {
-            ProgressChanged?.Invoke($"正在执行: {operationName}...");
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-
-            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            process.Start();
-
-            // Read ALL raw bytes first
-            using var stdout = process.StandardOutput.BaseStream;
-            using var ms = new MemoryStream();
-            await stdout.CopyToAsync(ms, ct);
-            var rawBytes = ms.ToArray();
-
-            await process.WaitForExitAsync(ct);
-
-            // Try ALL common encodings and log results
-            var encodings = new[]
-            {
-                ("UTF-8", Encoding.UTF8),
-                ("GBK-936", Encoding.GetEncoding(936)),
-                ("GB2312", Encoding.GetEncoding(20936)),
-                ("Big5-950", Encoding.GetEncoding(950)),
-                ("Default", Encoding.Default),
-                ("ASCII", Encoding.ASCII)
-            };
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"[Raw bytes length: {rawBytes.Length}]");
-
-            if (rawBytes.Length > 0)
-            {
-                // Show first 100 bytes as hex
-                sb.AppendLine($"[Hex: {BitConverter.ToString(rawBytes[..Math.Min(100, rawBytes.Length)])}]");
-                sb.AppendLine();
-
-                foreach (var (name, encoding) in encodings)
-                {
-                    try
-                    {
-                        var text = encoding.GetString(rawBytes);
-                        // Only show first 200 chars
-                        var preview = text.Length > 200 ? text[..200] : text;
-                        sb.AppendLine($"[{name}]: {preview}");
-                    }
-                    catch (Exception ex)
-                    {
-                        sb.AppendLine($"[{name}]: ERROR - {ex.Message}");
-                    }
-                }
-            }
-
-            result.Output = sb.ToString();
-            result.Success = process.ExitCode == 0;
-            result.Message = result.Success ? $"{operationName}完成" : $"{operationName}失败 (退出码: {process.ExitCode})";
-
-            // Show raw output for debugging
-            ProgressChanged?.Invoke("=== 编码测试输出 ===");
-            foreach (var line in result.Output.Split('\n'))
-            {
-                if (!string.IsNullOrWhiteSpace(line))
-                    ProgressChanged?.Invoke(line);
             }
 
             ProgressChanged?.Invoke(result.Message);
@@ -487,11 +304,4 @@ public class SystemCleanupService : ISystemCleanupService
 
         return "";
     }
-
-    /// <summary>
-    /// Parses SFC output for any indication of repaired files (which don't report freed bytes),
-    /// returns a coarse estimate (0 since SFC doesn't free space — it repairs).
-    /// Kept for API symmetry with <see cref="ParseDismFreedSpace"/>.
-    /// </summary>
-    private static long ParseSfcFreedSpace(string output) => 0;
 }

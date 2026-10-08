@@ -35,6 +35,9 @@ x86/
 Thumbs.db
 ehthumbs.db
 
+# Windows reserved device name (accidental 0-byte file)
+nul
+
 # Desktop.ini
 Desktop.ini
 

@@ -13,7 +13,7 @@ public class SettingsServiceTests
     {
         var settings = new AppSettings();
 
-        Assert.Equal("https://awe-software-production.up.railway.app", settings.WebsiteUrl);
+        Assert.Equal(AppSettings.DefaultWebsiteUrl, settings.WebsiteUrl);
     }
 
     [Fact]
@@ -21,7 +21,7 @@ public class SettingsServiceTests
     {
         var settings = new AppSettings();
 
-        Assert.False(string.IsNullOrEmpty(settings.ApiBaseUrl));
+        Assert.Equal(AppSettings.DefaultApiBaseUrl, settings.ApiBaseUrl);
     }
 
     [Fact]

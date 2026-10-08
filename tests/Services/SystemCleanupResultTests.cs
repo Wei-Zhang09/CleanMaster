@@ -23,8 +23,8 @@ public class SystemCleanupResultTests
     [InlineData(1_048_576, "1.0 MB")]
     [InlineData(100_000, "97.7 KB")]
     [InlineData(1024, "1.0 KB")]
-    [InlineData(512, "0.5 KB")]
-    [InlineData(0, "0.0 KB")]
+    [InlineData(512, "512 B")]
+    [InlineData(0, "0 B")]
     public void SystemCleanupResult_FreedText_FormatsCorrectly(long freedBytes, string expected)
     {
         var result = new SystemCleanupResult { FreedBytes = freedBytes };

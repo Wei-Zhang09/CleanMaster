@@ -12,12 +12,7 @@ public class LargeFolderItem
     public int FileCount { get; set; }
     public string Description { get; set; } = "";
 
-    public string SizeText => TotalSize switch
-    {
-        >= 1_073_741_824 => $"{TotalSize / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{TotalSize / 1_048_576.0:F1} MB",
-        _ => $"{TotalSize / 1024.0:F1} KB"
-    };
+    public string SizeText => ByteSizeFormatter.Format(TotalSize);
 }
 
 public class FolderScanService : IFolderScanService

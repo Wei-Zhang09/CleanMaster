@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using CleanMaster.Services;
 
 namespace CleanMaster.Models;
 
@@ -41,6 +42,7 @@ public enum CleanSafety
 
 public enum CleanCategory
 {
+    Unknown = 0,
     RecycleBin,
     TempFiles,
     WindowsUpdate,
@@ -93,13 +95,7 @@ public class CleanableItem : INotifyPropertyChanged
     public bool IsDirectory { get; set; }
     public DateTime LastModified { get; set; }
 
-    public string SizeText => SizeBytes switch
-    {
-        >= 1_073_741_824 => $"{SizeBytes / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{SizeBytes / 1_048_576.0:F1} MB",
-        >= 1024 => $"{SizeBytes / 1024.0:F1} KB",
-        _ => $"{SizeBytes} B"
-    };
+    public string SizeText => ByteSizeFormatter.Format(SizeBytes);
 
     public string SafetyText => Safety switch
     {
@@ -151,12 +147,7 @@ public class ScanCategoryResult : INotifyPropertyChanged
         set { if (_isExpanded != value) { _isExpanded = value; OnPropertyChanged(); OnPropertyChanged(nameof(ExpandButtonText)); } }
     }
 
-    public string TotalSizeText => TotalSize switch
-    {
-        >= 1_073_741_824 => $"{TotalSize / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{TotalSize / 1_048_576.0:F1} MB",
-        _ => $"{TotalSize / 1024.0:F1} KB"
-    };
+    public string TotalSizeText => ByteSizeFormatter.Format(TotalSize);
 
     public string ExpandButtonText => IsExpanded ? "收起" : "展开";
 
@@ -182,15 +173,13 @@ public class CleanResult
     public List<string> Warnings { get; set; } = new();
     public List<CleanableItem> DeletedItems { get; set; } = new();
 
+    /// <summary>本次清理实际删除的文件/目录路径（用于 UI 精确移除已删除项）。</summary>
+    public List<string> DeletedPaths { get; set; } = new();
+
     /// <summary>是否报告了任何错误或警告</summary>
     public bool HasIssues => Errors.Count > 0 || Warnings.Count > 0;
 
-    public string FreedText => BytesFreed switch
-    {
-        >= 1_073_741_824 => $"{BytesFreed / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{BytesFreed / 1_048_576.0:F1} MB",
-        _ => $"{BytesFreed / 1024.0:F1} KB"
-    };
+    public string FreedText => ByteSizeFormatter.Format(BytesFreed);
 }
 
 public class DiskInfo
@@ -224,12 +213,7 @@ public class LargeFileItem : INotifyPropertyChanged
         set { if (_isSelected != value) { _isSelected = value; OnPropertyChanged(); } }
     }
 
-    public string SizeText => SizeBytes switch
-    {
-        >= 1_073_741_824 => $"{SizeBytes / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{SizeBytes / 1_048_576.0:F1} MB",
-        _ => $"{SizeBytes / 1024.0:F1} KB"
-    };
+    public string SizeText => ByteSizeFormatter.Format(SizeBytes);
 
     public string SafetyColor => SafetyHint switch
     {

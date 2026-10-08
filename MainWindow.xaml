@@ -84,37 +84,6 @@
                     </RadioButton>
                 </StackPanel>
 
-                <!-- License Status (hidden - code preserved) -->
-                <Border DockPanel.Dock="Bottom" Margin="12,0,12,8" Padding="12" CornerRadius="8" Background="#1E293B" Visibility="Collapsed">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="#10B981"/>
-                            <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Text="{Binding LicenseStatusText}"/>
-                        </StackPanel>
-                        <Button Command="{Binding ShowActivationCommand}" Margin="0,8,0,0" HorizontalAlignment="Stretch">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Background" Value="#6366F1"/>
-                                    <Setter Property="Foreground" Value="White"/>
-                                    <Setter Property="FontSize" Value="11"/>
-                                    <Setter Property="Padding" Value="0,6"/>
-                                    <Setter Property="Cursor" Value="Hand"/>
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </Button.Style>
-                            <TextBlock Text="立即激活"/>
-                        </Button>
-                    </StackPanel>
-                </Border>
-
                 <!-- Disk Info -->
                 <Border DockPanel.Dock="Bottom" Margin="12" Padding="14" CornerRadius="8" Background="#1E293B">
                     <StackPanel>
@@ -152,12 +121,14 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- 进度条 (固定) -->
-                <Border Height="4" CornerRadius="2" Background="{StaticResource PrimaryLightBrush}" Margin="0,0,0,12" Visibility="{Binding Clean.IsScanning, Converter={StaticResource BoolVisibilityConverter}}">
-                    <Border HorizontalAlignment="Left" CornerRadius="2" Background="{StaticResource PrimaryBrush}">
-                        <Border.Width><MultiBinding StringFormat="{}{0}"><Binding Path="Clean.ProgressPercent"/></MultiBinding></Border.Width>
-                    </Border>
-                </Border>
+                <!-- 扫描进度条 (固定) -->
+                <StackPanel Margin="0,0,0,12" Visibility="{Binding Clean.IsScanning, Converter={StaticResource BoolVisibilityConverter}}">
+                    <Grid Margin="0,0,0,6">
+                        <TextBlock Text="{Binding Lang[Scanning]}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding Clean.ProgressPercent, StringFormat='{}{0:F0}%'}" FontSize="12" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <ProgressBar Height="6" Maximum="100" Value="{Binding Clean.ProgressPercent, Mode=OneWay}" Foreground="{StaticResource PrimaryBrush}" Background="{StaticResource PrimaryLightBrush}" BorderThickness="0"/>
+                </StackPanel>
 
                 <!-- 清理进度 (固定) -->
                 <Border Margin="0,0,0,12" Visibility="{Binding Clean.IsCleanProgressVisible, Converter={StaticResource BoolVisibilityConverter}}">
@@ -166,11 +137,7 @@
                             <TextBlock Text="{Binding Lang[Cleaning]}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
                             <TextBlock Text="{Binding Clean.CleanProgressText}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
                         </Grid>
-                        <Border Height="4" CornerRadius="2" Background="{StaticResource PrimaryLightBrush}">
-                            <Border HorizontalAlignment="Left" CornerRadius="2" Background="{StaticResource SuccessBrush}">
-                                <Border.Width><MultiBinding StringFormat="{}{0}"><Binding Path="Clean.CleanProgressPercent"/></MultiBinding></Border.Width>
-                            </Border>
-                        </Border>
+                        <ProgressBar Height="6" Maximum="100" Value="{Binding Clean.CleanProgressPercent, Mode=OneWay}" Foreground="{StaticResource SuccessBrush}" Background="{StaticResource PrimaryLightBrush}" BorderThickness="0"/>
                         <TextBlock Text="{Binding Clean.CleanCurrentFile}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" FontWeight="Medium"/>
                         <TextBlock Text="{Binding Clean.CleanCurrentPath}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Clean.CleanCurrentPath}"/>
                     </StackPanel>
@@ -186,8 +153,8 @@
                     </Border>
                     <Border Style="{StaticResource Card}" Margin="0,0,12,0" MinWidth="140">
                         <StackPanel>
-                            <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Text="{Binding Clean.Lang[CleanableSize]}"/>
-                            <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Text="{Binding Clean.TotalCleanableText}"/>
+                            <TextBlock FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Text="已选中"/>
+                            <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Text="{Binding Clean.SelectedCleanableText}"/>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource Card}" MinWidth="140">

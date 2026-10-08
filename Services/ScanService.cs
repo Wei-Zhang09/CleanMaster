@@ -23,7 +23,7 @@ public class ScanService : IScanService
         int totalRules = rules.Count;
         int scannedRules = 0;
 
-        var progress = new ScanProgress { TotalCategories = grouped.Count };
+        var progress = new ScanProgress { TotalCategories = totalRules };
 
         foreach (var group in grouped)
         {
@@ -43,7 +43,6 @@ public class ScanService : IScanService
 
             scannedRules += group.Count();
             progress.CategoriesScanned = scannedRules;
-            progress.TotalCategories = totalRules;
             ProgressChanged?.Invoke(progress);
         }
 
@@ -70,7 +69,7 @@ public class ScanService : IScanService
 
                     if (Directory.Exists(path))
                     {
-                        ScanDirectory(path, rule, result, ExtractSoftwareName(rule.Name), ExtractFileType(rule.Name, rule.Description));
+                        ScanDirectory(path, rule, result, ResolveSoftwareName(rule), ResolveFileType(rule));
                     }
                     else if (File.Exists(path))
                     {
@@ -83,8 +82,8 @@ public class ScanService : IScanService
                             Safety = rule.Safety,
                             Category = category,
                             Description = rule.Description,
-                            SoftwareName = ExtractSoftwareName(rule.Name),
-                            FileType = ExtractFileType(rule.Name, rule.Description),
+                            SoftwareName = ResolveSoftwareName(rule),
+                            FileType = ResolveFileType(rule),
                             LastModified = fi.LastWriteTime,
                             IsDirectory = false
                         });
@@ -230,6 +229,16 @@ public class ScanService : IScanService
     public static long GetDirectorySize(string path, int maxDepth = -1)
         => FileSystemUtils.GetDirectorySize(path, maxDepth);
 
+    /// <summary>
+    /// 解析软件名：优先使用规则显式填写的 <see cref="CleanupRule.SoftwareName"/>，
+    /// 为空时回退到按规则名推断（向后兼容旧规则库）。
+    /// </summary>
+    private static string ResolveSoftwareName(CleanupRule rule)
+    {
+        if (!string.IsNullOrEmpty(rule.SoftwareName)) return rule.SoftwareName!;
+        return ExtractSoftwareName(rule.Name);
+    }
+
     private static string ExtractSoftwareName(string ruleName)
     {
         var nameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -284,6 +293,16 @@ public class ScanService : IScanService
         return "";
     }
 
+    /// <summary>
+    /// 解析文件类型：优先使用规则显式填写的 <see cref="CleanupRule.FileType"/>，
+    /// 为空时回退到按规则名/描述推断。
+    /// </summary>
+    private static string ResolveFileType(CleanupRule rule)
+    {
+        if (!string.IsNullOrEmpty(rule.FileType)) return rule.FileType!;
+        return ExtractFileType(rule.Name, rule.Description);
+    }
+
     private static string ExtractFileType(string ruleName, string description)
     {
         if (ruleName.Contains("Cache", StringComparison.OrdinalIgnoreCase) ||
@@ -310,8 +329,9 @@ public class ScanService : IScanService
         return "缓存";
     }
 
-    public DiskInfo GetDiskInfo(string drive = "C:")
+    public DiskInfo GetDiskInfo(string? drive = null)
     {
+        drive ??= SystemPaths.SystemDrive;
         var di = new DriveInfo(drive);
         return new DiskInfo
         {
@@ -516,19 +536,19 @@ public class ScanService : IScanService
 
     public static string GetCategoryName(CleanCategory cat) => cat switch
     {
-        CleanCategory.RecycleBin => "Recycle Bin",
-        CleanCategory.TempFiles => "Temporary Files",
-        CleanCategory.WindowsUpdate => "Windows Update",
-        CleanCategory.WindowsLogs => "System Logs",
-        CleanCategory.BrowserCache => "Browser Cache",
-        CleanCategory.DevToolCache => "Dev Tool Cache",
-        CleanCategory.AppCache => "App Cache",
-        CleanCategory.InstallerCache => "Installer Cache",
-        CleanCategory.CrashDumps => "Crash Dumps",
-        CleanCategory.DesktopInstallers => "Desktop Installers",
-        CleanCategory.LargeFiles => "Large Files",
-        CleanCategory.DuplicateFiles => "Duplicate Files",
-        _ => "Unknown"
+        CleanCategory.RecycleBin => "回收站",
+        CleanCategory.TempFiles => "临时文件",
+        CleanCategory.WindowsUpdate => "Windows 更新",
+        CleanCategory.WindowsLogs => "系统日志",
+        CleanCategory.BrowserCache => "浏览器缓存",
+        CleanCategory.DevToolCache => "开发工具缓存",
+        CleanCategory.AppCache => "应用缓存",
+        CleanCategory.InstallerCache => "安装程序缓存",
+        CleanCategory.CrashDumps => "崩溃转储",
+        CleanCategory.DesktopInstallers => "桌面安装包",
+        CleanCategory.LargeFiles => "大文件",
+        CleanCategory.DuplicateFiles => "重复文件",
+        _ => "未知"
     };
 
     public static string GetCategoryIcon(CleanCategory cat) => cat switch

@@ -11,19 +11,13 @@ public static class CompositionRoot
     {
         var services = new ServiceCollection();
 
+        // 日志：复用 App 的静态 logger 实例，避免双重写入同一文件。
+        services.AddSingleton<IAppLogger>(_ => App.Logger);
+
         // Singleton services (stateful: events, HttpClient, caches)
         services.AddSingleton<ISettingsService, SettingsService>();
-        services.AddSingleton<IMachineIdService, MachineIdService>();
         services.AddSingleton<ILangService, LangService>();
         services.AddSingleton<DiskInfoService>();
-
-        // LicenseService depends on SettingsService + MachineIdService
-        services.AddSingleton<ILicenseService>(sp =>
-        {
-            var settingsService = sp.GetRequiredService<ISettingsService>();
-            var machineIdService = sp.GetRequiredService<IMachineIdService>();
-            return new LicenseService(settingsService, machineIdService);
-        });
 
         // Other singleton services
         services.AddSingleton<IScanService, ScanService>();
@@ -43,10 +37,9 @@ public static class CompositionRoot
         services.AddTransient<SettingsViewModel>(sp =>
         {
             var settingsService = sp.GetRequiredService<ISettingsService>();
-            var licenseService = sp.GetRequiredService<ILicenseService>();
             var scanService = sp.GetRequiredService<IScanService>();
             var langService = sp.GetRequiredService<ILangService>();
-            return new SettingsViewModel(settingsService, licenseService, scanService, langService);
+            return new SettingsViewModel(settingsService, scanService, langService);
         });
 
         return services.BuildServiceProvider();

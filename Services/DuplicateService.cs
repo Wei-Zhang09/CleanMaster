@@ -12,16 +12,8 @@ public class DuplicateGroup
     public long FileSize => Files.FirstOrDefault()?.SizeBytes ?? 0;
     public long WastedSpace => FileSize * Math.Max(0, Files.Count - 1);
 
-    public string WastedSpaceText => FormatSize(WastedSpace);
-    public string FileSizeText => FormatSize(FileSize);
-
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        >= 1_073_741_824 => $"{bytes / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
-        >= 1024 => $"{bytes / 1024.0:F1} KB",
-        _ => $"{bytes} B"
-    };
+    public string WastedSpaceText => ByteSizeFormatter.Format(WastedSpace);
+    public string FileSizeText => ByteSizeFormatter.Format(FileSize);
 }
 
 public class DuplicateFile
@@ -33,13 +25,7 @@ public class DuplicateFile
     public bool IsSelected { get; set; }
     public bool IsKept { get; set; }
 
-    public string SizeText => SizeBytes switch
-    {
-        >= 1_073_741_824 => $"{SizeBytes / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{SizeBytes / 1_048_576.0:F1} MB",
-        >= 1024 => $"{SizeBytes / 1024.0:F1} KB",
-        _ => $"{SizeBytes} B"
-    };
+    public string SizeText => ByteSizeFormatter.Format(SizeBytes);
 }
 
 public class DuplicateScanProgress
@@ -184,31 +170,6 @@ public class DuplicateService
 
             return result;
         }, ct);
-    }
-
-    public async Task<long> DeleteDuplicatesAsync(
-        List<DuplicateGroup> groups, CancellationToken ct = default)
-    {
-        long freedBytes = 0;
-
-        await Task.Run(() =>
-        {
-            foreach (var group in groups)
-            {
-                foreach (var file in group.Files.Where(f => f.IsSelected && !f.IsKept))
-                {
-                    ct.ThrowIfCancellationRequested();
-                    try
-                    {
-                        File.Delete(file.FullPath);
-                        freedBytes += file.SizeBytes;
-                    }
-                    catch (Exception ex) { CleanMaster.App.LogError("DeleteDuplicatesAsync", ex); }
-                }
-            }
-        }, ct);
-
-        return freedBytes;
     }
 
     private static string? ComputeFileHash(string filePath)

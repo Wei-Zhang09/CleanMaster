@@ -72,9 +72,9 @@ public class CleanViewModelTests
     }
 
     [Fact]
-    public void TotalCleanableText_WhenZero_ShowsKB()
+    public void TotalCleanableText_WhenZero_ShowsBytes()
     {
-        Assert.Contains("KB", _viewModel.TotalCleanableText);
+        Assert.Equal("0 B", _viewModel.TotalCleanableText);
     }
 
     [Fact]
@@ -169,25 +169,20 @@ public class SoftwareViewModelTests
 public class SettingsViewModelTests
 {
     private readonly Mock<ISettingsService> _mockSettingsService;
-    private readonly Mock<ILicenseService> _mockLicenseService;
     private readonly Mock<IScanService> _mockScanService;
     private readonly SettingsViewModel _viewModel;
 
     public SettingsViewModelTests()
     {
         _mockSettingsService = new Mock<ISettingsService>();
-        _mockLicenseService = new Mock<ILicenseService>();
         _mockScanService = new Mock<IScanService>();
 
         _mockSettingsService.Setup(s => s.Get()).Returns(new AppSettings());
-        _mockLicenseService.Setup(l => l.CheckActivationAsync())
-            .ReturnsAsync((false, "Not activated"));
         _mockScanService.Setup(s => s.GetAllDisks())
             .Returns(new List<DiskInfo> { new() { DriveLetter = "C:" } });
 
         _viewModel = new SettingsViewModel(
             _mockSettingsService.Object,
-            _mockLicenseService.Object,
             _mockScanService.Object,
             new LangService());
     }
@@ -213,36 +208,5 @@ public class SettingsViewModelTests
         _viewModel.WebsiteUrl = "https://example.com";
 
         Assert.Equal("https://example.com", _viewModel.WebsiteUrl);
-    }
-
-    [Fact]
-    public void PropertyChanged_IsRaised_WhenIsActivatedChanges()
-    {
-        var propertyChangedRaised = false;
-        _viewModel.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(SettingsViewModel.IsActivated))
-                propertyChangedRaised = true;
-        };
-
-        _viewModel.IsActivated = true;
-
-        Assert.True(propertyChangedRaised);
-    }
-
-    [Fact]
-    public void LicenseStatusColor_WhenActivated_ReturnsGreen()
-    {
-        _viewModel.IsActivated = true;
-
-        Assert.Equal("#10B981", _viewModel.LicenseStatusColor);
-    }
-
-    [Fact]
-    public void LicenseStatusColor_WhenNotActivated_ReturnsYellow()
-    {
-        _viewModel.IsActivated = false;
-
-        Assert.Equal("#F59E0B", _viewModel.LicenseStatusColor);
     }
 }

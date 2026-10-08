@@ -20,7 +20,6 @@ public class DiskSpaceCategory
 public class SettingsViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ISettingsService _settingsService;
-    private readonly ILicenseService _licenseService;
     private readonly IScanService _scanService;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -34,27 +33,13 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>
-    /// 应用版本号。与 installer.iss 的 AppVersion 保持一致，发布新版本时手动更新。
+    /// 应用版本号。单一来源：csproj 的 <Version>，installer.iss 通过 /DAppVersion 传入。
     /// </summary>
-    public string AppVersion => "2.3.0";
+    public string AppVersion =>
+        System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
 
     private string _websiteUrl = "";
     public string WebsiteUrl { get => _websiteUrl; set { _websiteUrl = value; OnPropertyChanged(); } }
-
-    private bool _isActivated;
-    public bool IsActivated
-    {
-        get => _isActivated;
-        set { _isActivated = value; OnPropertyChanged(); OnPropertyChanged(nameof(LicenseStatusText)); OnPropertyChanged(nameof(LicenseStatusColor)); }
-    }
-
-    private string _licenseStatusText = "";
-    public string LicenseStatusText { get => _licenseStatusText; set { _licenseStatusText = value; OnPropertyChanged(); } }
-
-    public string LicenseStatusColor => IsActivated ? "#10B981" : "#F59E0B";
-
-    private string _activatedProduct = "";
-    public string ActivatedProduct { get => _activatedProduct; set { _activatedProduct = value; OnPropertyChanged(); } }
 
     #region Disk Space Analysis
 
@@ -66,7 +51,7 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private string _analysisStatus = "";
     public string AnalysisStatus { get => _analysisStatus; set { _analysisStatus = value; OnPropertyChanged(); } }
 
-    private string _analyzedDrive = "C:";
+    private string _analyzedDrive = SystemPaths.SystemDrive;
     public string AnalyzedDrive { get => _analyzedDrive; set { _analyzedDrive = value; OnPropertyChanged(); } }
 
     private long _totalUsedBytes;
@@ -79,14 +64,12 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
     #endregion
 
     public RelayCommand ToggleLangCommand { get; }
-    public RelayCommand ShowActivationCommand { get; }
     public RelayCommand OpenWebsiteCommand { get; }
     public RelayCommand SaveWebsiteUrlCommand { get; }
 
-    public SettingsViewModel(ISettingsService settingsService, ILicenseService licenseService, IScanService scanService, ILangService langService)
+    public SettingsViewModel(ISettingsService settingsService, IScanService scanService, ILangService langService)
     {
         _settingsService = settingsService;
-        _licenseService = licenseService;
         _scanService = scanService;
         Lang = langService;
         WebsiteUrl = _settingsService.Get().WebsiteUrl;
@@ -96,7 +79,6 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         Lang.LanguageChanged += OnLanguageChanged;
 
         ToggleLangCommand = new RelayCommand(() => { IsChinese = !IsChinese; OnPropertyChanged(nameof(Lang)); });
-        ShowActivationCommand = new RelayCommand(ShowActivationDialog);
         OpenWebsiteCommand = new RelayCommand(OpenWebsite);
         SaveWebsiteUrlCommand = new RelayCommand(SaveWebsiteUrl);
         AnalyzeDiskCommand = new RelayCommand(async () => await AnalyzeDiskSpaceAsync());
@@ -106,32 +88,6 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
             AvailableDrives.Add(disk.DriveLetter);
         if (AvailableDrives.Count > 0)
             AnalyzedDrive = AvailableDrives[0];
-
-#if DEBUG
-        IsActivated = true;
-        LicenseStatusText = "DEBUG - 已激活";
-#else
-        _ = Task.Run(async () =>
-        {
-            try { await CheckLicenseAsync(); }
-            catch (Exception ex) { CleanMaster.App.LogError("CheckLicense", ex); }
-        });
-        LicenseStatusText = "检查激活状态...";
-#endif
-    }
-
-    public async Task CheckLicenseAsync()
-    {
-        LicenseStatusText = "检查激活状态...";
-        var (isValid, message) = await _licenseService.CheckActivationAsync();
-        IsActivated = isValid;
-        LicenseStatusText = isValid ? "已激活" : "未激活";
-
-        if (isValid)
-        {
-            var info = _licenseService.LoadLocal();
-            ActivatedProduct = info?.SoftwareName ?? "";
-        }
     }
 
     private async Task AnalyzeDiskSpaceAsync()
@@ -216,7 +172,7 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
                 foreach (var cat in categories)
                 {
                     cat.Percentage = diskInfo.UsedBytes > 0 ? (double)cat.SizeBytes / diskInfo.UsedBytes * 100 : 0;
-                    cat.SizeText = FormatSize(cat.SizeBytes);
+                    cat.SizeText = ByteSizeFormatter.Format(cat.SizeBytes);
                 }
 
                 // 按大小降序
@@ -262,49 +218,21 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         return size;
     }
 
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        >= 1_073_741_824 => $"{bytes / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
-        _ => $"{bytes / 1024.0:F1} KB"
-    };
-
-    private void ShowActivationDialog()
-    {
-        if (IsActivated)
-        {
-            System.Windows.MessageBox.Show("您已激活本软件，无需再激活。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        try
-        {
-            var dialog = new Views.ActivationDialog();
-            dialog.ShowDialog();
-
-            if (dialog.ActivationSuccessful)
-            {
-                _ = CheckLicenseAsync().ContinueWith(t =>
-                {
-                    if (t.IsFaulted && t.Exception != null)
-                        App.LogError("Activation-CheckLicense", t.Exception);
-                }, TaskContinuationOptions.OnlyOnFaulted);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show($"打开激活窗口失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
     private void OpenWebsite()
     {
         try
         {
             var url = _settingsService.Get().WebsiteUrl;
+            // 打开前校验协议，只允许 http/https（深度防御）
+            if (!UrlGuard.TryGetWebUri(url, out var uri))
+            {
+                System.Windows.MessageBox.Show("网站地址无效，仅支持 http/https 链接。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                FileName = url,
+                FileName = uri.AbsoluteUri,
                 UseShellExecute = true
             });
         }
@@ -315,6 +243,13 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
     {
         try
         {
+            // 保存前校验协议，仅允许 http/https
+            if (!UrlGuard.TryGetWebUri(WebsiteUrl, out _))
+            {
+                System.Windows.MessageBox.Show("网站地址无效，仅支持 http/https 链接。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var settings = _settingsService.Get();
             settings.WebsiteUrl = WebsiteUrl;
             _settingsService.Save(settings);

@@ -21,7 +21,7 @@ public class SoftwareModelsTests
     [InlineData(1_048_576, "1.0 MB")]
     [InlineData(10_000, "9.8 KB")]
     [InlineData(1024, "1.0 KB")]
-    [InlineData(512, "未知")] // below 1024 KB threshold returns "未知"
+    [InlineData(512, "512 B")] // 统一口径：小于 1KB 显示字节数
     public void InstalledSoftware_SizeText_FormatsCorrectly(long estimatedSize, string expected)
     {
         var software = new InstalledSoftware { EstimatedSize = estimatedSize };

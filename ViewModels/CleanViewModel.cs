@@ -44,7 +44,17 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
     private long _totalCleanableSize;
     public long TotalCleanableSize { get => _totalCleanableSize; set { _totalCleanableSize = value; OnPropertyChanged(); OnPropertyChanged(nameof(TotalCleanableText)); } }
 
-    public string TotalCleanableText => FormatSize(TotalCleanableSize);
+    public string TotalCleanableText => ByteSizeFormatter.Format(TotalCleanableSize);
+
+    /// <summary>
+    /// 当前勾选（分类勾选且项勾选）的文件/目录总大小。勾选变化时实时刷新，
+    /// 让用户清楚这次清理能释放多少空间。
+    /// </summary>
+    public long SelectedCleanableSize =>
+        ScanResults.Where(c => c.IsSelected)
+                   .Sum(c => c.Items.Where(i => i.IsSelected).Sum(i => i.SizeBytes));
+
+    public string SelectedCleanableText => ByteSizeFormatter.Format(SelectedCleanableSize);
 
     private int _totalItemCount;
     public int TotalItemCount { get => _totalItemCount; set { _totalItemCount = value; OnPropertyChanged(); } }
@@ -100,8 +110,6 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         _scanService.ProgressChanged += OnScanProgressChanged;
         _scanService.CategoryScanned += OnCategoryScanned;
         _scanService.AccessDenied += OnAccessDenied;
-        _cleanService.ProgressChanged += OnCleanProgressChanged;
-        _cleanService.ProgressUpdated += OnCleanProgressUpdated;
 
         // 订阅全局语言变更: 切换语言后刷新本地 Lang 属性 + 派生文本 (如 CleanResultText)
         Lang.LanguageChanged += OnLanguageChanged;
@@ -142,7 +150,31 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
             ScanResults.Add(cat);
             TotalCleanableSize += cat.TotalSize;
             TotalItemCount += cat.ItemCount;
+
+            // 订阅分类及其所有项的勾选变化，实时刷新"已选中大小"。
+            cat.PropertyChanged += OnCategoryPropertyChanged;
+            foreach (var item in cat.Items)
+                item.PropertyChanged += OnItemPropertyChanged;
+            OnSelectedSizeChanged();
         }));
+    }
+
+    private void OnCategoryPropertyChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ScanCategoryResult.IsSelected))
+            OnSelectedSizeChanged();
+    }
+
+    private void OnItemPropertyChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CleanableItem.IsSelected))
+            OnSelectedSizeChanged();
+    }
+
+    private void OnSelectedSizeChanged()
+    {
+        OnPropertyChanged(nameof(SelectedCleanableSize));
+        OnPropertyChanged(nameof(SelectedCleanableText));
     }
 
     private void OnAccessDenied(string message)
@@ -159,20 +191,12 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         }));
     }
 
-    private void OnCleanProgressChanged(string msg)
-    {
-        App.Current.Dispatcher.BeginInvoke(new Action(() => StatusText = msg));
-    }
-
     private void OnCleanProgressUpdated(CleanProgress p)
     {
-        App.Current.Dispatcher.BeginInvoke(new Action(() =>
-        {
-            CleanProgressText = $"{p.Current} / {p.Total}";
-            CleanCurrentFile = p.CurrentFile;
-            CleanCurrentPath = p.CurrentPath;
-            CleanProgressPercent = p.Percent;
-        }));
+        CleanProgressText = $"{p.Current} / {p.Total}";
+        CleanCurrentFile = p.CurrentFile;
+        CleanCurrentPath = p.CurrentPath;
+        CleanProgressPercent = p.Percent;
     }
 
     private bool _accessDeniedShown;
@@ -202,7 +226,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         }
         catch (OperationCanceledException) { StatusText = Lang["Cancelled"]; App.Log("Scan cancelled by user"); }
         catch (Exception ex) { StatusText = ex.Message; App.LogError("StartScanAsync", ex); }
-        finally { IsScanning = false; _diskInfoService.Refresh("C:"); }
+        finally { IsScanning = false; _diskInfoService.Refresh(); }
     }
 
     /// <summary>
@@ -221,7 +245,8 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
             {
                 Category = CleanCategory.DuplicateFiles,
                 DisplayName = "重复文件",
-                Icon = "\uE8C8" // Segoe MDL2 复制图标
+                Icon = "\uE8C8", // Segoe MDL2 复制图标
+                IsSelected = false // 重复文件默认不勾选，用户逐组确认后再清理
             };
 
             int groupIndex = 0;
@@ -243,7 +268,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
                         FileType = "重复文件",
                         LastModified = file.LastModified,
                         IsDirectory = false,
-                        IsSelected = true
+                        IsSelected = false // 重复文件默认不勾选，用户逐组确认后再清理
                     });
                 }
             }
@@ -281,7 +306,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         if (toClean.Count > 10)
             previewMsg += $"... 等 {toClean.Count} 个分类\n";
 
-        previewMsg += $"\n总计: {totalItems} 项，约 {FormatSize(totalSize)}";
+        previewMsg += $"\n总计: {totalItems} 项，约 {ByteSizeFormatter.Format(totalSize)}";
 
         if (dangerousItems.Count > 0)
         {
@@ -309,17 +334,33 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         StatusText = Lang["Cleaning"];
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
+
+        // Progress<T> 在 UI 线程创建，回调自动回到 UI 线程，无需 Dispatcher。
+        var progress = new Progress<CleanProgress>(OnCleanProgressUpdated);
+
         try
         {
-            LastCleanResult = await _cleanService.CleanAsync(toClean, _cts.Token);
+            LastCleanResult = await _cleanService.CleanAsync(toClean, progress, _cts.Token);
             StatusText = $"{Lang["CleanComplete"]}. {CleanResultText}";
+
+            // 失败项/警告可见：至少给出数量提示（详见日志）
+            if (LastCleanResult != null && LastCleanResult.HasIssues)
+            {
+                var issueParts = new List<string>();
+                if (LastCleanResult.Errors.Count > 0)
+                    issueParts.Add($"{LastCleanResult.Errors.Count} 项失败");
+                if (LastCleanResult.Warnings.Count > 0)
+                    issueParts.Add($"{LastCleanResult.Warnings.Count} 项警告");
+                StatusText += $"（{string.Join("，", issueParts)}，详见日志）";
+            }
+
             ScanResults.Clear();
             TotalCleanableSize = 0;
             TotalItemCount = 0;
         }
         catch (OperationCanceledException) { StatusText = Lang["Cancelled"]; App.Log("Clean cancelled by user"); }
         catch (Exception ex) { StatusText = ex.Message; App.LogError("StartCleanAsync", ex); }
-        finally { IsCleaning = false; IsCleanProgressVisible = false; _diskInfoService.Refresh("C:"); }
+        finally { IsCleaning = false; IsCleanProgressVisible = false; _diskInfoService.Refresh(); }
     }
 
     #endregion
@@ -329,13 +370,6 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         if (category == null) return;
         category.IsExpanded = !category.IsExpanded;
     }
-
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        >= 1_073_741_824 => $"{bytes / 1_073_741_824.0:F2} GB",
-        >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
-        _ => $"{bytes / 1024.0:F1} KB"
-    };
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -349,8 +383,6 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
             _scanService.ProgressChanged -= OnScanProgressChanged;
             _scanService.CategoryScanned -= OnCategoryScanned;
             _scanService.AccessDenied -= OnAccessDenied;
-            _cleanService.ProgressChanged -= OnCleanProgressChanged;
-            _cleanService.ProgressUpdated -= OnCleanProgressUpdated;
             Lang.LanguageChanged -= OnLanguageChanged;
         }
         catch { }

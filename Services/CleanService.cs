@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using CleanMaster.Models;
 using CleanMaster.Services.Interfaces;
 
@@ -11,15 +12,24 @@ public class CleanProgress
     public int Total { get; set; }
     public string CurrentFile { get; set; } = "";
     public string CurrentPath { get; set; } = "";
+    /// <summary>当前操作描述（如"正在清理: xxx"），承载原 ProgressChanged 的字符串。</summary>
+    public string Message { get; set; } = "";
     public double Percent => Total > 0 ? (double)Current / Total * 100 : 0;
 }
 
 public class CleanService : ICleanService
 {
-    public event Action<string>? ProgressChanged;
-    public event Action<CleanProgress>? ProgressUpdated;
+    private const uint SHERB_NOCONFIRMATION = 0x1;
+    private const uint SHERB_NOPROGRESSUI = 0x2;
+    private const uint SHERB_NOSOUND = 0x4;
 
-    public async Task<CleanResult> CleanAsync(List<ScanCategoryResult> categories, CancellationToken ct = default)
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHEmptyRecycleBin(IntPtr hwnd, string? pszRootPath, uint dwFlags);
+
+    public async Task<CleanResult> CleanAsync(
+        List<ScanCategoryResult> categories,
+        IProgress<CleanProgress>? progress = null,
+        CancellationToken ct = default)
     {
         var result = new CleanResult();
         var allItems = categories.Where(c => c.IsSelected)
@@ -37,24 +47,57 @@ public class CleanService : ICleanService
 
                 try
                 {
-                    ProgressChanged?.Invoke(item.Name);
-                    ProgressUpdated?.Invoke(new CleanProgress { Current = current, Total = total, CurrentFile = item.Name, CurrentPath = item.FullPath });
+                    progress?.Report(new CleanProgress { Current = current, Total = total, CurrentFile = item.Name, CurrentPath = item.FullPath, Message = item.Name });
 
-                    if (item.IsDirectory)
+                    // 回收站：目录本身受系统保护无法用 Directory.Delete，改走 SHEmptyRecycleBin。
+                    if (item.Category == CleanCategory.RecycleBin)
                     {
-                        var freed = DeleteDirectoryAndAccount(item.FullPath, item.SizeBytes);
-                        if (freed > 0)
+                        var hr = SHEmptyRecycleBin(IntPtr.Zero, null, SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND);
+                        if (hr == 0) // S_OK
                         {
-                            result.BytesFreed += freed;
-                            result.FoldersDeleted++;
-                            result.DeletedItems.Add(item);
-                        }
-                        else if (freed == 0 && !Directory.Exists(item.FullPath))
-                        {
-                            // Directory fully removed but size unknown — count as deleted with scanned size
                             result.BytesFreed += Math.Max(0, item.SizeBytes);
                             result.FoldersDeleted++;
                             result.DeletedItems.Add(item);
+                            result.DeletedPaths.Add(item.FullPath);
+                        }
+                        else
+                        {
+                            result.Errors.Add($"{item.Name}: 清空回收站失败 (HRESULT 0x{hr:X8})");
+                        }
+                        continue;
+                    }
+
+                    // PathGuard：删除前最后一道防线
+                    if (!PathGuard.IsDeletable(item.FullPath, out var guardReason))
+                    {
+                        result.Errors.Add($"{item.Name}: 已拦截 ({guardReason})");
+                        continue;
+                    }
+
+                    if (item.IsDirectory)
+                    {
+                        // 目录本就不存在：与文件分支一致，报"目录不存在"而非静默算成功。
+                        if (!Directory.Exists(item.FullPath))
+                        {
+                            result.Errors.Add($"{item.Name}: 目录不存在，无法删除");
+                            continue;
+                        }
+
+                        var freed = DeleteDirectoryAndAccount(item.FullPath, item.SizeBytes);
+                        var stillExists = Directory.Exists(item.FullPath);
+
+                        if (freed > 0 || !stillExists)
+                        {
+                            result.BytesFreed += freed > 0 ? freed : Math.Max(0, item.SizeBytes);
+                            result.FoldersDeleted++;
+                            result.DeletedItems.Add(item);
+                            result.DeletedPaths.Add(item.FullPath);
+                            if (stillExists)
+                                result.Warnings.Add($"{item.Name}: 部分文件被占用，未能完全删除");
+                        }
+                        else
+                        {
+                            result.Errors.Add($"{item.Name}: 目录未能删除（可能被占用或权限不足）");
                         }
                     }
                     else
@@ -66,12 +109,13 @@ public class CleanService : ICleanService
                             result.Errors.Add($"{item.Name}: 文件不存在，无法删除");
                             continue;
                         }
-                        var size = DeleteFileWithSize(item.FullPath);
-                        if (size > 0)
+
+                        if (TryDeleteFile(item.FullPath, out var size))
                         {
                             result.BytesFreed += size;
                             result.FilesDeleted++;
                             result.DeletedItems.Add(item);
+                            result.DeletedPaths.Add(item.FullPath);
                         }
                         else
                         {
@@ -89,7 +133,10 @@ public class CleanService : ICleanService
         return result;
     }
 
-    public async Task<CleanResult> CleanLargeFilesAsync(List<LargeFileItem> files, CancellationToken ct = default)
+    public async Task<CleanResult> CleanLargeFilesAsync(
+        List<LargeFileItem> files,
+        IProgress<CleanProgress>? progress = null,
+        CancellationToken ct = default)
     {
         var result = new CleanResult();
         var selected = files.Where(f => f.IsSelected).ToList();
@@ -105,26 +152,30 @@ public class CleanService : ICleanService
 
                 try
                 {
-                    ProgressChanged?.Invoke(file.FileName);
-                    ProgressUpdated?.Invoke(new CleanProgress { Current = current, Total = total, CurrentFile = file.FileName, CurrentPath = file.FullPath });
+                    progress?.Report(new CleanProgress { Current = current, Total = total, CurrentFile = file.FileName, CurrentPath = file.FullPath, Message = file.FileName });
 
-                    // Safety guard: refuse to delete danger-level files automatically
-                    if (string.Equals(file.SafetyHint, "danger", StringComparison.OrdinalIgnoreCase))
+                    // PathGuard：删除前最后一道防线
+                    if (!PathGuard.IsDeletable(file.FullPath, out var guardReason))
                     {
-                        result.Errors.Add($"{file.FileName}: 安全级别为 danger，已跳过删除（请手动处理）");
+                        result.Errors.Add($"{file.FileName}: 已拦截 ({guardReason})");
                         continue;
                     }
 
-                    var size = DeleteFileWithSize(file.FullPath);
-                    if (size > 0)
+                    if (TryDeleteFile(file.FullPath, out var size))
                     {
                         result.BytesFreed += size;
                         result.FilesDeleted++;
+                        result.DeletedPaths.Add(file.FullPath);
                     }
                     else if (!File.Exists(file.FullPath))
                     {
                         result.BytesFreed += Math.Max(0, file.SizeBytes);
                         result.FilesDeleted++;
+                        result.DeletedPaths.Add(file.FullPath);
+                    }
+                    else
+                    {
+                        result.Errors.Add($"{file.FileName}: 删除失败");
                     }
                 }
                 catch (Exception ex)
@@ -138,39 +189,29 @@ public class CleanService : ICleanService
     }
 
     /// <summary>
-    /// Deletes a file and returns its size in bytes prior to deletion.
-    /// Returns 0 if the file did not exist or could not be sized.
+    /// 删除文件，用 bool 返回值表示成功与否（0 字节文件删除成功也返回 true），
+    /// 文件大小通过 out 参数返回。文件不存在返回 false。
     /// </summary>
-    private static long DeleteFileWithSize(string fullPath)
+    private static bool TryDeleteFile(string fullPath, out long size)
     {
+        size = 0;
         try
         {
-            if (!File.Exists(fullPath)) return 0;
-            long size;
-            try
-            {
-                size = new FileInfo(fullPath).Length;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"DeleteFileWithSize: cannot size {fullPath}: {ex.Message}");
-                size = 0;
-            }
+            var fi = new FileInfo(fullPath);
+            if (!fi.Exists) return false;
+            size = fi.Length;
 
-            // Clear read-only/system attributes before delete
-            try
-            {
-                File.SetAttributes(fullPath, FileAttributes.Normal);
-            }
-            catch (Exception ex) { Debug.WriteLine($"DeleteFileWithSize: SetAttributes failed: {ex.Message}"); }
+            // 清除只读/系统属性
+            try { fi.Attributes = FileAttributes.Normal; }
+            catch (Exception ex) { Debug.WriteLine($"TryDeleteFile: SetAttributes failed: {ex.Message}"); }
 
-            File.Delete(fullPath);
-            return size;
+            fi.Delete();
+            return true;
         }
         catch (Exception ex)
         {
-            CleanMaster.App.LogError("DeleteFileWithSize", ex);
-            return 0;
+            CleanMaster.App.LogError("TryDeleteFile", ex);
+            return false;
         }
     }
 
@@ -257,27 +298,5 @@ public class CleanService : ICleanService
         }
 
         return freed;
-    }
-
-    [Obsolete("Kept for backward-compat; replaced by DeleteDirectoryAndAccount")]
-    private static void DeleteDirectory(string path)
-    {
-        try
-        {
-            if (!Directory.Exists(path)) return;
-
-            foreach (var file in Directory.EnumerateFiles(path, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }))
-            {
-                try { File.SetAttributes(file, FileAttributes.Normal); File.Delete(file); } catch (Exception ex) { Debug.WriteLine($"DeleteDirectory: {ex.Message}"); }
-            }
-
-            foreach (var dir in Directory.EnumerateDirectories(path, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }).OrderByDescending(d => d.Length))
-            {
-                try { Directory.Delete(dir, true); } catch (Exception ex) { Debug.WriteLine($"DeleteDirectory: {ex.Message}"); }
-            }
-
-            Directory.Delete(path, true);
-        }
-        catch (Exception ex) { CleanMaster.App.LogError("DeleteDirectory", ex); }
     }
 }

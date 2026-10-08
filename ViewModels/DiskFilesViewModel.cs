@@ -118,7 +118,7 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
 
     public ObservableCollection<string> DiskDrives { get; } = new();
 
-    private string _selectedDrive = "C:";
+    private string _selectedDrive = SystemPaths.SystemDrive;
     public string SelectedDrive { get => _selectedDrive; set { _selectedDrive = value; OnPropertyChanged(); } }
 
     #endregion
@@ -272,18 +272,24 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
         if (selected.Count == 0) return;
 
         var totalSize = selected.Sum(f => f.SizeBytes);
-        var sizeText = totalSize switch
+        var sizeText = ByteSizeFormatter.Format(totalSize);
+
+        // 危险项（SafetyHint=danger）需要更强的警告，与主清理流程保持一致
+        var dangerous = selected.Where(f => string.Equals(f.SafetyHint, "danger", StringComparison.OrdinalIgnoreCase)).ToList();
+        var confirmMsg = $"确定要删除选中的 {selected.Count} 个文件吗？\n\n将释放 {sizeText} 空间\n\n删除后无法恢复！";
+        if (dangerous.Count > 0)
         {
-            >= 1_073_741_824 => $"{totalSize / 1_073_741_824.0:F2} GB",
-            >= 1_048_576 => $"{totalSize / 1_048_576.0:F1} MB",
-            _ => $"{totalSize / 1024.0:F1} KB"
-        };
+            confirmMsg += "\n\n⚠️ 警告：选中了危险文件（可能是程序本体或驱动），删除可能导致软件/系统异常：\n";
+            foreach (var f in dangerous.Take(5))
+                confirmMsg += $"  - {f.FileName}\n";
+            confirmMsg += "\n请确认您了解后果后再继续！";
+        }
 
         var confirm = System.Windows.MessageBox.Show(
-            $"确定要删除选中的 {selected.Count} 个文件吗？\n\n将释放 {sizeText} 空间\n\n删除后无法恢复！",
-            "确认删除",
+            confirmMsg,
+            dangerous.Count > 0 ? "危险操作确认" : "确认删除",
             MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            dangerous.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Question);
 
         if (confirm != MessageBoxResult.Yes) return;
 
@@ -291,10 +297,18 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
         _cts = new CancellationTokenSource();
         try
         {
-            var result = await _cleanService.CleanLargeFilesAsync(selected, _cts.Token);
+            var result = await _cleanService.CleanLargeFilesAsync(selected, null, _cts.Token);
             LargeFileStatus = $"{Lang["Deleted"]} {result.FilesDeleted} {Lang["Files"]}, {Lang["Freed"]} {result.FreedText}";
-            foreach (var f in selected) LargeFiles.Remove(f);
-            _diskInfoService.Refresh("C:");
+
+            // 只移除"确实已删除"的项；被跳过/失败的文件留在列表中，避免"消失"。
+            var deleted = result.DeletedPaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var f in selected.Where(f => deleted.Contains(f.FullPath)).ToList())
+                LargeFiles.Remove(f);
+
+            if (result.Errors.Count > 0)
+                LargeFileStatus += $"（{result.Errors.Count} 项失败，详见日志）";
+
+            _diskInfoService.Refresh();
         }
         catch (Exception ex) { LargeFileStatus = ex.Message; App.LogError("DeleteLargeFilesAsync", ex); }
     }

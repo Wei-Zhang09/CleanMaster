@@ -104,7 +104,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public void LoadDiskInfo()
     {
-        try { _diskInfoService.Refresh("C:"); } catch (Exception ex) { CleanMaster.App.LogError("LoadDiskInfo", ex); }
+        try { _diskInfoService.Refresh(); } catch (Exception ex) { CleanMaster.App.LogError("LoadDiskInfo", ex); }
     }
 
     private void OnNavigatedTo(string view)

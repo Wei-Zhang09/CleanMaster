@@ -175,10 +175,10 @@ public class ScanCategoryResultTests
     }
 
     [Fact]
-    public void TotalSizeText_Zero_FormatsAsZeroKB()
+    public void TotalSizeText_Zero_FormatsAsZeroBytes()
     {
         var result = new ScanCategoryResult();
-        Assert.Equal("0.0 KB", result.TotalSizeText);
+        Assert.Equal("0 B", result.TotalSizeText);
     }
 }
 
@@ -334,10 +334,10 @@ public class CleanResultTests
     }
 
     [Fact]
-    public void FreedText_Zero_FormatsAsZeroKB()
+    public void FreedText_Zero_FormatsAsZeroBytes()
     {
         var result = new CleanResult { BytesFreed = 0 };
-        Assert.Equal("0.0 KB", result.FreedText);
+        Assert.Equal("0 B", result.FreedText);
     }
 }
 

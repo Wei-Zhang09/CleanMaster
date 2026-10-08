@@ -101,7 +101,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
         }
         catch (OperationCanceledException) { CleanupStatus = "操作已取消"; }
         catch (Exception ex) { CleanupStatus = $"错误: {ex.Message}"; CleanMaster.App.LogError("RunDismCleanup", ex); }
-        finally { IsRunningCleanup = false; _diskInfoService.Refresh("C:"); }
+        finally { IsRunningCleanup = false; _diskInfoService.Refresh(); }
     }
 
     private async Task RunSfcScanAsync()

@@ -7,10 +7,13 @@ namespace CleanMaster.Services;
 
 public class AppSettings
 {
-    public string WebsiteUrl { get; set; } = "https://awe-software-production.up.railway.app";
-    public string ApiBaseUrl { get; set; } = "https://awe-software-production.up.railway.app/api";
+    // 服务器地址单一来源（installer.iss 的 AppPublisherURL/AppSupportURL 与此保持一致）。
+    public const string DefaultWebsiteUrl = "https://awe-software-production.up.railway.app";
+    public const string DefaultApiBaseUrl = "https://awe-software-production.up.railway.app/api";
+
+    public string WebsiteUrl { get; set; } = DefaultWebsiteUrl;
+    public string ApiBaseUrl { get; set; } = DefaultApiBaseUrl;
     public bool EnableRemoteSync { get; set; } = false;
-    public string LicenseApiUrl { get; set; } = "https://awe-software-production.up.railway.app/api";
 }
 
 public class SettingsService : ISettingsService

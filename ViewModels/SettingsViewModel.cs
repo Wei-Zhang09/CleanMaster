@@ -21,6 +21,7 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ISettingsService _settingsService;
     private readonly IScanService _scanService;
+    private readonly IUpdateService _updateService;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -40,6 +41,25 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     private string _websiteUrl = "";
     public string WebsiteUrl { get => _websiteUrl; set { _websiteUrl = value; OnPropertyChanged(); } }
+
+    #region Update
+
+    private bool _isCheckingUpdate;
+    public bool IsCheckingUpdate { get => _isCheckingUpdate; set { _isCheckingUpdate = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanCheckUpdate)); } }
+
+    public bool CanCheckUpdate => !IsCheckingUpdate;
+
+    private string _updateStatusText = "";
+    public string UpdateStatusText { get => _updateStatusText; set { _updateStatusText = value; OnPropertyChanged(); } }
+
+    private UpdateInfo? _pendingUpdate;
+    public UpdateInfo? PendingUpdate { get => _pendingUpdate; set { _pendingUpdate = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasUpdate)); } }
+
+    public bool HasUpdate => _pendingUpdate != null;
+
+    public RelayCommand CheckUpdateCommand { get; }
+
+    #endregion
 
     #region Disk Space Analysis
 
@@ -67,10 +87,11 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
     public RelayCommand OpenWebsiteCommand { get; }
     public RelayCommand SaveWebsiteUrlCommand { get; }
 
-    public SettingsViewModel(ISettingsService settingsService, IScanService scanService, ILangService langService)
+    public SettingsViewModel(ISettingsService settingsService, IScanService scanService, ILangService langService, IUpdateService updateService)
     {
         _settingsService = settingsService;
         _scanService = scanService;
+        _updateService = updateService;
         Lang = langService;
         WebsiteUrl = _settingsService.Get().WebsiteUrl;
 
@@ -82,12 +103,77 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         OpenWebsiteCommand = new RelayCommand(OpenWebsite);
         SaveWebsiteUrlCommand = new RelayCommand(SaveWebsiteUrl);
         AnalyzeDiskCommand = new RelayCommand(async () => await AnalyzeDiskSpaceAsync());
+        CheckUpdateCommand = new RelayCommand(async () => await CheckForUpdateAsync(silent: false));
 
         // Load available drives
         foreach (var disk in _scanService.GetAllDisks())
             AvailableDrives.Add(disk.DriveLetter);
         if (AvailableDrives.Count > 0)
             AnalyzedDrive = AvailableDrives[0];
+
+        // 启动后静默检查一次更新
+        _ = Task.Run(async () => await CheckForUpdateAsync(silent: true));
+    }
+
+    /// <summary>
+    /// 检查更新。silent=true 时仅在有更新时提示，无更新不打扰；silent=false 时始终反馈结果。
+    /// </summary>
+    private async Task CheckForUpdateAsync(bool silent)
+    {
+        if (IsCheckingUpdate) return;
+        IsCheckingUpdate = true;
+        if (!silent) UpdateStatusText = "正在检查更新...";
+
+        try
+        {
+            var update = await _updateService.CheckForUpdateAsync();
+            if (update != null)
+            {
+                PendingUpdate = update;
+                UpdateStatusText = $"发现新版本 v{update.Version}";
+                // 弹窗提示，让用户决定是否立即更新
+                var msg = $"发现新版本 v{update.Version}。\n\n{update.Notes}\n\n是否立即下载并安装更新？";
+                var result = System.Windows.MessageBox.Show(msg, "软件更新",
+                    System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information);
+                if (result == System.Windows.MessageBoxResult.Yes)
+                {
+                    await DownloadAndInstallAsync(update);
+                }
+            }
+            else
+            {
+                PendingUpdate = null;
+                if (!silent) UpdateStatusText = "已是最新版本";
+            }
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusText = "检查更新失败";
+            App.LogError("CheckForUpdateAsync", ex);
+        }
+        finally
+        {
+            IsCheckingUpdate = false;
+        }
+    }
+
+    private async Task DownloadAndInstallAsync(UpdateInfo update)
+    {
+        UpdateStatusText = $"正在下载 v{update.Version}...";
+        try
+        {
+            var progress = new Progress<double>(p => UpdateStatusText = $"正在下载 v{update.Version}... {p:F0}%");
+            var installerPath = await _updateService.DownloadAsync(update, progress);
+            UpdateStatusText = "下载完成，正在安装...";
+            _updateService.InstallAndRestart(installerPath);
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusText = "更新失败";
+            App.LogError("DownloadAndInstallAsync", ex);
+            System.Windows.MessageBox.Show($"更新失败：{ex.Message}", "软件更新",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
     }
 
     private async Task AnalyzeDiskSpaceAsync()

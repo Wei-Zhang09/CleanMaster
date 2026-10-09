@@ -857,11 +857,29 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Website Info -->
+                <!-- About & Update（版本信息 + 检查更新） -->
                 <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" Text="{Binding Settings.Lang[OfficialWebsite]}"/>
-                        <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Text="{Binding Settings.Lang[WebsiteTip]}"/>
+                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" Text="{Binding Settings.Lang[About]}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,10,0"/>
+                            <TextBlock FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Settings.Lang[AppTitle]}"/>
+                        </StackPanel>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
+                            <Run Text="{Binding Settings.Lang[Version], Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding Settings.AppVersion, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" Text="{Binding Settings.Lang[Description]}"/>
+
+                        <!-- 检查更新 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                            <Button Style="{StaticResource Btn}" Padding="16,6" FontSize="12"
+                                    Command="{Binding Settings.CheckUpdateCommand}"
+                                    IsEnabled="{Binding Settings.CanCheckUpdate}">
+                                <TextBlock Text="检查更新"/>
+                            </Button>
+                            <TextBlock Text="{Binding Settings.UpdateStatusText}" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
@@ -917,21 +935,6 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- About -->
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" Text="{Binding Settings.Lang[About]}"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,10,0"/>
-                            <TextBlock FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Settings.Lang[AppTitle]}"/>
-                        </StackPanel>
-                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
-                            <Run Text="{Binding Settings.Lang[Version], Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding Settings.AppVersion, Mode=OneWay}"/>
-                        </TextBlock>
-                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" Text="{Binding Settings.Lang[Description]}"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

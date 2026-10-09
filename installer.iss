@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "2.3.0"
+  #define AppVersion "3.0.0"
 #endif
 
 [Setup]
@@ -39,5 +39,5 @@ Name: "{group}\Uninstall CleanMaster"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\CleanMaster"; Filename: "{app}\CleanMaster.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\CleanMaster.exe"; Description: "Launch CleanMaster"; Flags: nowait postinstall skipifsilent shellexec
+Filename: "{app}\CleanMaster.exe"; Description: "Launch CleanMaster"; Flags: nowait postinstall shellexec
 

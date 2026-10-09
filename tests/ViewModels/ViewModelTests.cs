@@ -170,21 +170,26 @@ public class SettingsViewModelTests
 {
     private readonly Mock<ISettingsService> _mockSettingsService;
     private readonly Mock<IScanService> _mockScanService;
+    private readonly Mock<IUpdateService> _mockUpdateService;
     private readonly SettingsViewModel _viewModel;
 
     public SettingsViewModelTests()
     {
         _mockSettingsService = new Mock<ISettingsService>();
         _mockScanService = new Mock<IScanService>();
+        _mockUpdateService = new Mock<IUpdateService>();
 
         _mockSettingsService.Setup(s => s.Get()).Returns(new AppSettings());
         _mockScanService.Setup(s => s.GetAllDisks())
             .Returns(new List<DiskInfo> { new() { DriveLetter = "C:" } });
+        _mockUpdateService.Setup(u => u.CheckForUpdateAsync())
+            .ReturnsAsync((UpdateInfo?)null);
 
         _viewModel = new SettingsViewModel(
             _mockSettingsService.Object,
             _mockScanService.Object,
-            new LangService());
+            new LangService(),
+            _mockUpdateService.Object);
     }
 
     [Fact]

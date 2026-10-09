@@ -17,9 +17,9 @@ public class RuleDatabaseRegressionTests
 
         var weChatRules = rules.Where(r => r.Name.Contains("WeChat", StringComparison.OrdinalIgnoreCase)).ToList();
 
-        // Should be exactly: "WeChat Cache", "WeChat Files Cache", "WeChat Temp"
+        // 微信有多个缓存规则（3.x 的 WeChat Cache/Files Cache + 4.0 的 xwechat 系列），
+        // 核心约束是「无重复名、无重复路径」，而非固定数量。
         Assert.True(weChatRules.Count >= 2, $"Expected at least 2 WeChat rules, got {weChatRules.Count}");
-        Assert.True(weChatRules.Count <= 3, $"Expected at most 3 WeChat rules, got {weChatRules.Count}");
 
         var names = weChatRules.Select(r => r.Name).Distinct().ToList();
         Assert.Equal(weChatRules.Count, names.Count); // no duplicate names

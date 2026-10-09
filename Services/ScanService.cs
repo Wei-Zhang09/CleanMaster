@@ -12,10 +12,34 @@ public class ScanService : IScanService
     public event Action<ScanCategoryResult>? CategoryScanned;
     public event Action<string>? AccessDenied;
 
+    private readonly IDynamicRuleGenerator? _dynamicRuleGenerator;
+
+    public ScanService(IDynamicRuleGenerator? dynamicRuleGenerator = null)
+    {
+        _dynamicRuleGenerator = dynamicRuleGenerator;
+    }
+
     public async Task<List<ScanCategoryResult>> ScanAllAsync(CancellationToken ct = default)
     {
         var results = new List<ScanCategoryResult>();
+
+        // 静态硬编码规则 + 动态规则（路线 C）合并，按解析路径去重
         var rules = RuleDatabase.GetAllRules();
+        if (_dynamicRuleGenerator != null)
+        {
+            var dynamicRules = _dynamicRuleGenerator.Generate();
+            var existingPaths = new HashSet<string>(
+                rules.SelectMany(r => r.GetResolvedPaths()),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var dr in dynamicRules)
+            {
+                var resolved = dr.GetResolvedPath();
+                if (string.IsNullOrEmpty(resolved) || existingPaths.Contains(resolved)) continue;
+                existingPaths.Add(resolved);
+                rules.Add(dr);
+            }
+        }
+
         var grouped = rules.GroupBy(r => r.Category).ToList();
 
         // Weighted progress: each rule counts equally rather than each category,

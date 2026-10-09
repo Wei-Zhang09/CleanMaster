@@ -782,6 +782,41 @@ public static class RuleDatabase
             // ── WeChat / QQ ──
             // 注意: 不再扫描整个 WeChat / QQ 根目录, 防止误删配置/聊天数据库。
             // 只枚举明确的缓存子目录: Cache / GPUCache / Code Cache / logs / Temp 等。
+            // 微信 4.0 (Weixin) 数据在 %APPDATA%\Tencent\xwechat，缓存大户是 log/radium/xplugin/net。
+            new()
+            {
+                Name = "WeChat 4.0 Logs (xwechat)",
+                PathFactory = () => Path.Combine(roaming, @"Tencent\xwechat\log"),
+                Safety = CleanSafety.Safe,
+                Category = CleanCategory.AppCache,
+                Description = "微信 4.0 日志文件。记录运行日志，可安全删除。"
+            },
+            new()
+            {
+                Name = "WeChat 4.0 Radium Cache (xwechat)",
+                PathFactory = () => Path.Combine(roaming, "Tencent", "xwechat", "radium"),
+                Safety = CleanSafety.Caution,
+                Category = CleanCategory.AppCache,
+                Description = "微信 4.0 小程序/渲染缓存。删除后小程序需重新加载，不影响聊天记录。"
+            },
+            new()
+            {
+                Name = "WeChat 4.0 Plugin Cache (xwechat)",
+                PathFactory = () => Path.Combine(roaming, @"Tencent\xwechat\xplugin"),
+                Safety = CleanSafety.Caution,
+                Category = CleanCategory.AppCache,
+                Description = "微信 4.0 插件缓存。删除后插件需重新下载，不影响聊天记录。"
+            },
+            new()
+            {
+                Name = "WeChat 4.0 Network Cache (xwechat)",
+                PathFactoryMulti = () => FindSubdirs(
+                    Path.Combine(roaming, @"Tencent\xwechat"),
+                    "net", "net_1", "net_2", "net_3", "net_4", "net_5", "net_6", "net_7", "net_8", "crashinfo", "update"),
+                Safety = CleanSafety.Safe,
+                Category = CleanCategory.AppCache,
+                Description = "微信 4.0 网络缓存、崩溃信息、更新缓存。可安全删除。"
+            },
             new()
             {
                 Name = "WeChat Cache",
@@ -798,13 +833,13 @@ public static class RuleDatabase
                 PathFactoryMulti = () =>
                 {
                     // Documents\WeChat Files\<用户id>\ 下有 FileStorage 等子目录,
-                    // 这里只清明确的缓存: FileStorage\Tmp、FileStorage\Cache 等子目录。
+                    // 这里只清明确的缓存: FileStorage\Temp、TempFromPhone、Cache 等子目录。
                     var root = Path.Combine(docs, @"WeChat Files");
                     if (!Directory.Exists(root)) return Enumerable.Empty<string>();
                     var results = new List<string>();
                     foreach (var userDir in Directory.GetDirectories(root))
                     {
-                        foreach (var sub in new[] { @"FileStorage\Tmp", @"FileStorage\Cache", @"FileStorage\CDNFileStorage\Temp" })
+                        foreach (var sub in new[] { @"FileStorage\Temp", @"FileStorage\TempFromPhone", @"FileStorage\Cache", @"FileStorage\CDNFileStorage\Temp" })
                         {
                             var p = Path.Combine(userDir, sub);
                             if (Directory.Exists(p)) results.Add(p);
@@ -820,7 +855,7 @@ public static class RuleDatabase
             {
                 Name = "QQ Cache",
                 PathFactoryMulti = () => FindSubdirs(
-                    Path.Combine(local, @"Tencent\QQ"),
+                    Path.Combine(roaming, @"Tencent\QQ"),
                     "Cache", "GPUCache", "Code Cache", "logs", "Temp"),
                 Safety = CleanSafety.Safe,
                 Category = CleanCategory.AppCache,
@@ -830,7 +865,7 @@ public static class RuleDatabase
             {
                 Name = "QQNT Cache",
                 PathFactoryMulti = () => FindSubdirs(
-                    Path.Combine(docs, @"Tencent Files\QQNT"),
+                    Path.Combine(roaming, @"Tencent\QQNT"),
                     "Cache", "GPUCache", "Code Cache", "logs"),
                 Safety = CleanSafety.Caution,
                 Category = CleanCategory.AppCache,

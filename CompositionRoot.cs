@@ -13,6 +13,10 @@ public static class CompositionRoot
 
         // 日志：复用 App 的静态 logger 实例，避免双重写入同一文件。
         services.AddSingleton<IAppLogger>(_ => App.Logger);
+        services.AddSingleton<IUpdateService, UpdateService>();
+        services.AddSingleton<InstalledAppService>();
+        services.AddSingleton<CacheFingerprintService>();
+        services.AddSingleton<CleanMaster.Rules.IDynamicRuleGenerator, CleanMaster.Rules.DynamicRuleGenerator>();
 
         // Singleton services (stateful: events, HttpClient, caches)
         services.AddSingleton<ISettingsService, SettingsService>();
@@ -39,7 +43,8 @@ public static class CompositionRoot
             var settingsService = sp.GetRequiredService<ISettingsService>();
             var scanService = sp.GetRequiredService<IScanService>();
             var langService = sp.GetRequiredService<ILangService>();
-            return new SettingsViewModel(settingsService, scanService, langService);
+            var updateService = sp.GetRequiredService<IUpdateService>();
+            return new SettingsViewModel(settingsService, scanService, langService, updateService);
         });
 
         return services.BuildServiceProvider();

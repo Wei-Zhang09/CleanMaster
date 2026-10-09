@@ -293,9 +293,12 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         var totalSize = toClean.Sum(c => c.TotalSize);
         var totalItems = toClean.Sum(c => c.Items.Count(i => i.IsSelected));
 
-        // 检测是否选中了危险项 — 危险项需要更强的警告
+        // 检测选中项的风险等级：危险 + 谨慎项都需要醒目警告（目标用户是不太懂电脑的人）
         var dangerousItems = toClean
             .SelectMany(c => c.Items.Where(i => i.IsSelected && i.IsDangerous))
+            .ToList();
+        var cautionItems = toClean
+            .SelectMany(c => c.Items.Where(i => i.IsSelected && i.Safety == CleanSafety.Caution))
             .ToList();
 
         var previewMsg = "即将清理以下内容：\n\n";
@@ -308,21 +311,33 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
 
         previewMsg += $"\n总计: {totalItems} 项，约 {ByteSizeFormatter.Format(totalSize)}";
 
-        if (dangerousItems.Count > 0)
+        // 谨慎项提醒（黄色，针对小白用户说明"可能包含有用数据"）
+        if (cautionItems.Count > 0)
         {
-            previewMsg += "\n\n⚠️ 警告：您选中了危险项，删除可能影响系统功能：\n";
-            foreach (var item in dangerousItems.Take(5))
+            previewMsg += $"\n\n⚠️ 注意：其中包含 {cautionItems.Count} 个「谨慎」项（可能有用的数据），如：\n";
+            foreach (var item in cautionItems.Take(5))
                 previewMsg += $"  - {item.Name}\n";
-            previewMsg += "\n请确认您了解后果后再继续！";
+            previewMsg += "\n请确认这些内容确实不需要了。";
         }
 
-        previewMsg += "\n\n是否继续清理？";
+        // 危险项强警告（红色，可能影响系统/软件）
+        if (dangerousItems.Count > 0)
+        {
+            previewMsg += "\n\n🚫 严重警告：您选中了危险项，删除可能影响系统或软件功能：\n";
+            foreach (var item in dangerousItems.Take(5))
+                previewMsg += $"  - {item.Name}\n";
+            previewMsg += "\n请务必确认您了解后果！";
+        }
 
-        var confirm = System.Windows.MessageBox.Show(
+        // 永久删除的后果明说（小白用户最容易忽略这点）
+        previewMsg += "\n\n删除后将无法恢复（不进入回收站）。是否继续清理？";
+
+        var hasRisk = dangerousItems.Count > 0 || cautionItems.Count > 0;
+        var confirm = CleanMaster.Views.AppDialog.Show(
             previewMsg,
-            dangerousItems.Count > 0 ? "危险操作确认" : "清理确认",
+            dangerousItems.Count > 0 ? "危险操作确认" : (cautionItems.Count > 0 ? "请确认后清理" : "清理确认"),
             MessageBoxButton.YesNo,
-            dangerousItems.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Question);
+            dangerousItems.Count > 0 ? MessageBoxImage.Warning : (hasRisk ? MessageBoxImage.Warning : MessageBoxImage.Question));
         if (confirm != MessageBoxResult.Yes) return;
 
         IsCleaning = true;

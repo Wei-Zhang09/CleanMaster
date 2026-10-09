@@ -81,7 +81,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
 
     private async Task RunDismCleanupAsync()
     {
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = CleanMaster.Views.AppDialog.Show(
             "Windows 组件清理将删除旧版本的系统更新文件。\n\n此操作安全但可能需要几分钟时间。\n\n是否继续？",
             "系统组件清理", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
@@ -97,7 +97,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
             ProgressPercent = 100;
             CleanupStatus = result.Success ? $"清理完成: {result.Message}" : $"清理失败: {result.Message}";
             if (result.Success)
-                System.Windows.MessageBox.Show($"{result.Message}\n\n释放空间: {result.FreedText}", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                CleanMaster.Views.AppDialog.Show($"{result.Message}\n\n释放空间: {result.FreedText}", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (OperationCanceledException) { CleanupStatus = "操作已取消"; }
         catch (Exception ex) { CleanupStatus = $"错误: {ex.Message}"; CleanMaster.App.LogError("RunDismCleanup", ex); }
@@ -106,7 +106,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
 
     private async Task RunSfcScanAsync()
     {
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = CleanMaster.Views.AppDialog.Show(
             "系统文件扫描将检查并修复损坏的系统文件。\n\n此操作安全但可能需要较长时间。\n\n是否继续？",
             "系统文件修复", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
@@ -121,7 +121,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
             var result = await _systemCleanupService.RunSfcScanAsync(_cts.Token);
             ProgressPercent = 100;
             CleanupStatus = result.Success ? $"扫描完成: {result.Message}" : $"扫描失败: {result.Message}";
-            System.Windows.MessageBox.Show(
+            CleanMaster.Views.AppDialog.Show(
                 result.Success ? result.Message : $"扫描失败: {result.Message}",
                 result.Success ? "扫描完成" : "扫描失败",
                 MessageBoxButton.OK,
@@ -134,7 +134,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
 
     private async Task FlushDnsAsync()
     {
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = CleanMaster.Views.AppDialog.Show(
             "清理 DNS 缓存将重置域名解析记录。\n\n此操作安全，不影响其他设置。\n\n是否继续？",
             "DNS 缓存清理", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
@@ -147,7 +147,7 @@ public class SystemCleanupViewModel : INotifyPropertyChanged, IDisposable
             var result = await _systemCleanupService.FlushDnsCacheAsync();
             ProgressPercent = 100;
             CleanupStatus = result.Success ? "DNS 缓存已清理" : $"清理失败: {result.Message}";
-            System.Windows.MessageBox.Show(
+            CleanMaster.Views.AppDialog.Show(
                 result.Success ? "DNS 缓存已清理成功。" : $"清理失败: {result.Message}",
                 result.Success ? "清理完成" : "清理失败",
                 MessageBoxButton.OK,

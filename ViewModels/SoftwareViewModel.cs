@@ -163,7 +163,7 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
             $"路径：{software.InstallLocation}\n\n" +
             $"提示：卸载完成后将自动扫描残留文件和注册表。";
 
-        var confirm = System.Windows.MessageBox.Show(confirmMsg, "确认卸载", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        var confirm = CleanMaster.Views.AppDialog.Show(confirmMsg, "确认卸载", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
 
         IsUninstalling = true;
@@ -177,7 +177,7 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
 
             if (!started)
             {
-                System.Windows.MessageBox.Show($"卸载程序无法启动：{message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CleanMaster.Views.AppDialog.Show($"卸载程序无法启动：{message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 SoftwareStatus = "卸载失败";
                 return;
             }
@@ -200,16 +200,16 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
                 leftoverMsg += $"\n残留大小：{leftovers.LeftoverSizeText}";
                 leftoverMsg += "\n\n是否自动清理这些残留？（推荐清理）";
 
-                var cleanupConfirm = System.Windows.MessageBox.Show(leftoverMsg, "清理残留", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                var cleanupConfirm = CleanMaster.Views.AppDialog.Show(leftoverMsg, "清理残留", MessageBoxButton.YesNo, MessageBoxImage.Question);
                 if (cleanupConfirm == MessageBoxResult.Yes)
                 {
                     _softwareService.CleanupLeftovers(leftovers);
-                    System.Windows.MessageBox.Show($"已清理 {leftovers.LeftoverSizeText} 残留文件和注册表", "清理完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                    CleanMaster.Views.AppDialog.Show($"已清理 {leftovers.LeftoverSizeText} 残留文件和注册表", "清理完成", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             else
             {
-                System.Windows.MessageBox.Show("卸载完成，未发现残留文件。", "卸载完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                CleanMaster.Views.AppDialog.Show("卸载完成，未发现残留文件。", "卸载完成", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
             InstalledSoftware.Clear();
@@ -218,7 +218,7 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"卸载失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            CleanMaster.Views.AppDialog.Show($"卸载失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             SoftwareStatus = "卸载失败";
         }
         finally

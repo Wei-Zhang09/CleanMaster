@@ -145,7 +145,7 @@ public class StartupViewModel : INotifyPropertyChanged, IDisposable
 
             if (!success)
             {
-                MessageBox.Show("切换启动项失败，可能需要管理员权限。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                CleanMaster.Views.AppDialog.Show("切换启动项失败，可能需要管理员权限。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             else
             {

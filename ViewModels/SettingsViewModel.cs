@@ -133,7 +133,7 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
                 UpdateStatusText = $"发现新版本 v{update.Version}";
                 // 弹窗提示，让用户决定是否立即更新
                 var msg = $"发现新版本 v{update.Version}。\n\n{update.Notes}\n\n是否立即下载并安装更新？";
-                var result = System.Windows.MessageBox.Show(msg, "软件更新",
+                var result = CleanMaster.Views.AppDialog.Show(msg, "软件更新",
                     System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information);
                 if (result == System.Windows.MessageBoxResult.Yes)
                 {
@@ -171,7 +171,7 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         {
             UpdateStatusText = "更新失败";
             App.LogError("DownloadAndInstallAsync", ex);
-            System.Windows.MessageBox.Show($"更新失败：{ex.Message}", "软件更新",
+            CleanMaster.Views.AppDialog.Show($"更新失败：{ex.Message}", "软件更新",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
     }
@@ -312,7 +312,7 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
             // 打开前校验协议，只允许 http/https（深度防御）
             if (!UrlGuard.TryGetWebUri(url, out var uri))
             {
-                System.Windows.MessageBox.Show("网站地址无效，仅支持 http/https 链接。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                CleanMaster.Views.AppDialog.Show("网站地址无效，仅支持 http/https 链接。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -332,14 +332,14 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
             // 保存前校验协议，仅允许 http/https
             if (!UrlGuard.TryGetWebUri(WebsiteUrl, out _))
             {
-                System.Windows.MessageBox.Show("网站地址无效，仅支持 http/https 链接。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                CleanMaster.Views.AppDialog.Show("网站地址无效，仅支持 http/https 链接。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             var settings = _settingsService.Get();
             settings.WebsiteUrl = WebsiteUrl;
             _settingsService.Save(settings);
-            System.Windows.MessageBox.Show("网站地址已保存", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            CleanMaster.Views.AppDialog.Show("网站地址已保存", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex) { CleanMaster.App.LogError("SaveWebsiteUrl", ex); }
     }

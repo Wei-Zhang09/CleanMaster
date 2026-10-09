@@ -52,13 +52,13 @@ jobs:
       run: dotnet restore
 
     - name: Publish (self-contained single file)
-      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o ./publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o bin\Release\publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: publish
-        path: publish
+        path: bin\Release\publish
 
   release:
     needs: build
@@ -77,7 +77,7 @@ jobs:
       run: dotnet restore
 
     - name: Publish (self-contained single file)
-      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o ./publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o bin\Release\publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 
     - name: Install Inno Setup
       shell: pwsh

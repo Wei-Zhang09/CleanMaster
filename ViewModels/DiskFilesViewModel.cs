@@ -204,7 +204,7 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
 
             if (string.IsNullOrEmpty(dirPath) || !Directory.Exists(dirPath))
             {
-                System.Windows.MessageBox.Show("路径不存在或无法访问。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                CleanMaster.Views.AppDialog.Show("路径不存在或无法访问。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -231,7 +231,7 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
         catch (Exception ex)
         {
             CleanMaster.App.LogError("OpenFolder", ex);
-            System.Windows.MessageBox.Show($"无法打开目录: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            CleanMaster.Views.AppDialog.Show($"无法打开目录: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -274,22 +274,33 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
         var totalSize = selected.Sum(f => f.SizeBytes);
         var sizeText = ByteSizeFormatter.Format(totalSize);
 
-        // 危险项（SafetyHint=danger）需要更强的警告，与主清理流程保持一致
+        // 危险项（SafetyHint=danger）+ 谨慎项（caution）都需要醒目警告
         var dangerous = selected.Where(f => string.Equals(f.SafetyHint, "danger", StringComparison.OrdinalIgnoreCase)).ToList();
-        var confirmMsg = $"确定要删除选中的 {selected.Count} 个文件吗？\n\n将释放 {sizeText} 空间\n\n删除后无法恢复！";
+        var caution = selected.Where(f => string.Equals(f.SafetyHint, "caution", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        var confirmMsg = $"确定要删除选中的 {selected.Count} 个文件吗？\n\n将释放 {sizeText} 空间";
+        if (caution.Count > 0)
+        {
+            confirmMsg += $"\n\n⚠️ 注意：其中 {caution.Count} 个是「谨慎」文件（可能有用），如：\n";
+            foreach (var f in caution.Take(5))
+                confirmMsg += $"  - {f.FileName}\n";
+            confirmMsg += "\n请确认这些内容确实不需要了。";
+        }
         if (dangerous.Count > 0)
         {
-            confirmMsg += "\n\n⚠️ 警告：选中了危险文件（可能是程序本体或驱动），删除可能导致软件/系统异常：\n";
+            confirmMsg += "\n\n🚫 严重警告：选中了危险文件（可能是程序本体或驱动），删除可能导致软件/系统异常：\n";
             foreach (var f in dangerous.Take(5))
                 confirmMsg += $"  - {f.FileName}\n";
-            confirmMsg += "\n请确认您了解后果后再继续！";
+            confirmMsg += "\n请务必确认您了解后果！";
         }
+        confirmMsg += "\n\n删除后将无法恢复（不进入回收站）。是否继续？";
 
-        var confirm = System.Windows.MessageBox.Show(
+        var hasRisk = dangerous.Count > 0 || caution.Count > 0;
+        var confirm = CleanMaster.Views.AppDialog.Show(
             confirmMsg,
-            dangerous.Count > 0 ? "危险操作确认" : "确认删除",
+            dangerous.Count > 0 ? "危险操作确认" : (caution.Count > 0 ? "请确认后删除" : "确认删除"),
             MessageBoxButton.YesNo,
-            dangerous.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Question);
+            dangerous.Count > 0 ? MessageBoxImage.Warning : (hasRisk ? MessageBoxImage.Warning : MessageBoxImage.Question));
 
         if (confirm != MessageBoxResult.Yes) return;
 

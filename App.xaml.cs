@@ -67,7 +67,7 @@ public partial class App : Application
             LogError("OnStartup", ex);
             try
             {
-                MessageBox.Show(
+                CleanMaster.Views.AppDialog.Show(
                     $"CleanMaster 启动失败:\n\n{ex.Message}\n\n" +
                     $"详细日志已保存到:\n{LogFile}\n\n" +
                     $"请把日志文件发送给作者以便排查问题。",
@@ -157,7 +157,7 @@ public partial class App : Application
             LogError("UI Exception (Dispatcher)", e.Exception);
             try
             {
-                MessageBox.Show(
+                CleanMaster.Views.AppDialog.Show(
                     $"发生错误:\n\n{e.Exception.Message}\n\n" +
                     $"详情已记录到日志文件:\n{LogFile}",
                     "CleanMaster",

@@ -24,8 +24,13 @@ public class RuleDatabaseRegressionTests
         var names = weChatRules.Select(r => r.Name).Distinct().ToList();
         Assert.Equal(weChatRules.Count, names.Count); // no duplicate names
 
-        // No two rules may resolve to the same path
-        var paths = weChatRules.Select(r => r.GetResolvedPath()).ToList();
+        // No two rules may resolve to the same NON-EMPTY path.
+        // 注意：微信目录在 CI 环境不存在时，多条规则的 GetResolvedPath() 都返回空串，
+        // 空串不代表"重复路径"，应排除后再去重比较。
+        var paths = weChatRules
+            .Select(r => r.GetResolvedPath())
+            .Where(p => !string.IsNullOrEmpty(p))
+            .ToList();
         var distinctPaths = paths.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         Assert.Equal(paths.Count, distinctPaths.Count);
     }

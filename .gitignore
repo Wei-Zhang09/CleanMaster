@@ -44,6 +44,9 @@ Desktop.ini
 # Installer output
 installer/
 
+# Test coverage output
+coverage/
+
 # Local docs working folder
 docs/
 

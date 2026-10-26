@@ -32,7 +32,7 @@ public class CleanService : ICleanService
         CancellationToken ct = default)
     {
         var result = new CleanResult();
-        var allItems = categories.Where(c => c.IsSelected)
+        var allItems = categories
             .SelectMany(c => c.Items.Where(i => i.IsSelected))
             .ToList();
         var total = allItems.Count;

@@ -75,4 +75,38 @@ public class DuplicateServiceTests : IDisposable
         // 浪费空间 = 单文件大小 × (副本数 - 1)
         Assert.Equal(2048 * 2, group.WastedSpace);
     }
+
+    [Fact]
+    public async Task FindDuplicates_SameHeadDifferentTail_ReturnsNoGroup()
+    {
+        // 前 8KB 完全相同、尾部不同：快速指纹会放行成候选，全量 SHA256 必须纠正为不同。
+        var head = new string('h', 8 * 1024);
+        File.WriteAllText(Path.Combine(_testDir, "head_a.bin"), head + "AAAA");
+        File.WriteAllText(Path.Combine(_testDir, "head_b.bin"), head + "BBBB");
+
+        var groups = await _service.FindDuplicatesAsync(
+            scanPaths: new[] { _testDir },
+            minFileSize: 1024);
+
+        Assert.Empty(groups);
+    }
+
+    [Fact]
+    public async Task FindDuplicates_ReportsProgressEndingAt100()
+    {
+        var content = new string('q', 4096);
+        File.WriteAllText(Path.Combine(_testDir, "p1.bin"), content);
+        File.WriteAllText(Path.Combine(_testDir, "p2.bin"), content);
+
+        var percents = new List<double>();
+        _service.ProgressChanged += p => percents.Add(p.Percent);
+
+        await _service.FindDuplicatesAsync(
+            scanPaths: new[] { _testDir },
+            minFileSize: 1024);
+
+        Assert.NotEmpty(percents);
+        Assert.All(percents, p => Assert.InRange(p, 0, 100));
+        Assert.Equal(100, percents[^1], 3);
+    }
 }

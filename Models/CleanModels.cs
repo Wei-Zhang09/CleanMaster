@@ -133,8 +133,12 @@ public class ScanCategoryResult : INotifyPropertyChanged
     /// </summary>
     public bool HasCautionItems => Items.Any(i => i.Safety == CleanSafety.Caution);
 
-    private bool _isSelected = true;
-    public bool IsSelected
+    private bool? _isSelected = true;
+    /// <summary>
+    /// 分类勾选状态（三态）：true=全选，false=全不选，null=部分选中。
+    /// 联动条目的逻辑由 CleanViewModel 统一处理，避免模型层反向依赖 ViewModel。
+    /// </summary>
+    public bool? IsSelected
     {
         get => _isSelected;
         set { if (_isSelected != value) { _isSelected = value; OnPropertyChanged(); } }

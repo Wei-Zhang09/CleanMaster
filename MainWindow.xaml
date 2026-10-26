@@ -842,21 +842,6 @@
             <StackPanel Margin="28,20,28,28">
                 <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,24" Text="{Binding Settings.Lang[SettingsTitle]}"/>
 
-                <!-- Language -->
-                <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-                    <StackPanel>
-                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,16" Text="{Binding Settings.Lang[Language]}"/>
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Margin="0,0,24,0" IsChecked="{Binding Settings.IsChinese}" GroupName="Lang">
-                                <TextBlock Text="中文" FontSize="14"/>
-                            </RadioButton>
-                            <RadioButton IsChecked="{Binding Settings.IsChinese, Converter={StaticResource InverseBoolConverter}}" GroupName="Lang">
-                                <TextBlock Text="English" FontSize="14"/>
-                            </RadioButton>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
                 <!-- About & Update（版本信息 + 检查更新） -->
                 <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                     <StackPanel>

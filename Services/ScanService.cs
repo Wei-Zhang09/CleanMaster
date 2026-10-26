@@ -57,7 +57,15 @@ public class ScanService : IScanService
             progress.CategoriesScanned = scannedRules;
             ProgressChanged?.Invoke(progress);
 
-            var result = await Task.Run(() => ScanCategory(group.Key, group.ToList()), ct);
+            // 逐规则上报：某个规则扫描耗时较长时，状态栏能显示"正在扫描: xxx"而不是干等。
+            // Progress<T> 捕获 UI 线程上下文，回调不会在扫描线程上直接触碰 UI。
+            var ruleProgress = new Progress<string>(ruleName =>
+            {
+                progress.CurrentTask = $"正在扫描: {ruleName}";
+                ProgressChanged?.Invoke(progress);
+            });
+
+            var result = await Task.Run(() => ScanCategory(group.Key, group.ToList(), ruleProgress), ct);
 
             if (result.Items.Count > 0)
             {
@@ -73,7 +81,7 @@ public class ScanService : IScanService
         return results.OrderByDescending(r => r.TotalSize).ToList();
     }
 
-    private ScanCategoryResult ScanCategory(CleanCategory category, List<CleanupRule> rules)
+    private ScanCategoryResult ScanCategory(CleanCategory category, List<CleanupRule> rules, IProgress<string>? ruleProgress = null)
     {
         var result = new ScanCategoryResult
         {
@@ -86,6 +94,8 @@ public class ScanService : IScanService
         {
             try
             {
+                ruleProgress?.Report(rule.Name);
+
                 // Iterate over all resolved paths (1 for simple rules, N for multi-path rules)
                 foreach (var path in rule.GetResolvedPaths())
                 {

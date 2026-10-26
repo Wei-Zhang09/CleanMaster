@@ -51,8 +51,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
     /// 让用户清楚这次清理能释放多少空间。
     /// </summary>
     public long SelectedCleanableSize =>
-        ScanResults.Where(c => c.IsSelected)
-                   .Sum(c => c.Items.Where(i => i.IsSelected).Sum(i => i.SizeBytes));
+        ScanResults.Sum(c => c.Items.Where(i => i.IsSelected).Sum(i => i.SizeBytes));
 
     public string SelectedCleanableText => ByteSizeFormatter.Format(SelectedCleanableSize);
 
@@ -110,6 +109,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         _scanService.ProgressChanged += OnScanProgressChanged;
         _scanService.CategoryScanned += OnCategoryScanned;
         _scanService.AccessDenied += OnAccessDenied;
+        _duplicateService.ProgressChanged += OnDuplicateProgressChanged;
 
         // 订阅全局语言变更: 切换语言后刷新本地 Lang 属性 + 派生文本 (如 CleanResultText)
         Lang.LanguageChanged += OnLanguageChanged;
@@ -136,39 +136,97 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
 
     private void OnScanProgressChanged(ScanProgress p)
     {
-        App.Current.Dispatcher.BeginInvoke(new Action(() =>
+        RunOnUi(() =>
         {
+            // 重复文件阶段由 OnDuplicateProgressChanged 接管，避免两路进度互相覆盖。
+            if (_scanFinished || _inDuplicatePhase) return;
             StatusText = p.CurrentTask;
-            ProgressPercent = p.ProgressPercent;
-        }));
+            ProgressPercent = p.ProgressPercent * 0.7;   // 主扫描占 0-70%
+        });
+    }
+
+    private void OnDuplicateProgressChanged(DuplicateScanProgress p)
+    {
+        RunOnUi(() =>
+        {
+            if (_scanFinished) return;
+            _inDuplicatePhase = true;
+            ProgressPercent = 70 + p.Percent * 0.3;      // 重复扫描占 70-100%
+            StatusText = string.IsNullOrEmpty(p.CurrentFile)
+                ? "正在扫描重复文件..."
+                : $"正在扫描重复文件... {p.CurrentFile}";
+        });
     }
 
     private void OnCategoryScanned(ScanCategoryResult cat)
     {
-        App.Current.Dispatcher.BeginInvoke(new Action(() =>
-        {
-            ScanResults.Add(cat);
-            TotalCleanableSize += cat.TotalSize;
-            TotalItemCount += cat.ItemCount;
+        RunOnUi(() => AddCategoryResult(cat));
+    }
 
-            // 订阅分类及其所有项的勾选变化，实时刷新"已选中大小"。
-            cat.PropertyChanged += OnCategoryPropertyChanged;
-            foreach (var item in cat.Items)
-                item.PropertyChanged += OnItemPropertyChanged;
-            OnSelectedSizeChanged();
-        }));
+    /// <summary>
+    /// 统一登记扫描分类：先按条目真实勾选状态校准分类三态（避免"分类勾着但条目全未选"），
+    /// 再订阅分类与条目的勾选变化，使全选框与条目双向联动。
+    /// </summary>
+    private void AddCategoryResult(ScanCategoryResult cat)
+    {
+        int selectedCount = cat.Items.Count(i => i.IsSelected);
+        cat.IsSelected = cat.Items.Count == 0 || selectedCount == 0 ? false
+                       : selectedCount == cat.Items.Count ? true
+                       : null;
+
+        ScanResults.Add(cat);
+        TotalCleanableSize += cat.TotalSize;
+        TotalItemCount += cat.ItemCount;
+
+        // 订阅分类及其所有项的勾选变化，实时刷新"已选中大小"并双向联动。
+        cat.PropertyChanged += OnCategoryPropertyChanged;
+        foreach (var item in cat.Items)
+            item.PropertyChanged += OnItemPropertyChanged;
+        OnSelectedSizeChanged();
     }
 
     private void OnCategoryPropertyChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ScanCategoryResult.IsSelected))
-            OnSelectedSizeChanged();
+        if (e.PropertyName != nameof(ScanCategoryResult.IsSelected)) return;
+
+        // 分类勾选 → 联动全部条目（null=部分选中，不反向覆盖用户逐项选择）。
+        if (!_syncingSelection && s is ScanCategoryResult cat && cat.IsSelected.HasValue)
+        {
+            _syncingSelection = true;
+            try
+            {
+                foreach (var item in cat.Items)
+                    item.IsSelected = cat.IsSelected.Value;
+            }
+            finally { _syncingSelection = false; }
+        }
+
+        OnSelectedSizeChanged();
     }
 
     private void OnItemPropertyChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(CleanableItem.IsSelected))
-            OnSelectedSizeChanged();
+        if (e.PropertyName != nameof(CleanableItem.IsSelected)) return;
+
+        // 条目勾选 → 回写分类三态：全选 true / 全不选 false / 部分 null。
+        if (!_syncingSelection && s is CleanableItem item)
+        {
+            _syncingSelection = true;
+            try
+            {
+                var cat = ScanResults.FirstOrDefault(c => c.Items.Contains(item));
+                if (cat != null && cat.Items.Count > 0)
+                {
+                    int selected = cat.Items.Count(i => i.IsSelected);
+                    cat.IsSelected = selected == 0 ? false
+                                   : selected == cat.Items.Count ? true
+                                   : null;
+                }
+            }
+            finally { _syncingSelection = false; }
+        }
+
+        OnSelectedSizeChanged();
     }
 
     private void OnSelectedSizeChanged()
@@ -179,7 +237,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
 
     private void OnAccessDenied(string message)
     {
-        App.Current.Dispatcher.BeginInvoke(new Action(() =>
+        RunOnUi(() =>
         {
             // Surface a non-blocking hint to the user (only once per scan to avoid spam)
             if (!_accessDeniedShown)
@@ -188,7 +246,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
                 StatusText = "部分目录因权限不足被跳过，建议以管理员身份运行";
             }
             App.Log($"AccessDenied: {message}");
-        }));
+        });
     }
 
     private void OnCleanProgressUpdated(CleanProgress p)
@@ -201,6 +259,15 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
 
     private bool _accessDeniedShown;
 
+    /// <summary>进入重复文件扫描阶段后置真，避免主扫描的进度回调把进度条拉回 0-70%。</summary>
+    private bool _inDuplicatePhase;
+
+    /// <summary>扫描已结束。进度回调经 BeginInvoke 排队，可能晚于"扫描完成"文案执行，用它丢弃迟到回调。</summary>
+    private bool _scanFinished;
+
+    /// <summary>分类与条目的勾选联动中，防止双向回写形成递归。</summary>
+    private bool _syncingSelection;
+
     #region Scan/Clean
 
     private async Task StartScanAsync()
@@ -211,6 +278,8 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         TotalItemCount = 0;
         ProgressPercent = 0;
         _accessDeniedShown = false;
+        _inDuplicatePhase = false;
+        _scanFinished = false;
         StatusText = Lang["Scanning"];
 
         _cts?.Dispose();
@@ -222,10 +291,13 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
             // 扫描重复文件（作为磁盘清理的补充分类，标注"重复文件·请确认"）
             await ScanDuplicatesAsync(_cts.Token);
 
+            // 先关门再写完成文案：进度回调经 BeginInvoke 排队，否则会把状态改回"正在扫描重复文件"。
+            _scanFinished = true;
+            ProgressPercent = 100;
             StatusText = $"{Lang["ScanComplete"]}. {TotalItemCount} {Lang["Items"]} ({TotalCleanableText})";
         }
-        catch (OperationCanceledException) { StatusText = Lang["Cancelled"]; App.Log("Scan cancelled by user"); }
-        catch (Exception ex) { StatusText = ex.Message; App.LogError("StartScanAsync", ex); }
+        catch (OperationCanceledException) { _scanFinished = true; StatusText = Lang["Cancelled"]; App.Log("Scan cancelled by user"); }
+        catch (Exception ex) { _scanFinished = true; StatusText = ex.Message; App.LogError("StartScanAsync", ex); }
         finally { IsScanning = false; _diskInfoService.Refresh(); }
     }
 
@@ -237,6 +309,9 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
     {
         try
         {
+            // 立刻切到重复文件阶段：进度条从 70% 起步，避免主扫描跑完后的 100% 假象。
+            _inDuplicatePhase = true;
+            ProgressPercent = 70;
             StatusText = "正在扫描重复文件...";
             var groups = await _duplicateService.FindDuplicatesAsync(ct: ct);
             if (groups.Count == 0) return;
@@ -275,9 +350,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
 
             if (category.Items.Count > 0)
             {
-                ScanResults.Add(category);
-                TotalCleanableSize += category.TotalSize;
-                TotalItemCount += category.ItemCount;
+                AddCategoryResult(category);
             }
         }
         catch (OperationCanceledException) { /* 用户取消扫描，静默处理 */ }
@@ -286,11 +359,12 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
 
     private async Task StartCleanAsync()
     {
-        var toClean = ScanResults.Where(c => c.IsSelected && c.Items.Any(i => i.IsSelected)).ToList();
+        // 以条目为准：分类三态为 null（部分选中）时，用户勾选的条目也必须被清理。
+        var toClean = ScanResults.Where(c => c.Items.Any(i => i.IsSelected)).ToList();
         if (toClean.Count == 0) return;
 
-        // Preview confirmation
-        var totalSize = toClean.Sum(c => c.TotalSize);
+        // Preview confirmation（只统计勾选中的条目）
+        var totalSize = toClean.Sum(c => c.Items.Where(i => i.IsSelected).Sum(i => i.SizeBytes));
         var totalItems = toClean.Sum(c => c.Items.Count(i => i.IsSelected));
 
         // 检测选中项的风险等级：危险 + 谨慎项都需要醒目警告（目标用户是不太懂电脑的人）
@@ -304,7 +378,9 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         var previewMsg = "即将清理以下内容：\n\n";
         foreach (var cat in toClean.Take(10))
         {
-            previewMsg += $"• {cat.DisplayName}: {cat.ItemCount} 项 ({cat.TotalSizeText})\n";
+            var catSelectedCount = cat.Items.Count(i => i.IsSelected);
+            var catSelectedSize = cat.Items.Where(i => i.IsSelected).Sum(i => i.SizeBytes);
+            previewMsg += $"• {cat.DisplayName}: {catSelectedCount} 项 ({ByteSizeFormatter.Format(catSelectedSize)})\n";
         }
         if (toClean.Count > 10)
             previewMsg += $"... 等 {toClean.Count} 个分类\n";
@@ -386,6 +462,21 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         category.IsExpanded = !category.IsExpanded;
     }
 
+    /// <summary>
+    /// 在 UI 线程执行。无 App/Dispatcher（单元测试、应用退出中）或已在 UI 线程时直接执行，
+    /// 避免进度回调在测试环境里空引用崩溃。
+    /// </summary>
+    private static void RunOnUi(Action action)
+    {
+        var dispatcher = App.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+        dispatcher.BeginInvoke(action);
+    }
+
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
@@ -398,6 +489,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
             _scanService.ProgressChanged -= OnScanProgressChanged;
             _scanService.CategoryScanned -= OnCategoryScanned;
             _scanService.AccessDenied -= OnAccessDenied;
+            _duplicateService.ProgressChanged -= OnDuplicateProgressChanged;
             Lang.LanguageChanged -= OnLanguageChanged;
         }
         catch { }

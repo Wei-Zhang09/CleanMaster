@@ -27,12 +27,6 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     public ILangService Lang { get; }
 
-    public bool IsChinese
-    {
-        get => Lang.IsChinese;
-        set { Lang.IsChinese = value; OnPropertyChanged(); OnPropertyChanged(nameof(Lang)); }
-    }
-
     /// <summary>
     /// 应用版本号。单一来源：csproj 的 <Version>，installer.iss 通过 /DAppVersion 传入。
     /// </summary>
@@ -83,7 +77,6 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     #endregion
 
-    public RelayCommand ToggleLangCommand { get; }
     public RelayCommand OpenWebsiteCommand { get; }
     public RelayCommand SaveWebsiteUrlCommand { get; }
 
@@ -99,7 +92,6 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         // SettingsView 也能同步 RadioButton 状态以及本地 Lang 属性。
         Lang.LanguageChanged += OnLanguageChanged;
 
-        ToggleLangCommand = new RelayCommand(() => { IsChinese = !IsChinese; OnPropertyChanged(nameof(Lang)); });
         OpenWebsiteCommand = new RelayCommand(OpenWebsite);
         SaveWebsiteUrlCommand = new RelayCommand(SaveWebsiteUrl);
         AnalyzeDiskCommand = new RelayCommand(async () => await AnalyzeDiskSpaceAsync());
@@ -346,19 +338,17 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     private void OnLanguageChanged()
     {
-        // LangService 已经切换了 IsChinese, 通知 WPF 让 RadioButton 和 Lang[] 绑定刷新。
+        // 语言切换后通知 WPF 让 Lang[] 绑定刷新（语言切换入口已移除，保留以兼容外部切换）。
         try
         {
             App.Current?.Dispatcher?.BeginInvoke(new Action(() =>
             {
-                OnPropertyChanged(nameof(IsChinese));
                 OnPropertyChanged(nameof(Lang));
             }));
         }
         catch
         {
             // App 当前可能未启动 (单元测试场景): 同步触发属性变更
-            OnPropertyChanged(nameof(IsChinese));
             OnPropertyChanged(nameof(Lang));
         }
     }

@@ -130,8 +130,13 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
             {
                 PendingUpdate = update;
                 UpdateStatusText = $"发现新版本 v{update.Version}";
-                // 弹窗提示，让用户决定是否立即更新
-                var msg = $"发现新版本 v{update.Version}。\n\n{update.Notes}\n\n是否立即下载并安装更新？";
+
+                // 弹窗只展示：当前版本 → 新版本 + 干净的更新条目 + 是否更新。
+                var notes = CleanNotes(update.Notes);
+                var msg = string.IsNullOrEmpty(notes)
+                    ? $"当前版本 v{AppVersion}\n新版本 v{update.Version}\n\n本次更新包含性能优化与问题修复。\n\n是否立即下载并安装？"
+                    : $"当前版本 v{AppVersion}\n新版本 v{update.Version}\n\n更新内容：\n{notes}\n\n是否立即下载并安装？";
+
                 var result = CleanMaster.Views.AppDialog.Show(msg, "软件更新",
                     System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information);
                 if (result == System.Windows.MessageBoxResult.Yes)
@@ -154,6 +159,45 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         {
             IsCheckingUpdate = false;
         }
+    }
+
+    /// <summary>
+    /// 清洗 GitHub 自动生成的 release notes：去掉 compare 链接、URL、Markdown 标题、
+    /// "by @user in #123" 后缀，只保留最多 6 条可读的更新条目。
+    /// 目标用户是普通用户，弹窗里不应该出现英文标题和一串链接。
+    /// </summary>
+    private static string CleanNotes(string notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return "";
+
+        var kept = new List<string>();
+        foreach (var raw in notes.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0) continue;
+
+            // GitHub 自动生成的部分，直接丢弃
+            if (line.StartsWith("**Full Changelog**", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line.StartsWith("Full Changelog", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line.StartsWith("##", StringComparison.Ordinal)) continue;
+
+            // 去掉列表符号
+            line = line.TrimStart('*', '-', ' ');
+
+            // 先剥离 GitHub 追加的 " by @user in <PR 链接>" 后缀，
+            // 否则下面按 URL 过滤会把整条有效更新一起丢掉。
+            var byIndex = line.LastIndexOf(" by @", StringComparison.Ordinal);
+            if (byIndex > 0) line = line[..byIndex].Trim();
+
+            if (line.Length == 0) continue;
+            if (line.Contains("github.com", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line.StartsWith("http", StringComparison.OrdinalIgnoreCase)) continue;
+
+            kept.Add("• " + line);
+            if (kept.Count >= 6) break;
+        }
+
+        return string.Join("\n", kept);
     }
 
     private async Task DownloadAndInstallAsync(UpdateInfo update)

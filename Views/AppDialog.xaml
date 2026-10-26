@@ -80,14 +80,19 @@
 
                 <!-- 标题栏 -->
                 <Border Grid.Row="0" Background="{StaticResource SidebarBrush}" CornerRadius="12,12,0,0" Padding="20,14">
-                    <DockPanel>
-                        <TextBlock x:Name="TitleText" DockPanel.Dock="Left" FontSize="15" FontWeight="Bold"
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="TitleText" Grid.Column="0" FontSize="15" FontWeight="Bold"
                                    Foreground="White" VerticalAlignment="Center"/>
-                        <Button DockPanel.Dock="Right" Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                Click="CloseButton_Click" VerticalAlignment="Center" Padding="4">
+                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Click="CloseButton_Click" VerticalAlignment="Center" Padding="4"
+                                HorizontalAlignment="Right">
                             <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#86909C"/>
                         </Button>
-                    </DockPanel>
+                    </Grid>
                 </Border>
 
                 <!-- 正文 -->

@@ -76,6 +76,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -107,8 +109,19 @@ jobs:
         & iscc.exe /DAppVersion=$env:VERSION installer.iss
         Get-ChildItem installer\*.exe
 
+    - name: Build release notes
+      shell: pwsh
+      run: |
+        $prev = git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $prev) { $range = "$prev..${{ github.ref_name }}" }
+        else { $range = "${{ github.ref_name }}" }
+        $lines = git log $range --pretty=format:"- %s" --no-merges
+        $body = "## 更新内容`r`n`r`n" + ($lines -join "`r`n")
+        $body | Out-File -FilePath release-notes.md -Encoding utf8
+        Get-Content release-notes.md
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         files: installer/*.exe
-        generate_release_notes: true
+        body_path: release-notes.md

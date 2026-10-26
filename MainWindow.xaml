@@ -73,7 +73,7 @@
                     <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Settings">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Margin="0,0,10,0"/>
-                            <TextBlock Text="{Binding Lang[NavSettings]}"/>
+                            <TextBlock Text="{Binding Lang[About]}"/>
                         </StackPanel>
                     </RadioButton>
                     <RadioButton Style="{StaticResource NavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Donate">
@@ -840,18 +840,18 @@
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding CurrentView, Converter={StaticResource ViewVisibilityConverter}, ConverterParameter=Settings}">
             <StackPanel Margin="28,20,28,28">
-                <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,24" Text="{Binding Settings.Lang[SettingsTitle]}"/>
+                <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,24" Text="{Binding Settings.Lang[About]}"/>
 
                 <!-- About & Update（版本信息 + 检查更新） -->
                 <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" Text="{Binding Settings.Lang[About]}"/>
+                        <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" Text="{Binding Settings.Lang[Version]}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                             <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,10,0"/>
                             <TextBlock FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Settings.Lang[AppTitle]}"/>
                         </StackPanel>
                         <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
-                            <Run Text="{Binding Settings.Lang[Version], Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding Settings.AppVersion, Mode=OneWay}"/>
+                            <Run Text="{Binding Settings.AppVersion, Mode=OneWay}"/>
                         </TextBlock>
                         <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" Text="{Binding Settings.Lang[Description]}"/>
 

@@ -22,6 +22,13 @@ public partial class AppDialog : Window
     {
         var dialog = new AppDialog();
         dialog.Configure(message, title, button, icon);
+
+        // CenterOwner 只有在设置了 Owner 时才生效；否则弹窗会落在屏幕默认位置。
+        // 主窗口尚未就绪（启动早期）时退回屏幕居中。
+        var owner = Application.Current?.MainWindow;
+        if (owner != null && !ReferenceEquals(owner, dialog) && owner.IsLoaded)
+            dialog.Owner = owner;
+
         dialog.ShowDialog();
         return dialog._result;
     }

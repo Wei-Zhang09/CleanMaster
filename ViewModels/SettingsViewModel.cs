@@ -103,8 +103,14 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         if (AvailableDrives.Count > 0)
             AnalyzedDrive = AvailableDrives[0];
 
-        // 启动后静默检查一次更新
-        _ = Task.Run(async () => await CheckForUpdateAsync(silent: true));
+        // 启动后静默检查一次更新。
+        // 必须回到 UI 线程执行：检查结果要更新绑定属性并在有新版时弹窗，
+        // 而线程池线程是 MTA，创建 WPF Window 会抛"调用线程必须为 STA"。
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null)
+            _ = dispatcher.InvokeAsync(async () => await CheckForUpdateAsync(silent: true));
+        else
+            _ = CheckForUpdateAsync(silent: true);
     }
 
     /// <summary>
@@ -119,6 +125,7 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
         try
         {
             var update = await _updateService.CheckForUpdateAsync();
+            App.Log($"[UPD] check silent={silent} -> {(update == null ? "no update" : update.Version)}");
             if (update != null)
             {
                 PendingUpdate = update;

@@ -58,8 +58,10 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Publish (self-contained single file)
-      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o bin\Release\publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+    - name: Publish (self-contained)
+      # 不做单文件：分发走 Inno Setup，单文件会把 WPF 原生库解压到 %TEMP%，
+      # 首次启动变慢、易被国内杀软拦截，且 Assembly.Location 失效。
+      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o bin\Release\publish -p:DebugType=none
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -87,8 +89,10 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Publish (self-contained single file)
-      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o bin\Release\publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+    - name: Publish (self-contained)
+      # 不做单文件：分发走 Inno Setup，单文件会把 WPF 原生库解压到 %TEMP%，
+      # 首次启动变慢、易被国内杀软拦截，且 Assembly.Location 失效。
+      run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o bin\Release\publish -p:DebugType=none
 
     - name: Install Inno Setup
       shell: pwsh

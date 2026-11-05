@@ -1,0 +1,57 @@
+# 临时文件与预读取缓存（RC-6 迁移试点）
+#
+# 约定：
+# - 路径与含反斜杠的文本用 TOML 单引号字面量（'{LOCAL}\Temp'），避免反斜杠被当成转义；
+# - 占位符白名单见 Rules/Data/RuleTemplateResolver.cs，写错会直接构建失败；
+# - evidence 写「为什么删这些是安全的」，这是审计时第一个被看的字段；
+# - 迁移期与硬编码规则并存，等价性由 RuleCatalogEquivalenceTests 与规则定义指纹共同保证。
+
+[[rule]]
+id = "system.temp.user"
+name = "User Temp"
+category = "TempFiles"
+safety = "Safe"
+path = '{TEMP}'
+description = "应用程序产生的临时文件。这些是软件运行时写入的临时数据，关闭对应软件后可安全删除。"
+evidence = 'Windows 把当前用户的临时目录指向 %TEMP%（默认 %LOCALAPPDATA%\Temp）。程序正常退出后其中的文件即无引用，删除后应用会按需重建目录。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.temp.windows"
+name = "Windows Temp"
+category = "TempFiles"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Temp'
+description = "Windows 系统临时文件。系统服务和后台进程产生，可安全删除。"
+evidence = '系统级临时目录，由系统服务与安装程序写入；正在被占用的文件会删除失败并被跳过，不会影响运行中的程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.temp.prefetch"
+name = "Prefetch"
+category = "TempFiles"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Prefetch'
+description = "应用启动预读取缓存。Windows 会根据使用习惯自动重建，删除后前几次启动略慢。"
+evidence = 'Prefetch 是 Windows 记录启动路径以加速加载的缓存目录，删除后系统会重新采集；代价仅是之后几次启动稍慢。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.temp.local-service"
+name = "LocalService Temp"
+category = "TempFiles"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\ServiceProfiles\LocalService\AppData\Local\Temp'
+description = "LocalService 系统账户的临时文件。系统服务运行时产生，可安全删除。"
+evidence = 'LocalService 是内置低权限服务账户，其临时目录只保存服务运行期中间文件；占用中的文件会被跳过。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.temp.network-service"
+name = "NetworkService Temp"
+category = "TempFiles"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\ServiceProfiles\NetworkService\AppData\Local\Temp'
+description = "NetworkService 系统账户的临时文件。网络相关服务运行时产生，可安全删除。"
+evidence = 'NetworkService 是内置服务账户，其临时目录只保存网络相关服务的运行期中间文件；占用中的文件会被跳过。'
+verified_at = "2026-11-05"

@@ -19,8 +19,20 @@ public class RuleDefinitionFingerprintTests
     /// <summary>规则总数。新增/删除规则必须同时改这里和指纹。</summary>
     private const int ExpectedRuleCount = 124;
 
-    /// <summary>全部规则定义（规范化后）的 SHA256。</summary>
-    private const string ExpectedFingerprint = "72C55DC81784E164B284369FF226FA6F8B38482EA027CB6EDDA9112F29B5D54F";
+    /// <summary>
+    /// 已迁移到 Rules/Catalog/*.toml 的规则数（只有数据驱动规则才带 Id）。
+    /// 每迁移一批就更新这里 —— 强制迁移进度可见，避免"以为迁完了其实只迁了 5 条"。
+    /// </summary>
+    private const int ExpectedMigratedRuleCount = 5;
+
+    /// <summary>
+    /// 全部规则定义（规范化后）的 SHA256。
+    ///
+    /// 迁移批次会**有意**改变这个值：路径从代码表达式变成数据模板（如 <c>C:\Windows\Temp</c> → <c>{SYSTEMDRIVE}\Windows\Temp</c>）。
+    /// 真正的等价性证据是 RuleCatalogTests.CatalogRules_AreEquivalentToHardcodedRules（逐字段 + 解析后路径对比），
+    /// 指纹只负责"除此之外没有别的改动"。
+    /// </summary>
+    private const string ExpectedFingerprint = "9913436D9165096B95FF70543B698433771712E1E951CCC52EE58B7C7F46B49F";
 
     [Fact]
     public void RuleDefinitions_MatchLockedFingerprint()
@@ -28,6 +40,7 @@ public class RuleDefinitionFingerprintTests
         var rules = RuleDatabase.GetAllRules();
 
         Assert.Equal(ExpectedRuleCount, rules.Count);
+        Assert.Equal(ExpectedMigratedRuleCount, rules.Count(r => !string.IsNullOrEmpty(r.Id)));
 
         var canonical = string.Join("\n", rules
             .Select(Canonicalize)
@@ -69,6 +82,9 @@ public class RuleDefinitionFingerprintTests
     {
         var patterns = rule.FilePatterns == null ? "" : string.Join(",", rule.FilePatterns.OrderBy(p => p, StringComparer.Ordinal));
 
+        // 数据驱动规则用 PathTemplate（含占位符，机器无关）；硬编码规则退回 Path。
+        var pathIdentity = string.IsNullOrEmpty(rule.PathTemplate) ? rule.Path : rule.PathTemplate;
+
         return string.Join("|",
             rule.Name,
             rule.Category.ToString(),
@@ -79,6 +95,6 @@ public class RuleDefinitionFingerprintTests
             rule.PatternsAreDirectories ? "dir" : "file",
             rule.IsEnabled ? "on" : "off",
             patterns,
-            rule.Path ?? "");
+            pathIdentity ?? "");
     }
 }

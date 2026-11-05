@@ -6,6 +6,15 @@ namespace CleanMaster.Rules;
 
 public class CleanupRule
 {
+    /// <summary>稳定标识（数据驱动规则来自 TOML 的 id；硬编码规则留空）。</summary>
+    public string Id { get; set; } = "";
+
+    /// <summary>
+    /// 数据驱动规则的路径模板（含 {LOCAL} 等占位符）；硬编码规则为空。
+    /// 与 <see cref="Path"/> 分开存放：模板是"定义"，Path 是"已解析的静态路径"。
+    /// </summary>
+    public string PathTemplate { get; set; } = "";
+
     public string Name { get; set; } = "";
     public string Path { get; set; } = "";
     public CleanSafety Safety { get; set; }
@@ -89,7 +98,14 @@ public static class RuleDatabase
     {
         var rules = new List<CleanupRule>();
         rules.AddRange(GetRecycleBinRules());
-        rules.AddRange(GetTempRules());
+
+        // RC-6：已迁移到 Rules/Catalog/*.toml 的规则（数据驱动）在硬编码规则之后合并。
+        // 规则文件编译期嵌入程序集，校验由 RuleCatalogTests 保证；这里只做防御性日志。
+        var catalog = Rules.Data.RuleCatalogLoader.LoadEmbedded();
+        if (catalog.Errors.Count > 0)
+            CleanMaster.App.LogError("RuleCatalog", new InvalidOperationException(string.Join(" | ", catalog.Errors)));
+        rules.AddRange(catalog.Rules.Select(Rules.Data.RuleCatalogLoader.ToCleanupRule));
+
         rules.AddRange(GetWindowsUpdateRules());
         rules.AddRange(GetWindowsLogRules());
         rules.AddRange(GetBrowserCacheRules());
@@ -119,53 +135,6 @@ public static class RuleDatabase
             Description = "回收站中的文件。这些是用户主动删除的内容，清空后无法恢复。",
             SoftwareName = "",
             FileType = "回收站"
-        }
-    ];
-
-    // ──────────────────────────────────────────────────────────────────
-    //  Temp / Prefetch
-    // ──────────────────────────────────────────────────────────────────
-    private static List<CleanupRule> GetTempRules() =>
-    [
-        new()
-        {
-            Name = "User Temp",
-            PathFactory = () => Path.GetTempPath(),
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.TempFiles,
-            Description = "应用程序产生的临时文件。这些是软件运行时写入的临时数据，关闭对应软件后可安全删除。"
-        },
-        new()
-        {
-            Name = "Windows Temp",
-            Path = $@"{SystemDrive}Windows\Temp",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.TempFiles,
-            Description = "Windows 系统临时文件。系统服务和后台进程产生，可安全删除。"
-        },
-        new()
-        {
-            Name = "Prefetch",
-            Path = $@"{SystemDrive}Windows\Prefetch",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.TempFiles,
-            Description = "应用启动预读取缓存。Windows 会根据使用习惯自动重建，删除后前几次启动略慢。"
-        },
-        new()
-        {
-            Name = "LocalService Temp",
-            Path = $@"{SystemDrive}Windows\ServiceProfiles\LocalService\AppData\Local\Temp",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.TempFiles,
-            Description = "LocalService 系统账户的临时文件。系统服务运行时产生，可安全删除。"
-        },
-        new()
-        {
-            Name = "NetworkService Temp",
-            Path = $@"{SystemDrive}Windows\ServiceProfiles\NetworkService\AppData\Local\Temp",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.TempFiles,
-            Description = "NetworkService 系统账户的临时文件。网络相关服务运行时产生，可安全删除。"
         }
     ];
 

@@ -156,73 +156,6 @@ public static class RuleDatabase
 
         return
         [
-            // ── Lingma / MarsCode / Qoder / Codex ──
-            new()
-            {
-                Name = "Lingma Cache",
-                PathFactory = () => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @".lingma\cache"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "阿里巴巴通义灵码 AI 助手缓存。"            },
-            new()
-            {
-                Name = "Lingma Index",
-                PathFactory = () => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @".lingma\index"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "通义灵码代码索引。删除后 AI 补全首次启用会重新索引项目。"
-            },
-            new()
-            {
-                Name = "Lingma Logs",
-                PathFactory = () => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @".lingma\logs"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "通义灵码日志文件。"
-            },
-            new()
-            {
-                Name = "Codex Temp",
-                PathFactory = () => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @".codex\.tmp"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "OpenAI Codex CLI 临时文件。"
-            },
-            new()
-            {
-                Name = "MarsCode Cache",
-                PathFactory = () => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @".marscode\cache"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "字节豆包 MarsCode AI 助手缓存。删除后扩展会重建索引。"
-            },
-            new()
-            {
-                Name = "Qoder shared_client",
-                PathFactory = () => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @".qoder-cn\shared_client"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "Qoder AI 客户端缓存。"
-            },
-
-            // ── WeChat / QQ ──
-            // 注意: 不再扫描整个 WeChat / QQ 根目录, 防止误删配置/聊天数据库。
-            // 只枚举明确的缓存子目录: Cache / GPUCache / Code Cache / logs / Temp 等。
-            // 微信 4.0 (Weixin) 数据在 %APPDATA%\Tencent\xwechat，缓存大户是 log/radium/xplugin/net。
-            new()
-            {
-                Name = "WeChat 4.0 Logs (xwechat)",
-                PathFactory = () => Path.Combine(roaming, @"Tencent\xwechat\log"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "微信 4.0 日志文件。记录运行日志，可安全删除。"
-            },
             new()
             {
                 Name = "WeChat 4.0 Radium Cache (xwechat)",
@@ -230,34 +163,6 @@ public static class RuleDatabase
                 Safety = CleanSafety.Caution,
                 Category = CleanCategory.AppCache,
                 Description = "微信 4.0 小程序/渲染缓存。删除后小程序需重新加载，不影响聊天记录。"
-            },
-            new()
-            {
-                Name = "WeChat 4.0 Plugin Cache (xwechat)",
-                PathFactory = () => Path.Combine(roaming, @"Tencent\xwechat\xplugin"),
-                Safety = CleanSafety.Caution,
-                Category = CleanCategory.AppCache,
-                Description = "微信 4.0 插件缓存。删除后插件需重新下载，不影响聊天记录。"
-            },
-            new()
-            {
-                Name = "WeChat 4.0 Network Cache (xwechat)",
-                PathFactoryMulti = () => FindSubdirs(
-                    Path.Combine(roaming, @"Tencent\xwechat"),
-                    "net", "net_1", "net_2", "net_3", "net_4", "net_5", "net_6", "net_7", "net_8", "crashinfo", "update"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "微信 4.0 网络缓存、崩溃信息、更新缓存。可安全删除。"
-            },
-            new()
-            {
-                Name = "WeChat Cache",
-                PathFactoryMulti = () => FindSubdirs(
-                    Path.Combine(roaming, @"Tencent\WeChat"),
-                    "Cache", "GPUCache", "Code Cache", "logs", "Temp"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "微信缓存子目录。删除不影响聊天记录和历史文件，下次使用时缓存会重新生成。"
             },
             new()
             {
@@ -285,26 +190,6 @@ public static class RuleDatabase
             },
             new()
             {
-                Name = "QQ Cache",
-                PathFactoryMulti = () => FindSubdirs(
-                    Path.Combine(roaming, @"Tencent\QQ"),
-                    "Cache", "GPUCache", "Code Cache", "logs", "Temp"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "QQ 缓存子目录。删除不影响聊天记录，下次使用时缓存会重新生成。"
-            },
-            new()
-            {
-                Name = "QQNT Cache",
-                PathFactoryMulti = () => FindSubdirs(
-                    Path.Combine(roaming, @"Tencent\QQNT"),
-                    "Cache", "GPUCache", "Code Cache", "logs"),
-                Safety = CleanSafety.Caution,
-                Category = CleanCategory.AppCache,
-                Description = "新版 QQ (QQNT) 缓存子目录。删除不影响聊天记录，但下次启动时部分历史媒体需重新下载。"
-            },
-            new()
-            {
                 Name = "WeCom (企业微信) Cache",
                 PathFactoryMulti = () =>
                 {
@@ -315,42 +200,6 @@ public static class RuleDatabase
                 Safety = CleanSafety.Caution,
                 Category = CleanCategory.AppCache,
                 Description = "企业微信缓存。仅清理 GPUCache/Code Cache 等子目录，不会删除聊天记录数据库和已接收文件。"
-            },
-            new()
-            {
-                Name = "Tencent Video Cache",
-                PathFactoryMulti = () => FindSubdirs(Path.Combine(local, @"Tencent\QQLive"), "Cache", "GPUCache", "logs"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "腾讯视频客户端缓存。包含播放器临时数据，删除后自动重建。"
-            },
-            new()
-            {
-                Name = "WeGame Cache",
-                PathFactoryMulti = () => FindSubdirs(Path.Combine(roaming, @"Tencent\WeGame"), "Cache", "logs"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "WeGame 平台缓存。包含游戏更新临时文件，删除后自动重建。"
-            },
-
-            // ── Office / WPS ──
-            new()
-            {
-                Name = "WPS Cache",
-                PathFactoryMulti = () => FindSubdirs(Path.Combine(roaming, @"kingsoft\wps"), "Cache", "backup"),
-                Safety = CleanSafety.Caution,
-                Category = CleanCategory.AppCache,
-                Description = "WPS Office 缓存与备份。注意：backup 目录可能包含未保存文档的自动保存版本，建议确认后再清理。"
-            },
-
-            // ── 国产视频 / 音乐 / 网盘 ──
-            new()
-            {
-                Name = "iQiyi (爱奇艺) Cache",
-                PathFactoryMulti = () => FindSubdirs(Path.Combine(local, @"iqiyi"), "Cache", "GPUCache", "Code Cache", "logs"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "爱奇艺客户端缓存。删除后下次播放视频会重新加载资源。"
             },
             new()
             {
@@ -442,8 +291,6 @@ public static class RuleDatabase
                 Category = CleanCategory.AppCache,
                 Description = "迅雷下载器缓存与日志。下载中的任务不会受影响。"
             },
-
-            // ── 即时通讯 / 协作 ──
             new()
             {
                 Name = "DingTalk (钉钉) Cache",
@@ -480,8 +327,6 @@ public static class RuleDatabase
                 Category = CleanCategory.AppCache,
                 Description = "飞书客户端缓存。删除后下次打开会重新加载资源，不影响聊天记录和文件。"
             },
-
-            // ── Electron 通用 ──
             new()
             {
                 Name = "Notion Cache",
@@ -521,8 +366,6 @@ public static class RuleDatabase
                 Category = CleanCategory.AppCache,
                 Description = "Discord 桌面客户端缓存。删除后聊天和好友列表不受影响。"
             },
-
-            // ── Windows 资源管理器 ──
             new()
             {
                 Name = "缩略图缓存",

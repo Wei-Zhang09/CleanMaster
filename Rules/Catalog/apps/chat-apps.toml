@@ -1,0 +1,84 @@
+# chat-apps.toml（RC-6 迁移批次）
+#
+# 由硬编码规则迁移而来；多路径规则用 paths = [...] 表达。
+
+
+[[rule]]
+id = "app.qq-cache"
+name = "QQ Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{ROAMING}\Tencent\QQ\Cache', '{ROAMING}\Tencent\QQ\GPUCache', '{ROAMING}\Tencent\QQ\Code Cache', '{ROAMING}\Tencent\QQ\logs', '{ROAMING}\Tencent\QQ\Temp']
+description = "QQ 缓存子目录。删除不影响聊天记录，下次使用时缓存会重新生成。"
+evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.qqnt-cache"
+name = "QQNT Cache"
+category = "AppCache"
+safety = "Caution"
+paths = ['{ROAMING}\Tencent\QQNT\Cache', '{ROAMING}\Tencent\QQNT\GPUCache', '{ROAMING}\Tencent\QQNT\Code Cache', '{ROAMING}\Tencent\QQNT\logs']
+description = "新版 QQ (QQNT) 缓存子目录。删除不影响聊天记录，但下次启动时部分历史媒体需重新下载。"
+evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.tencent-video-cache"
+name = "Tencent Video Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\Tencent\QQLive\Cache', '{LOCAL}\Tencent\QQLive\GPUCache', '{LOCAL}\Tencent\QQLive\logs']
+description = "腾讯视频客户端缓存。包含播放器临时数据，删除后自动重建。"
+evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wps-cache"
+name = "WPS Cache"
+category = "AppCache"
+safety = "Caution"
+paths = ['{ROAMING}\kingsoft\wps\Cache', '{ROAMING}\kingsoft\wps\backup']
+description = "WPS Office 缓存与备份。注意：backup 目录可能包含未保存文档的自动保存版本，建议确认后再清理。"
+evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wechat-4-0-network-cache-xwechat"
+name = "WeChat 4.0 Network Cache (xwechat)"
+category = "AppCache"
+safety = "Safe"
+paths = ['{ROAMING}\Tencent\xwechat\net', '{ROAMING}\Tencent\xwechat\net_1', '{ROAMING}\Tencent\xwechat\net_2', '{ROAMING}\Tencent\xwechat\net_3', '{ROAMING}\Tencent\xwechat\net_4', '{ROAMING}\Tencent\xwechat\net_5', '{ROAMING}\Tencent\xwechat\net_6', '{ROAMING}\Tencent\xwechat\net_7', '{ROAMING}\Tencent\xwechat\net_8', '{ROAMING}\Tencent\xwechat\crashinfo', '{ROAMING}\Tencent\xwechat\update']
+description = "微信 4.0 网络缓存、崩溃信息、更新缓存。可安全删除。"
+evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wechat-cache"
+name = "WeChat Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{ROAMING}\Tencent\WeChat\Cache', '{ROAMING}\Tencent\WeChat\GPUCache', '{ROAMING}\Tencent\WeChat\Code Cache', '{ROAMING}\Tencent\WeChat\logs', '{ROAMING}\Tencent\WeChat\Temp']
+description = "微信缓存子目录。删除不影响聊天记录和历史文件，下次使用时缓存会重新生成。"
+evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wegame-cache"
+name = "WeGame Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{ROAMING}\Tencent\WeGame\Cache', '{ROAMING}\Tencent\WeGame\logs']
+description = "WeGame 平台缓存。包含游戏更新临时文件，删除后自动重建。"
+evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.iqiyi-cache"
+name = "iQiyi (爱奇艺) Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\iqiyi\Cache', '{LOCAL}\iqiyi\GPUCache', '{LOCAL}\iqiyi\Code Cache', '{LOCAL}\iqiyi\logs']
+description = "爱奇艺客户端缓存。删除后下次播放视频会重新加载资源。"
+evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"

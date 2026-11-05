@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(65, result.Rules.Count);
+        Assert.Equal(73, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -105,6 +105,14 @@ public class RuleCatalogTests
         ("app.qoder-shared-client", "Qoder shared_client", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.qoder-cn\shared_client", Array.Empty<string>(), true, -1),
         ("app.wechat-4-0-logs-xwechat", "WeChat 4.0 Logs (xwechat)", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Tencent\xwechat\log", Array.Empty<string>(), true, -1),
         ("app.wechat-4-0-plugin-cache-xwechat", "WeChat 4.0 Plugin Cache (xwechat)", CleanCategory.AppCache, CleanSafety.Caution, @"{ROAMING}\Tencent\xwechat\xplugin", Array.Empty<string>(), true, -1),
+        ("app.qq-cache", "QQ Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Tencent\QQ\Cache|{ROAMING}\Tencent\QQ\GPUCache|{ROAMING}\Tencent\QQ\Code Cache|{ROAMING}\Tencent\QQ\logs|{ROAMING}\Tencent\QQ\Temp", Array.Empty<string>(), true, -1),
+        ("app.qqnt-cache", "QQNT Cache", CleanCategory.AppCache, CleanSafety.Caution, @"{ROAMING}\Tencent\QQNT\Cache|{ROAMING}\Tencent\QQNT\GPUCache|{ROAMING}\Tencent\QQNT\Code Cache|{ROAMING}\Tencent\QQNT\logs", Array.Empty<string>(), true, -1),
+        ("app.tencent-video-cache", "Tencent Video Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Tencent\QQLive\Cache|{LOCAL}\Tencent\QQLive\GPUCache|{LOCAL}\Tencent\QQLive\logs", Array.Empty<string>(), true, -1),
+        ("app.wps-cache", "WPS Cache", CleanCategory.AppCache, CleanSafety.Caution, @"{ROAMING}\kingsoft\wps\Cache|{ROAMING}\kingsoft\wps\backup", Array.Empty<string>(), true, -1),
+        ("app.wechat-4-0-network-cache-xwechat", "WeChat 4.0 Network Cache (xwechat)", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Tencent\xwechat\net|{ROAMING}\Tencent\xwechat\net_1|{ROAMING}\Tencent\xwechat\net_2|{ROAMING}\Tencent\xwechat\net_3|{ROAMING}\Tencent\xwechat\net_4|{ROAMING}\Tencent\xwechat\net_5|{ROAMING}\Tencent\xwechat\net_6|{ROAMING}\Tencent\xwechat\net_7|{ROAMING}\Tencent\xwechat\net_8|{ROAMING}\Tencent\xwechat\crashinfo|{ROAMING}\Tencent\xwechat\update", Array.Empty<string>(), true, -1),
+        ("app.wechat-cache", "WeChat Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Tencent\WeChat\Cache|{ROAMING}\Tencent\WeChat\GPUCache|{ROAMING}\Tencent\WeChat\Code Cache|{ROAMING}\Tencent\WeChat\logs|{ROAMING}\Tencent\WeChat\Temp", Array.Empty<string>(), true, -1),
+        ("app.wegame-cache", "WeGame Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Tencent\WeGame\Cache|{ROAMING}\Tencent\WeGame\logs", Array.Empty<string>(), true, -1),
+        ("app.iqiyi-cache", "iQiyi (爱奇艺) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\iqiyi\Cache|{LOCAL}\iqiyi\GPUCache|{LOCAL}\iqiyi\Code Cache|{LOCAL}\iqiyi\logs", Array.Empty<string>(), true, -1),
     };
 
     [Fact]
@@ -124,7 +132,8 @@ public class RuleCatalogTests
             Assert.Equal(expected.Name, actual.Name);
             Assert.Equal(expected.Category, Enum.Parse<CleanCategory>(actual.Category, true));
             Assert.Equal(expected.Safety, Enum.Parse<CleanSafety>(actual.Safety, true));
-            Assert.Equal(expected.PathTemplate, actual.EffectivePaths.Single());
+            // 多路径规则用 | 连接成一个字符串比较（单路径规则不受影响）
+            Assert.Equal(expected.PathTemplate, string.Join("|", actual.EffectivePaths));
             Assert.Equal(expected.Patterns, actual.Patterns);
             Assert.Equal(expected.PatternsAreDirectories, actual.PatternsAreDirectories);
             Assert.Equal(expected.MaxDepth, actual.MaxDepth);

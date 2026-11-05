@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using CleanMaster.Services;
 
 namespace CleanMaster.Tests.Services;
@@ -108,5 +109,76 @@ public class DuplicateServiceTests : IDisposable
         Assert.NotEmpty(percents);
         Assert.All(percents, p => Assert.InRange(p, 0, 100));
         Assert.Equal(100, percents[^1], 3);
+    }
+
+    [Fact]
+    public async Task FindDuplicates_HardLinkPlusCopy_CountsOnlyPhysicalFiles()
+    {
+        // 一条硬链接 + 一份真实副本：物理上只有 2 个文件，可回收量应为 1 份。
+        var content = new string('L', 4096);
+        var original = Path.Combine(_testDir, "orig.bin");
+        var link = Path.Combine(_testDir, "link.bin");
+        var copy = Path.Combine(_testDir, "copy.bin");
+
+        File.WriteAllText(original, content);
+        if (!TryCreateHardLink(link, original)) return; // 非 NTFS 环境跳过（无法验证硬链接语义）
+        File.WriteAllText(copy, content);
+
+        var groups = await _service.FindDuplicatesAsync(
+            scanPaths: new[] { _testDir },
+            minFileSize: 1024);
+
+        Assert.Single(groups);
+        Assert.Equal(2, groups[0].Files.Count);
+        Assert.Equal(4096, groups[0].WastedSpace);
+        Assert.Equal(1, _service.LinkedPathsSkipped);
+    }
+
+    [Fact]
+    public async Task FindDuplicates_OnlyHardLinks_ReturnsNoGroup()
+    {
+        // 同一物理文件的两条路径：删掉任何一条都不释放空间，不能报成重复文件。
+        var original = Path.Combine(_testDir, "only_orig.bin");
+        var link = Path.Combine(_testDir, "only_link.bin");
+
+        File.WriteAllText(original, new string('K', 4096));
+        if (!TryCreateHardLink(link, original)) return;
+
+        var groups = await _service.FindDuplicatesAsync(
+            scanPaths: new[] { _testDir },
+            minFileSize: 1024);
+
+        Assert.Empty(groups);
+        Assert.Equal(1, _service.LinkedPathsSkipped);
+    }
+
+    [Fact]
+    public void FileIdentity_SameHardLink_ReturnsSameIdentity()
+    {
+        var original = Path.Combine(_testDir, "id_orig.bin");
+        var link = Path.Combine(_testDir, "id_link.bin");
+
+        File.WriteAllText(original, "identity-probe");
+        if (!TryCreateHardLink(link, original)) return;
+
+        using var h1 = File.OpenHandle(original, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var h2 = File.OpenHandle(link, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        Assert.True(FileIdentityReader.TryRead(h1, out var id1));
+        Assert.True(FileIdentityReader.TryRead(h2, out var id2));
+        Assert.Equal(id1, id2);
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CreateHardLinkW(
+        string lpFileName,
+        string lpExistingFileName,
+        IntPtr lpSecurityAttributes);
+
+    private static bool TryCreateHardLink(string linkPath, string existingPath)
+    {
+        try { return CreateHardLinkW(linkPath, existingPath, IntPtr.Zero); }
+        catch { return false; }
     }
 }

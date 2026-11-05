@@ -42,6 +42,12 @@ public class DuplicateService
 {
     public event Action<DuplicateScanProgress>? ProgressChanged;
 
+    /// <summary>
+    /// 上次扫描中被剔除的"同一物理文件的多条路径"数量（硬链接 / junction 指向同一份数据）。
+    /// 它们不是重复文件：删掉任意一条链接都不释放空间，所以不进结果、不计入可回收量。
+    /// </summary>
+    public int LinkedPathsSkipped { get; private set; }
+
     // Only scan user directories for speed
     private static readonly string[] ScanPaths = new[]
     {
@@ -89,6 +95,8 @@ public class DuplicateService
 
         return await Task.Run(() =>
         {
+            LinkedPathsSkipped = 0;
+
             // ---- Phase 1: 枚举并按大小分组（0-30%） ----
             var sizeGroups = new Dictionary<long, List<string>>();
             int filesScanned = 0;
@@ -176,6 +184,9 @@ public class DuplicateService
             var hashGroups = new Dictionary<string, List<DuplicateFile>>(StringComparer.Ordinal);
             var quickCandidates = quickGroups.Where(kv => kv.Value.Count > 1).ToList();
             int hashedGroups = 0;
+            int linkedSkipped = 0;
+            // 全卷范围内已见过的物理文件身份。同一身份只允许一条路径进入结果。
+            var seenIdentities = new HashSet<FileIdentity>();
             var sync = new object();
 
             Parallel.ForEach(
@@ -187,18 +198,17 @@ public class DuplicateService
                 },
                 group =>
                 {
-                    var local = new List<(string Hash, DuplicateFile File)>(group.Value.Count);
+                    var local = new List<(string Hash, FileIdentity Identity, DuplicateFile File)>(group.Value.Count);
 
                     foreach (var filePath in group.Value)
                     {
                         ct.ThrowIfCancellationRequested();
                         try
                         {
-                            var hash = ComputeFileHash(filePath);
-                            if (hash == null) continue;
+                            if (!TryHashFile(filePath, out var hash, out var identity)) continue;
 
                             var fi = new FileInfo(filePath);
-                            local.Add((hash, new DuplicateFile
+                            local.Add((hash, identity, new DuplicateFile
                             {
                                 FileName = fi.Name,
                                 FullPath = fi.FullName,
@@ -211,8 +221,16 @@ public class DuplicateService
 
                     lock (sync)
                     {
-                        foreach (var (hash, file) in local)
+                        foreach (var (hash, identity, file) in local)
                         {
+                            // 硬链接 / junction 的多条路径指向同一物理文件：只保留一条代表。
+                            // 删掉多余链接不释放空间，算成"可回收"会骗用户。
+                            if (identity.IsKnown && !seenIdentities.Add(identity))
+                            {
+                                linkedSkipped++;
+                                continue;
+                            }
+
                             if (!hashGroups.TryGetValue(hash, out var bucket))
                             {
                                 bucket = new List<DuplicateFile>();
@@ -229,6 +247,13 @@ public class DuplicateService
                         }
                     }
                 });
+
+            LinkedPathsSkipped = linkedSkipped;
+            if (linkedSkipped > 0)
+            {
+                // 产品决策：不在 UI 展示硬链接剔除数量，只落日志（便于用户报障时核对可回收量差异）。
+                App.Log($"重复扫描跳过 {linkedSkipped} 条指向同一物理文件的路径（硬链接/junction），未计入可回收量");
+            }
 
             // ---- Phase 4: 构建结果（95-100%） ----
             var result = hashGroups
@@ -299,21 +324,30 @@ public class DuplicateService
         }
     }
 
-    private static string? ComputeFileHash(string filePath)
+    /// <summary>
+    /// 计算文件全量 SHA256，并用同一个句柄顺带取物理身份（供硬链接去重）。
+    /// 只 open 一次：身份查询与哈希共用句柄，避免每个候选文件多一次 open/close。
+    /// </summary>
+    private static bool TryHashFile(string filePath, out string hash, out FileIdentity identity)
     {
+        hash = "";
+        identity = default;
         try
         {
-            using var sha256 = SHA256.Create();
-            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var handle = File.OpenHandle(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            FileIdentityReader.TryRead(handle, out identity);
+
+            using var stream = new FileStream(handle, FileAccess.Read, 81920);
 
             const long largeFileThreshold = 100 * 1024 * 1024; // 100MB
             if (stream.Length <= largeFileThreshold)
             {
-                var hash = sha256.ComputeHash(stream);
-                return Convert.ToHexString(hash);
+                hash = Convert.ToHexString(SHA256.HashData(stream));
+                return true;
             }
 
             // For large files, read in chunks to avoid memory pressure
+            using var sha256 = SHA256.Create();
             var buffer = new byte[81920]; // 80KB chunks
             int bytesRead;
             while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
@@ -321,12 +355,15 @@ public class DuplicateService
                 sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
             }
             sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
-            return sha256.Hash != null ? Convert.ToHexString(sha256.Hash) : null;
+            if (sha256.Hash == null) return false;
+
+            hash = Convert.ToHexString(sha256.Hash);
+            return true;
         }
         catch (Exception ex)
         {
-            App.LogError("ComputeFileHash", ex);
-            return null;
+            App.LogError("TryHashFile", ex);
+            return false;
         }
     }
 

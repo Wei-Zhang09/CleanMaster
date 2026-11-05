@@ -16,9 +16,6 @@ namespace CleanMaster.Tests.Rules;
 /// </summary>
 public class RuleDefinitionFingerprintTests
 {
-    /// <summary>规则总数。新增/删除规则必须同时改这里和指纹。</summary>
-    private const int ExpectedRuleCount = 124;
-
     /// <summary>
     /// 已迁移到 Rules/Catalog/*.toml 的规则数（只有数据驱动规则才带 Id）。
     /// 每迁移一批就更新这里 —— 强制迁移进度可见，避免"以为迁完了其实只迁了 5 条"。
@@ -32,17 +29,21 @@ public class RuleDefinitionFingerprintTests
     /// 真正的等价性证据是 RuleCatalogTests.CatalogRules_AreEquivalentToHardcodedRules（逐字段 + 解析后路径对比），
     /// 指纹只负责"除此之外没有别的改动"。
     /// </summary>
-    private const string ExpectedFingerprint = "58E4BD57B44D856E2A094149FC2214F5EC6D63833EB4A65B69FD9AE31AFD8B9E";
+    private const string ExpectedFingerprint = "4C81495F5DC470B5450313C2BE738A7EB79B51FD7841839FD61788571A70CC79";
 
     [Fact]
     public void RuleDefinitions_MatchLockedFingerprint()
     {
         var rules = RuleDatabase.GetAllRules();
 
-        Assert.Equal(ExpectedRuleCount, rules.Count);
-        Assert.Equal(ExpectedMigratedRuleCount, rules.Count(r => !string.IsNullOrEmpty(r.Id)));
+        // 只对**数据驱动**的规则求指纹：带 Id 的都是 Rules/Catalog 里的规则，数量与内容不随机器变化。
+        // 游戏缓存 / Electron 自动发现那几条是按已装应用动态生成的（本机 124 条、CI 上 121 条），
+        // 把它们算进来会让这条测试在 CI 上必然失败 —— 这正是它第一次跑 CI 就红的原因。
+        var dataDriven = rules.Where(r => !string.IsNullOrEmpty(r.Id)).ToList();
 
-        var canonical = string.Join("\n", rules
+        Assert.Equal(ExpectedMigratedRuleCount, dataDriven.Count);
+
+        var canonical = string.Join("\n", dataDriven
             .Select(Canonicalize)
             .OrderBy(s => s, StringComparer.Ordinal));
 

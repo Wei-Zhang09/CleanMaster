@@ -1,0 +1,44 @@
+# Windows 更新相关缓存（RC-6 迁移批次 2）
+#
+# 注意：Windows.old 与 DataStore 标为 Caution —— 前者删了无法回退系统，后者会清空更新历史。
+# 安全等级必须与硬编码规则完全一致，否则 RuleCatalogTests 的等价性断言会红。
+
+[[rule]]
+id = "system.update.download-cache"
+name = "WU Download Cache"
+category = "WindowsUpdate"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\SoftwareDistribution\Download'
+description = "Windows 更新下载缓存。已安装完成的更新对应的下载文件，可安全删除。未安装完的更新会重新下载。"
+evidence = 'SoftwareDistribution\Download 存放已下载的更新包；已安装的更新其内容已写入系统，删除该目录只会让未完成的更新重新下载。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.update.datastore"
+name = "WU DataStore"
+category = "WindowsUpdate"
+safety = "Caution"
+path = '{SYSTEMDRIVE}\Windows\SoftwareDistribution\DataStore'
+description = "Windows 更新数据库。记录已安装更新列表。清理后更新历史记录会被清空，但不影响已安装的更新本身。"
+evidence = 'DataStore 里的 DataStore.edb 记录更新安装历史，删除只影响"更新历史"的展示与查询，已安装的补丁文件本身不受影响；但更新历史会丢失，因此标为 Caution。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.update.delivery-optimization"
+name = "Delivery Optimization"
+category = "WindowsUpdate"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\SoftwareDistribution\DeliveryOptimization'
+description = "Windows 更新分发优化文件。用于局域网内分摊更新下载流量，可安全删除。"
+evidence = '传递优化缓存用于在局域网内共享更新片段，属可重建缓存；删除后系统按需重新缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.update.windows-old"
+name = "Windows.old"
+category = "WindowsUpdate"
+safety = "Caution"
+path = '{SYSTEMDRIVE}\Windows.old'
+description = "Windows 升级备份（Windows.old）。用于回退到旧版本。清理后无法回退，建议升级满 10 天后再清理。"
+evidence = 'Windows.old 是系统升级时保留的上一版本备份，唯一用途是回退到旧版本；删除后无法通过"回退"功能降级，故标 Caution 并在描述中提示保留期。'
+verified_at = "2026-11-05"

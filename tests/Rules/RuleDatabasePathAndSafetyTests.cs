@@ -152,7 +152,9 @@ public class RuleDatabasePathAndSafetyTests
         // already contains CBS, DISM, Compressed etc. Now it must use FilePatterns for
         // top-level *.log only to avoid double-counting.
         var rules = RuleDatabase.GetAllRules();
-        var winLogs = rules.First(r => r.Name.StartsWith("Windows Logs", StringComparison.OrdinalIgnoreCase));
+        // 精确按名称取：不能再用 StartsWith("Windows Logs")，因为还有 "Windows Logs Compressed"，
+        // 且迁移到数据目录后规则按 id 排序，"Compressed" 会排在 "(top-level)" 前面。
+        var winLogs = rules.First(r => r.Name == "Windows Logs (top-level)");
 
         Assert.NotNull(winLogs.FilePatterns);
         Assert.True(winLogs.FilePatterns!.Contains("*.log"));

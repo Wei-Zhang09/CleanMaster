@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(5, result.Rules.Count);
+        Assert.Equal(20, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -44,39 +44,59 @@ public class RuleCatalogTests
     }
 
     /// <summary>
-    /// 迁移等价性：TOML 里的 5 条规则必须与 RuleDatabase 里的同名硬编码规则逐字段一致。
-    /// 这条测试红了，说明迁移改变了行为，不能合并。
+    /// 迁移黄金表：每条已迁移规则的**完整定义**锁在这里。
+    ///
+    /// 为什么不能跟硬编码规则比：迁移完成后硬编码那条已被删除，没有对照物了。
+    /// 所以把迁移当时的定义固化成表 —— 之后任何人改 TOML 的路径模板/模式/安全等级都会被抓住。
+    /// 新增迁移批次时，把新规则的期望值加进这张表。
     /// </summary>
+    private static readonly (string Id, string Name, CleanCategory Category, CleanSafety Safety,
+        string PathTemplate, string[] Patterns, bool PatternsAreDirectories, int MaxDepth)[] Golden =
+    {
+        ("system.logs.cbs", "CBS Logs", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Logs\CBS", Array.Empty<string>(), true, -1),
+        ("system.logs.compressed", "Windows Logs Compressed", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Logs\Compressed", Array.Empty<string>(), true, -1),
+        ("system.logs.debug", "Windows Debug", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\debug", Array.Empty<string>(), true, -1),
+        ("system.logs.defender-history", "Windows Defender History", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Windows Defender\Scans\History", Array.Empty<string>(), true, -1),
+        ("system.logs.dism", "DISM Logs", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Logs\DISM", Array.Empty<string>(), true, -1),
+        ("system.logs.dpx", "DPX Logs", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Logs\DPX", Array.Empty<string>(), true, -1),
+        ("system.logs.logfiles", "Windows LogFiles", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\System32\LogFiles", Array.Empty<string>(), true, -1),
+        ("system.logs.panther", "Setup Logs (Panther)", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Panther", Array.Empty<string>(), true, -1),
+        ("system.logs.security", "Security Logs", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\security\logs", Array.Empty<string>(), true, -1),
+        ("system.logs.sysreset", "SysReset Logs", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\$SysReset", Array.Empty<string>(), true, -1),
+        ("system.logs.top-level", "Windows Logs (top-level)", CleanCategory.WindowsLogs, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Logs", new[] { "*.log", "*.etl", "*.cab", "*.xml" }, false, -1),
+        ("system.temp.local-service", "LocalService Temp", CleanCategory.TempFiles, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\ServiceProfiles\LocalService\AppData\Local\Temp", Array.Empty<string>(), true, -1),
+        ("system.temp.network-service", "NetworkService Temp", CleanCategory.TempFiles, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\ServiceProfiles\NetworkService\AppData\Local\Temp", Array.Empty<string>(), true, -1),
+        ("system.temp.prefetch", "Prefetch", CleanCategory.TempFiles, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Prefetch", Array.Empty<string>(), true, -1),
+        ("system.temp.user", "User Temp", CleanCategory.TempFiles, CleanSafety.Safe, @"{TEMP}", Array.Empty<string>(), true, -1),
+        ("system.temp.windows", "Windows Temp", CleanCategory.TempFiles, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Temp", Array.Empty<string>(), true, -1),
+        ("system.update.datastore", "WU DataStore", CleanCategory.WindowsUpdate, CleanSafety.Caution, @"{SYSTEMDRIVE}\Windows\SoftwareDistribution\DataStore", Array.Empty<string>(), true, -1),
+        ("system.update.delivery-optimization", "Delivery Optimization", CleanCategory.WindowsUpdate, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\SoftwareDistribution\DeliveryOptimization", Array.Empty<string>(), true, -1),
+        ("system.update.download-cache", "WU Download Cache", CleanCategory.WindowsUpdate, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\SoftwareDistribution\Download", Array.Empty<string>(), true, -1),
+        ("system.update.windows-old", "Windows.old", CleanCategory.WindowsUpdate, CleanSafety.Caution, @"{SYSTEMDRIVE}\Windows.old", Array.Empty<string>(), true, -1)
+    };
+
     [Fact]
-    public void CatalogRules_AreEquivalentToHardcodedRules()
+    public void CatalogRules_MatchLockedGoldenTable()
     {
         var catalog = RuleCatalogLoader.LoadEmbedded();
         Assert.True(catalog.IsValid, string.Join("\n", catalog.Errors));
 
-        var hardcoded = RuleDatabase.GetAllRules().ToDictionary(r => r.Name, r => r, StringComparer.Ordinal);
+        Assert.Equal(Golden.Length, catalog.Rules.Count);
 
-        foreach (var definition in catalog.Rules)
+        foreach (var expected in Golden)
         {
-            Assert.True(hardcoded.TryGetValue(definition.Name, out var expected),
-                $"硬编码规则库里找不到同名规则：{definition.Name}");
+            var actual = catalog.Rules.Single(r => r.Id == expected.Id);
 
-            var actual = RuleCatalogLoader.ToCleanupRule(definition);
-
-            Assert.Equal(expected!.Category, actual.Category);
-            Assert.Equal(expected.Safety, actual.Safety);
-            Assert.Equal(expected.MaxDepth, actual.MaxDepth);
-            Assert.Equal(expected.IsEnabled, actual.IsEnabled);
+            Assert.Equal(expected.Name, actual.Name);
+            Assert.Equal(expected.Category, Enum.Parse<CleanCategory>(actual.Category, true));
+            Assert.Equal(expected.Safety, Enum.Parse<CleanSafety>(actual.Safety, true));
+            Assert.Equal(expected.PathTemplate, actual.EffectivePaths.Single());
+            Assert.Equal(expected.Patterns, actual.Patterns);
             Assert.Equal(expected.PatternsAreDirectories, actual.PatternsAreDirectories);
-            Assert.Equal(expected.SoftwareName ?? "", actual.SoftwareName ?? "");
-            Assert.Equal(expected.FileType ?? "", actual.FileType ?? "");
-
-            var expectedPatterns = expected.FilePatterns ?? Array.Empty<string>();
-            var actualPatterns = actual.FilePatterns ?? Array.Empty<string>();
-            Assert.Equal(expectedPatterns, actualPatterns);
-
-            var expectedPaths = expected.GetResolvedPaths().Select(Normalize).OrderBy(p => p).ToList();
-            var actualPaths = actual.GetResolvedPaths().Select(Normalize).OrderBy(p => p).ToList();
-            Assert.Equal(expectedPaths, actualPaths);
+            Assert.Equal(expected.MaxDepth, actual.MaxDepth);
+            Assert.True(actual.Enabled);
+            Assert.False(string.IsNullOrWhiteSpace(actual.Evidence), $"{expected.Id}: 迁移规则必须写 evidence");
+            Assert.False(string.IsNullOrWhiteSpace(actual.VerifiedAt), $"{expected.Id}: 迁移规则必须写 verified_at");
         }
     }
 

@@ -1,0 +1,116 @@
+# Windows 日志（RC-6 迁移批次 3）
+#
+# 顶层规则用 patterns 只扫 *.log/*.etl/*.cab/*.xml，把子目录留给各自的规则，避免重复扫描。
+# patterns_are_directories = false 表示 patterns 匹配的是文件名而不是目录名。
+
+[[rule]]
+id = "system.logs.top-level"
+name = "Windows Logs (top-level)"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Logs'
+description = 'C:\Windows\Logs 下的顶层日志文件。'
+patterns = ["*.log", "*.etl", "*.cab", "*.xml"]
+patterns_are_directories = false
+evidence = 'Windows 日志目录下的顶层日志文件只记录历史事件，删除不影响系统功能；子目录（CBS/DISM/DPX 等）由各自规则单独管理，因此这里用 patterns 限定范围避免重复统计。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.cbs"
+name = "CBS Logs"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Logs\CBS'
+description = "Component-Based Servicing 日志。"
+evidence = 'CBS 日志记录组件服务（补丁安装）的详细过程，仅用于事后排查；系统会按需重建新日志。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.compressed"
+name = "Windows Logs Compressed"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Logs\Compressed'
+description = "已压缩的旧日志文件。"
+evidence = '该目录存放系统自动归档压缩的历史日志，属纯历史数据。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.dism"
+name = "DISM Logs"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Logs\DISM'
+description = "DISM 工具日志。"
+evidence = 'DISM 命令的历史执行日志，仅供排查组件修复过程。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.dpx"
+name = "DPX Logs"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Logs\DPX'
+description = "DPX 文件日志。"
+evidence = 'DPX 相关组件的诊断日志，属历史记录。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.panther"
+name = "Setup Logs (Panther)"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Panther'
+description = "Windows 安装与升级日志。"
+evidence = 'Panther 目录保存 Windows 安装/升级过程的日志与配置快照，安装完成后只作排查用途。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.sysreset"
+name = "SysReset Logs"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\$SysReset'
+description = "系统重置日志。"
+evidence = '"重置此电脑"功能的历史日志目录，重置完成后不再需要。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.logfiles"
+name = "Windows LogFiles"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\System32\LogFiles'
+description = "HTTP/sys、IIS 等系统服务的日志文件。"
+evidence = '系统服务（HTTP.sys、IIS 等）的运行日志，属历史记录；服务会按需新建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.debug"
+name = "Windows Debug"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\debug'
+description = "系统调试转储文件。"
+evidence = 'Windows\debug 保存调试与诊断输出（如 WER 相关转储），不参与系统运行。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.security"
+name = "Security Logs"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\security\logs'
+description = "Windows 安全日志文件。"
+evidence = '该目录是安全相关组件的日志文件目录（非事件查看器中的安全日志数据库）；文件本身是历史记录。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "system.logs.defender-history"
+name = "Windows Defender History"
+category = "WindowsLogs"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\ProgramData\Microsoft\Windows Defender\Scans\History'
+description = "Windows Defender 扫描历史记录。"
+evidence = 'Defender 的扫描历史记录，仅用于查看过往检测结果；删除不影响实时防护与病毒库。'
+verified_at = "2026-11-05"

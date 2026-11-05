@@ -23,7 +23,7 @@ public class RuleDefinitionFingerprintTests
     /// 已迁移到 Rules/Catalog/*.toml 的规则数（只有数据驱动规则才带 Id）。
     /// 每迁移一批就更新这里 —— 强制迁移进度可见，避免"以为迁完了其实只迁了 5 条"。
     /// </summary>
-    private const int ExpectedMigratedRuleCount = 112;
+    private const int ExpectedMigratedRuleCount = 119;
 
     /// <summary>
     /// 全部规则定义（规范化后）的 SHA256。
@@ -32,7 +32,7 @@ public class RuleDefinitionFingerprintTests
     /// 真正的等价性证据是 RuleCatalogTests.CatalogRules_AreEquivalentToHardcodedRules（逐字段 + 解析后路径对比），
     /// 指纹只负责"除此之外没有别的改动"。
     /// </summary>
-    private const string ExpectedFingerprint = "3DAC2CF96C7A15FD063D9024C13CABAB89A0AF722EE9471733A977D4011654D1";
+    private const string ExpectedFingerprint = "58E4BD57B44D856E2A094149FC2214F5EC6D63833EB4A65B69FD9AE31AFD8B9E";
 
     [Fact]
     public void RuleDefinitions_MatchLockedFingerprint()

@@ -36,6 +36,12 @@ public class RuleResolverTests
         ("devtools.docker-desktop-cache", "Docker Desktop cache", CleanCategory.DevToolCache, CleanSafety.Caution, "parent-subdirs", @"parent={LOCAL}\Docker;subs=cache,tmp"),
         ("app.edge-webview2-cache", "Edge WebView2 Cache", CleanCategory.AppCache, CleanSafety.Safe, "children-subdirs", @"parent={LOCAL}\Microsoft\EdgeWebView\User Data;subs=Cache,Code Cache,GPUCache,Service Worker"),
         ("app.uwp-localcache", "UWP/Store 应用 LocalCache", CleanCategory.AppCache, CleanSafety.Safe, "children-subdir", @"parent={LOCAL}\Packages;sub=LocalCache\Local"),
+        ("app.xunlei-cache", "迅雷 cache", CleanCategory.AppCache, CleanSafety.Safe, "parent-subdirs", @"parent={PROGRAMDATA}\Thunder Network\Downloader;subs=cache,logs"),
+        ("app.wechat-files-cache", "WeChat Files Cache", CleanCategory.AppCache, CleanSafety.Caution, "children-subdirs", @"parent={DOCUMENTS}\WeChat Files;subs=FileStorage\Temp,FileStorage\TempFromPhone,FileStorage\Cache,FileStorage\CDNFileStorage\Temp"),
+        ("app.wecom-cache", "WeCom (企业微信) Cache", CleanCategory.AppCache, CleanSafety.Caution, "parent-subdirs", @"parent={ROAMING}\Tencent\WXWork;subs=Cache,GPUCache,logs,tmp"),
+        ("app.dingtalk-cache", "DingTalk (钉钉) Cache", CleanCategory.AppCache, CleanSafety.Safe, "children-subdirs", @"parent={LOCAL}\DingTalk;subs=logs,tmp,Cache,GPUCache"),
+        ("app.feishu-cache", "Feishu (飞书) Cache", CleanCategory.AppCache, CleanSafety.Safe, "parent-subdirs", @"parent={LOCAL}\Feishu;subs=LarkShell\cache,LarkShell\logs,Cache,GPUCache"),
+        ("app.slack-cache", "Slack Cache", CleanCategory.AppCache, CleanSafety.Safe, "children-subdirs", @"parent={ROAMING}\Slack;subs=Cache,GPUCache,Code Cache"),
     };
 
     [Fact]

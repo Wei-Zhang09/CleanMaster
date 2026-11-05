@@ -82,3 +82,97 @@ paths = ['{LOCAL}\iqiyi\Cache', '{LOCAL}\iqiyi\GPUCache', '{LOCAL}\iqiyi\Code Ca
 description = "爱奇艺客户端缓存。删除后下次播放视频会重新加载资源。"
 evidence = '这些是聊天/视频客户端的缓存子目录；聊天记录、文件与账号配置存放在其他路径，删除后客户端会按需重建缓存。'
 verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wechat-4-0-radium"
+name = "WeChat 4.0 Radium Cache (xwechat)"
+category = "AppCache"
+safety = "Caution"
+path = '{ROAMING}\Tencent\xwechat\radium'
+description = "微信 4.0 小程序/渲染缓存。删除后小程序需重新加载，不影响聊天记录。"
+evidence = 'radium 是小程序与内嵌页面的运行期缓存；聊天数据库与已接收文件在 xwechat 的其他子目录，不在此路径内。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.xunlei-cache"
+name = "迅雷 cache"
+category = "AppCache"
+safety = "Safe"
+resolver = "parent-subdirs"
+description = "迅雷下载器缓存与日志。下载中的任务不会受影响。"
+evidence = 'Downloader 下的 cache/logs 是下载器的运行期缓存与日志；下载任务数据在其他目录。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{PROGRAMDATA}\Thunder Network\Downloader'
+subs = "cache,logs"
+
+[[rule]]
+id = "app.wechat-files-cache"
+name = "WeChat Files Cache"
+category = "AppCache"
+safety = "Caution"
+resolver = "children-subdirs"
+description = "微信文档目录中的临时文件缓存。已排除已接收的文件（FileStorage/File、Image、Video）。删除前请确认没有正在传输的文件。"
+evidence = '只针对每个微信账号目录下的 FileStorage\Temp、TempFromPhone、Cache、CDNFileStorage\Temp；已接收文件在 FileStorage\File/Image/Video，不在清理范围。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{DOCUMENTS}\WeChat Files'
+subs = 'FileStorage\Temp,FileStorage\TempFromPhone,FileStorage\Cache,FileStorage\CDNFileStorage\Temp'
+
+[[rule]]
+id = "app.wecom-cache"
+name = "WeCom (企业微信) Cache"
+category = "AppCache"
+safety = "Caution"
+resolver = "parent-subdirs"
+description = "企业微信缓存。仅清理 GPUCache/Code Cache 等子目录，不会删除聊天记录数据库和已接收文件。"
+evidence = 'WXWork 根目录下的 Cache/GPUCache/logs/tmp 为运行期缓存；聊天数据库与已接收文件在其他子目录。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{ROAMING}\Tencent\WXWork'
+subs = "Cache,GPUCache,logs,tmp"
+
+[[rule]]
+id = "app.dingtalk-cache"
+name = "DingTalk (钉钉) Cache"
+category = "AppCache"
+safety = "Safe"
+resolver = "children-subdirs"
+description = "钉钉各用户目录的缓存与日志。不会删除聊天记录数据库和已接收文件。"
+evidence = '按用户目录枚举 logs/tmp/Cache/GPUCache 四个缓存子目录；聊天记录与文件不在其中。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{LOCAL}\DingTalk'
+subs = "logs,tmp,Cache,GPUCache"
+
+[[rule]]
+id = "app.feishu-cache"
+name = "Feishu (飞书) Cache"
+category = "AppCache"
+safety = "Safe"
+resolver = "parent-subdirs"
+description = "飞书客户端缓存。删除后下次打开会重新加载资源，不影响聊天记录和文件。"
+evidence = 'Feishu 根目录下的 LarkShell\cache、LarkShell\logs、Cache、GPUCache 为缓存与日志；聊天数据在其他目录。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{LOCAL}\Feishu'
+subs = 'LarkShell\cache,LarkShell\logs,Cache,GPUCache'
+
+[[rule]]
+id = "app.slack-cache"
+name = "Slack Cache"
+category = "AppCache"
+safety = "Safe"
+resolver = "children-subdirs"
+description = "Slack 桌面客户端缓存。删除后工作区数据会重新加载。"
+evidence = 'Slack 按版本目录存放客户端，这里只清每个版本下的 Cache/GPUCache/Code Cache；工作区数据与登录状态在别处。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{ROAMING}\Slack'
+subs = "Cache,GPUCache,Code Cache"

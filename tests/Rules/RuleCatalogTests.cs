@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(112, result.Rules.Count);
+        Assert.Equal(119, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -150,6 +150,7 @@ public class RuleCatalogTests
         ("app.huggingface-model-cache", "Huggingface Model Cache", CleanCategory.AppCache, CleanSafety.Caution, @"{USER}\.cache\huggingface", Array.Empty<string>(), true, -1),
         ("app.ollama-models", "Ollama Models", CleanCategory.AppCache, CleanSafety.Caution, @"{USER}\.ollama\models", Array.Empty<string>(), true, -1),
         ("app.pytorch-model-cache", "PyTorch Model Cache", CleanCategory.AppCache, CleanSafety.Caution, @"{USER}\.cache\torch", Array.Empty<string>(), true, -1),
+        ("app.wechat-4-0-radium", "WeChat 4.0 Radium Cache (xwechat)", CleanCategory.AppCache, CleanSafety.Caution, @"{ROAMING}\Tencent\xwechat\radium", Array.Empty<string>(), true, -1),
     };
 
     [Fact]

@@ -1,0 +1,84 @@
+# AI 与开发助手缓存（RC-6 迁移批次 6-A）
+#
+# 每条只清理明确的缓存/日志子目录，不扫应用根目录（避免误删配置与聊天数据库）。
+
+
+[[rule]]
+id = "app.codex-temp"
+name = "Codex Temp"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.codex\.tmp'
+description = "OpenAI Codex CLI 临时文件。"
+evidence = '这是 AI 编程助手的缓存/索引/日志目录，删除后助手会按需重建索引；项目代码与会话记录不在这些路径内（不确定时请保留）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.lingma-cache"
+name = "Lingma Cache"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.lingma\cache'
+description = "阿里巴巴通义灵码 AI 助手缓存。"
+evidence = '这是 AI 编程助手的缓存/索引/日志目录，删除后助手会按需重建索引；项目代码与会话记录不在这些路径内（不确定时请保留）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.lingma-index"
+name = "Lingma Index"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.lingma\index'
+description = "通义灵码代码索引。删除后 AI 补全首次启用会重新索引项目。"
+evidence = '这是 AI 编程助手的缓存/索引/日志目录，删除后助手会按需重建索引；项目代码与会话记录不在这些路径内（不确定时请保留）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.lingma-logs"
+name = "Lingma Logs"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.lingma\logs'
+description = "通义灵码日志文件。"
+evidence = '这是 AI 编程助手的缓存/索引/日志目录，删除后助手会按需重建索引；项目代码与会话记录不在这些路径内（不确定时请保留）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.marscode-cache"
+name = "MarsCode Cache"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.marscode\cache'
+description = "字节豆包 MarsCode AI 助手缓存。删除后扩展会重建索引。"
+evidence = '这是 AI 编程助手的缓存/索引/日志目录，删除后助手会按需重建索引；项目代码与会话记录不在这些路径内（不确定时请保留）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.qoder-shared-client"
+name = "Qoder shared_client"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.qoder-cn\shared_client'
+description = "Qoder AI 客户端缓存。"
+evidence = '这是 AI 编程助手的缓存/索引/日志目录，删除后助手会按需重建索引；项目代码与会话记录不在这些路径内（不确定时请保留）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wechat-4-0-logs-xwechat"
+name = "WeChat 4.0 Logs (xwechat)"
+category = "AppCache"
+safety = "Safe"
+path = '{ROAMING}\Tencent\xwechat\log'
+description = "微信 4.0 日志文件。记录运行日志，可安全删除。"
+evidence = '这是 AI 编程助手的缓存/索引/日志目录，删除后助手会按需重建索引；项目代码与会话记录不在这些路径内（不确定时请保留）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wechat-4-0-plugin-cache-xwechat"
+name = "WeChat 4.0 Plugin Cache (xwechat)"
+category = "AppCache"
+safety = "Caution"
+path = '{ROAMING}\Tencent\xwechat\xplugin'
+description = "微信 4.0 插件缓存。删除后插件需重新下载，不影响聊天记录。"
+evidence = '这是 AI 编程助手的缓存/索引/日志目录，删除后助手会按需重建索引；项目代码与会话记录不在这些路径内（不确定时请保留）。'
+verified_at = "2026-11-05"

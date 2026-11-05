@@ -25,6 +25,8 @@ public static class RuleTemplateResolver
             ["PROGRAMFILES"] = () => Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
             ["PROGRAMFILESX86"] = () => Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
             ["PROGRAMDATA"] = () => Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            ["DOCUMENTS"] = () => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            ["RECENT"] = () => Environment.GetFolderPath(Environment.SpecialFolder.Recent),
             ["TEMP"] = () => Path.GetTempPath().TrimEnd('\\')
         };
 

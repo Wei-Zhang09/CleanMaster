@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(57, result.Rules.Count);
+        Assert.Equal(65, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -97,6 +97,14 @@ public class RuleCatalogTests
         ("devtools.android-build-cache", "Android build-cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{USER}\.android\build-cache", Array.Empty<string>(), true, -1),
         ("devtools.docker-desktop-logs", "Docker Desktop logs", CleanCategory.DevToolCache, CleanSafety.Safe, @"{LOCAL}\Docker\log", Array.Empty<string>(), true, -1),
         ("devtools.postman-cache", "Postman Cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{ROAMING}\Postman\Cache", Array.Empty<string>(), true, -1),
+        ("app.codex-temp", "Codex Temp", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.codex\.tmp", Array.Empty<string>(), true, -1),
+        ("app.lingma-cache", "Lingma Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.lingma\cache", Array.Empty<string>(), true, -1),
+        ("app.lingma-index", "Lingma Index", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.lingma\index", Array.Empty<string>(), true, -1),
+        ("app.lingma-logs", "Lingma Logs", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.lingma\logs", Array.Empty<string>(), true, -1),
+        ("app.marscode-cache", "MarsCode Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.marscode\cache", Array.Empty<string>(), true, -1),
+        ("app.qoder-shared-client", "Qoder shared_client", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.qoder-cn\shared_client", Array.Empty<string>(), true, -1),
+        ("app.wechat-4-0-logs-xwechat", "WeChat 4.0 Logs (xwechat)", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Tencent\xwechat\log", Array.Empty<string>(), true, -1),
+        ("app.wechat-4-0-plugin-cache-xwechat", "WeChat 4.0 Plugin Cache (xwechat)", CleanCategory.AppCache, CleanSafety.Caution, @"{ROAMING}\Tencent\xwechat\xplugin", Array.Empty<string>(), true, -1),
     };
 
     [Fact]
@@ -274,6 +282,19 @@ public class RuleCatalogTests
         Assert.Equal(Normalize(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp")), Normalize(local));
         Assert.Empty(RuleTemplateResolver.FindUnknownPlaceholders(@" {LOCAL}\Temp".Trim()));
+    }
+
+    [Fact]
+    public void Resolver_DocumentsAndRecentPlaceholders_ResolveToRealFolders()
+    {
+        // {RECENT} 与 {DOCUMENTS} 是为下一批（最近文档记录等）加的占位符，先在这里锁住行为
+        foreach (var placeholder in new[] { "{RECENT}", "{DOCUMENTS}" })
+        {
+            var resolved = RuleTemplateResolver.Resolve(placeholder);
+
+            Assert.False(string.IsNullOrEmpty(resolved), $"{placeholder} 解析为空");
+            Assert.Empty(RuleTemplateResolver.FindUnknownPlaceholders(placeholder));
+        }
     }
 
     [Fact]

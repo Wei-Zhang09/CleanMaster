@@ -73,36 +73,74 @@ public class UpdateService : IUpdateService
         Directory.CreateDirectory(dir);
         var target = Path.Combine(dir, info.FileName);
 
+        // 先写 .part，校验通过后再改名：避免半截文件占用正式文件名，也便于清理上次残留
+        var part = target + ".part";
+        try { if (File.Exists(part)) File.Delete(part); } catch { part = UniquePath(dir, info.FileName, ".part"); }
+
         using var response = await _http.GetAsync(info.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
 
         var total = response.Content.Headers.ContentLength ?? info.SizeBytes;
-        await using var source = await response.Content.ReadAsStreamAsync(ct);
-        await using var dest = File.Create(target);
-
-        var buffer = new byte[81920];
-        long downloaded = 0;
-        int read;
-        while ((read = await source.ReadAsync(buffer, ct)) > 0)
+        await using (var source = await response.Content.ReadAsStreamAsync(ct))
         {
-            await dest.WriteAsync(buffer.AsMemory(0, read), ct);
-            downloaded += read;
-            if (total > 0)
-                progress?.Report((double)downloaded / total * 100);
+            await WriteAndVerifyAsync(source, part, total, info.Sha256, progress, ct);
         }
 
-        // SHA256 校验（若服务器提供）
-        if (!string.IsNullOrEmpty(info.Sha256))
+        // 写入句柄已在 WriteAndVerifyAsync 内释放，这里才能安全改名。
+        // 目标文件可能被上一次失败的安装器占用 —— 退回带时间戳的文件名，不让更新直接失败。
+        try
         {
-            var actual = await ComputeSha256Async(target, ct);
-            if (!string.Equals(actual, info.Sha256, StringComparison.OrdinalIgnoreCase))
+            File.Move(part, target, overwrite: true);
+            return target;
+        }
+        catch (IOException)
+        {
+            var fallback = UniquePath(dir, info.FileName, "");
+            File.Move(part, fallback, overwrite: true);
+            App.Log($"更新安装包 {target} 被占用，改用 {fallback}");
+            return fallback;
+        }
+    }
+
+    /// <summary>
+    /// 写入并校验安装包。
+    ///
+    /// 关键：**写完必须先释放写入句柄，再计算 SHA256**。之前用 <c>File.Create</c>（FileShare.None）
+    /// 持有句柄的同时去 File.OpenRead 校验，Windows 直接报「文件正被另一个进程使用」，
+    /// 表现为"更新失败：无法访问 xxx.exe" —— 3.3.0 实测就是这个原因。
+    /// </summary>
+    public static async Task WriteAndVerifyAsync(
+        Stream source, string target, long totalBytes, string? expectedSha256,
+        IProgress<double>? progress, CancellationToken ct)
+    {
+        await using (var dest = File.Create(target))
+        {
+            var buffer = new byte[81920];
+            long downloaded = 0;
+            int read;
+            while ((read = await source.ReadAsync(buffer, ct)) > 0)
             {
-                File.Delete(target);
-                throw new InvalidDataException($"安装包校验失败（期望 {info.Sha256}，实际 {actual}）");
+                await dest.WriteAsync(buffer.AsMemory(0, read), ct);
+                downloaded += read;
+                if (totalBytes > 0) progress?.Report((double)downloaded / totalBytes * 100);
             }
         }
 
-        return target;
+        if (string.IsNullOrEmpty(expectedSha256)) return;
+
+        var actual = await ComputeSha256Async(target, ct);
+        if (!string.Equals(actual, expectedSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            try { File.Delete(target); } catch { }
+            throw new InvalidDataException($"安装包校验失败（期望 {expectedSha256}，实际 {actual}）");
+        }
+    }
+
+    private static string UniquePath(string dir, string fileName, string suffix)
+    {
+        var name = Path.GetFileNameWithoutExtension(fileName);
+        var ext = Path.GetExtension(fileName);
+        return Path.Combine(dir, $"{name}-{DateTime.Now:HHmmss}{suffix}{ext}");
     }
 
     public void InstallAndRestart(string installerPath)

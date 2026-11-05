@@ -62,6 +62,17 @@ public class CleanableItem : INotifyPropertyChanged
     public string Name { get; set; } = "";
     public string FullPath { get; set; } = "";
     public long SizeBytes { get; set; }
+
+    /// <summary>
+    /// 实际占用的磁盘空间（稀疏/压缩文件可能远小于 <see cref="SizeBytes"/>）。
+    /// null 表示未采集，此时一律按逻辑大小处理。
+    /// 列表展示仍用逻辑大小；"可回收 / 已释放"这类汇总口径用 <see cref="ReclaimableBytes"/>。
+    /// </summary>
+    public long? AllocatedBytes { get; set; }
+
+    /// <summary>删除该项实际能腾出的空间：优先用实际占用，未采集时退化为逻辑大小。</summary>
+    public long ReclaimableBytes => AllocatedBytes ?? SizeBytes;
+
     public CleanSafety Safety { get; set; }
     public CleanCategory Category { get; set; }
     public string Description { get; set; } = "";
@@ -121,6 +132,10 @@ public class ScanCategoryResult : INotifyPropertyChanged
     public string Icon { get; set; } = "";
     public List<CleanableItem> Items { get; set; } = new();
     public long TotalSize => Items.Sum(i => i.SizeBytes);
+
+    /// <summary>该分类删除后实际能腾出的空间（按实际占用累加）。</summary>
+    public long ReclaimableSize => Items.Sum(i => i.ReclaimableBytes);
+
     public int ItemCount => Items.Count;
 
     /// <summary>
@@ -151,7 +166,7 @@ public class ScanCategoryResult : INotifyPropertyChanged
         set { if (_isExpanded != value) { _isExpanded = value; OnPropertyChanged(); OnPropertyChanged(nameof(ExpandButtonText)); } }
     }
 
-    public string TotalSizeText => ByteSizeFormatter.Format(TotalSize);
+    public string TotalSizeText => ByteSizeFormatter.Format(ReclaimableSize);
 
     public string ExpandButtonText => IsExpanded ? "收起" : "展开";
 

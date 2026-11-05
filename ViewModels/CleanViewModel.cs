@@ -51,7 +51,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
     /// 让用户清楚这次清理能释放多少空间。
     /// </summary>
     public long SelectedCleanableSize =>
-        ScanResults.Sum(c => c.Items.Where(i => i.IsSelected).Sum(i => i.SizeBytes));
+        ScanResults.Sum(c => c.Items.Where(i => i.IsSelected).Sum(i => i.ReclaimableBytes));
 
     public string SelectedCleanableText => ByteSizeFormatter.Format(SelectedCleanableSize);
 
@@ -175,7 +175,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
                        : null;
 
         ScanResults.Add(cat);
-        TotalCleanableSize += cat.TotalSize;
+        TotalCleanableSize += cat.ReclaimableSize;
         TotalItemCount += cat.ItemCount;
 
         // 订阅分类及其所有项的勾选变化，实时刷新"已选中大小"并双向联动。
@@ -379,7 +379,7 @@ public class CleanViewModel : INotifyPropertyChanged, IDisposable
         foreach (var cat in toClean.Take(10))
         {
             var catSelectedCount = cat.Items.Count(i => i.IsSelected);
-            var catSelectedSize = cat.Items.Where(i => i.IsSelected).Sum(i => i.SizeBytes);
+            var catSelectedSize = cat.Items.Where(i => i.IsSelected).Sum(i => i.ReclaimableBytes);
             previewMsg += $"• {cat.DisplayName}: {catSelectedCount} 项 ({ByteSizeFormatter.Format(catSelectedSize)})\n";
         }
         if (toClean.Count > 10)

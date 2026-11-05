@@ -55,7 +55,7 @@ public class CleanService : ICleanService
                         var hr = SHEmptyRecycleBin(IntPtr.Zero, null, SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND);
                         if (hr == 0) // S_OK
                         {
-                            result.BytesFreed += Math.Max(0, item.SizeBytes);
+                            result.BytesFreed += Math.Max(0, item.ReclaimableBytes);
                             result.FoldersDeleted++;
                             result.DeletedItems.Add(item);
                             result.DeletedPaths.Add(item.FullPath);
@@ -83,12 +83,12 @@ public class CleanService : ICleanService
                             continue;
                         }
 
-                        var freed = DeleteDirectoryAndAccount(item.FullPath, item.SizeBytes);
+                        var freed = DeleteDirectoryAndAccount(item.FullPath, item.ReclaimableBytes);
                         var stillExists = Directory.Exists(item.FullPath);
 
                         if (freed > 0 || !stillExists)
                         {
-                            result.BytesFreed += freed > 0 ? freed : Math.Max(0, item.SizeBytes);
+                            result.BytesFreed += freed > 0 ? freed : Math.Max(0, item.ReclaimableBytes);
                             result.FoldersDeleted++;
                             result.DeletedItems.Add(item);
                             result.DeletedPaths.Add(item.FullPath);
@@ -199,7 +199,8 @@ public class CleanService : ICleanService
         {
             var fi = new FileInfo(fullPath);
             if (!fi.Exists) return false;
-            size = fi.Length;
+            // 已释放空间按实际占用计（稀疏/压缩文件删掉也腾不出逻辑大小那么多）
+            size = AllocatedSizeReader.FromFileInfo(fi).AllocatedBytes;
 
             // 清除只读/系统属性
             try { fi.Attributes = FileAttributes.Normal; }
@@ -240,7 +241,7 @@ public class CleanService : ICleanService
                 try
                 {
                     var fi = new FileInfo(file);
-                    long sz = fi.Length;
+                    long sz = AllocatedSizeReader.FromFileInfo(fi).AllocatedBytes;
                     try { File.SetAttributes(file, FileAttributes.Normal); } catch { }
                     File.Delete(file);
                     deletedFilesBytes += sz;

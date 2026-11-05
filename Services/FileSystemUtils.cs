@@ -6,33 +6,45 @@ namespace CleanMaster.Services;
 public static class FileSystemUtils
 {
     /// <summary>
-    /// 计算目录总大小。
+    /// 计算目录逻辑大小（各文件 <see cref="FileInfo.Length"/> 之和）。
     /// 改进点:
     /// 1. 跳过 ReparsePoint (junction/symlink/mount point), 防止跨盘循环扫描
     /// 2. 并行遍历子目录, 大目录(如 JetBrains caches)扫描速度提升 3-5 倍
     /// 3. 当 maxDepth=-1 时全递归, 否则只下钻到指定深度
     /// </summary>
     public static long GetDirectorySize(string path, int maxDepth = -1)
+        => GetDirectorySizes(path, maxDepth).Logical;
+
+    /// <summary>计算目录实际占用（稀疏/压缩文件按真实分配量）。</summary>
+    public static long GetDirectoryAllocatedSize(string path, int maxDepth = -1)
+        => GetDirectorySizes(path, maxDepth).Allocated;
+
+    /// <summary>
+    /// 一次遍历同时给出逻辑大小与实际占用。分开调两次会把目录树扫两遍，
+    /// 清理工具扫描本身已是热点，这里必须合并。
+    /// </summary>
+    public static (long Logical, long Allocated) GetDirectorySizes(string path, int maxDepth = -1)
     {
-        if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return 0;
+        if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return (0, 0);
 
         // 当前层的 reparse point 检查: 如果 path 本身就是 reparse point, 不进入
-        if (IsReparsePoint(path)) return 0;
+        if (IsReparsePoint(path)) return (0, 0);
 
         try
         {
-            return GetDirectorySizeCore(path, maxDepth, depth: 0);
+            return GetDirectorySizesCore(path, maxDepth, depth: 0);
         }
         catch (Exception ex)
         {
-            CleanMaster.App.LogError("GetDirectorySize", ex);
-            return 0;
+            CleanMaster.App.LogError("GetDirectorySizes", ex);
+            return (0, 0);
         }
     }
 
-    private static long GetDirectorySizeCore(string path, int maxDepth, int depth)
+    private static (long Logical, long Allocated) GetDirectorySizesCore(string path, int maxDepth, int depth)
     {
         long size = 0;
+        long allocated = 0;
 
         // 1) 累加当前目录下的文件大小 (不递归)
         EnumerationOptions fileOpts = new()
@@ -46,14 +58,20 @@ public static class FileSystemUtils
         {
             foreach (var file in Directory.EnumerateFiles(path, "*", fileOpts))
             {
-                try { size += new FileInfo(file).Length; }
-                catch (Exception ex) { Debug.WriteLine($"GetDirectorySize-File: {ex.Message}"); }
+                try
+                {
+                    var fi = new FileInfo(file);
+                    size += fi.Length;
+                    // 普通文件不产生额外系统调用，只有稀疏/压缩才查询真实分配量
+                    allocated += AllocatedSizeReader.FromFileInfo(fi).AllocatedBytes;
+                }
+                catch (Exception ex) { Debug.WriteLine($"GetDirectorySizes-File: {ex.Message}"); }
             }
         }
-        catch (Exception ex) { Debug.WriteLine($"GetDirectorySize-EnumFiles: {ex.Message}"); }
+        catch (Exception ex) { Debug.WriteLine($"GetDirectorySizes-EnumFiles: {ex.Message}"); }
 
         // 2) 是否继续下钻
-        if (maxDepth >= 0 && depth >= maxDepth) return size;
+        if (maxDepth >= 0 && depth >= maxDepth) return (size, allocated);
 
         // 3) 枚举子目录, 跳过 reparse points, 并行累加
         string[] subDirs;
@@ -69,21 +87,25 @@ public static class FileSystemUtils
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"GetDirectorySize-EnumDirs: {ex.Message}");
-            return size;
+            Debug.WriteLine($"GetDirectorySizes-EnumDirs: {ex.Message}");
+            return (size, allocated);
         }
 
         // 4) 并行处理子目录。粒度: 每个子目录作为一个工作单元。
         //    对于有大量小文件的目录 (JetBrains caches 上百万文件),
         //    多线程能显著降低扫描时间。线程数限制为 ProcessorCount,
         //    避免在线程切换上浪费 CPU。
-        if (subDirs.Length == 0) return size;
+        if (subDirs.Length == 0) return (size, allocated);
         if (subDirs.Length == 1)
         {
             // 单子目录场景不需要并行开销
             if (!IsReparsePoint(subDirs[0]))
-                size += GetDirectorySizeCore(subDirs[0], maxDepth, depth + 1);
-            return size;
+            {
+                var sub = GetDirectorySizesCore(subDirs[0], maxDepth, depth + 1);
+                size += sub.Logical;
+                allocated += sub.Allocated;
+            }
+            return (size, allocated);
         }
 
         // 多子目录: 并行
@@ -97,19 +119,23 @@ public static class FileSystemUtils
             Parallel.ForEach(subDirs, options, (sub, state) =>
             {
                 if (IsReparsePoint(sub)) return;
-                var subSize = GetDirectorySizeCore(sub, maxDepth, depth + 1);
-                if (subSize > 0)
+                var subSize = GetDirectorySizesCore(sub, maxDepth, depth + 1);
+                if (subSize.Logical > 0 || subSize.Allocated > 0)
                 {
-                    lock (lockObj) { size += subSize; }
+                    lock (lockObj)
+                    {
+                        size += subSize.Logical;
+                        allocated += subSize.Allocated;
+                    }
                 }
             });
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"GetDirectorySize-Parallel: {ex.Message}");
+            Debug.WriteLine($"GetDirectorySizes-Parallel: {ex.Message}");
         }
 
-        return size;
+        return (size, allocated);
     }
 
     /// <summary>

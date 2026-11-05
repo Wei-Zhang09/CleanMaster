@@ -113,6 +113,7 @@ public class ScanService : IScanService
                             Name = fi.Name,
                             FullPath = fi.FullName,
                             SizeBytes = fi.Length,
+                            AllocatedBytes = AllocatedSizeReader.FromFileInfo(fi).AllocatedBytes,
                             Safety = rule.Safety,
                             Category = category,
                             Description = rule.Description,
@@ -221,13 +222,14 @@ public class ScanService : IScanService
 
     private static void AddDirectoryItem(CleanupRule rule, ScanCategoryResult result, string path, string softwareName, string fileType, string displayName)
     {
-        var size = GetDirectorySize(path);
-        if (size <= 0) return;
+        var sizes = FileSystemUtils.GetDirectorySizes(path);
+        if (sizes.Logical <= 0) return;
         result.Items.Add(new CleanableItem
         {
             Name = displayName,
             FullPath = path,
-            SizeBytes = size,
+            SizeBytes = sizes.Logical,
+            AllocatedBytes = sizes.Allocated,
             Safety = rule.Safety,
             Category = rule.Category,
             Description = rule.Description,
@@ -248,6 +250,7 @@ public class ScanService : IScanService
                 Name = displayName ?? fi.Name,
                 FullPath = fi.FullName,
                 SizeBytes = fi.Length,
+                AllocatedBytes = AllocatedSizeReader.FromFileInfo(fi).AllocatedBytes,
                 Safety = rule.Safety,
                 Category = rule.Category,
                 Description = rule.Description,

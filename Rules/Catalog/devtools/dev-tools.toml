@@ -1,0 +1,259 @@
+# 开发工具缓存（RC-6 迁移批次 5）
+#
+# 21 条静态路径 + 3 条需要枚举子目录的规则（JetBrains 多版本、VS Code 多扩展、Docker 多子目录）。
+# 动态部分用命名解析器：children-subdir / children-subdirs / parent-subdirs。
+#
+# 边界：只清理下载缓存、索引、日志、临时目录；不碰已安装的包、项目源码与个人设置。
+
+
+[[rule]]
+id = "devtools.gradle-caches"
+name = "Gradle Caches"
+category = "DevToolCache"
+safety = "Safe"
+path = '{USER}\.gradle\caches'
+description = "Gradle 构建工具的下载缓存。下次构建会重新从网络下载依赖，可能耗时较长。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.gradle-daemon-logs"
+name = "Gradle Daemon Logs"
+category = "DevToolCache"
+safety = "Safe"
+path = '{USER}\.gradle\daemon'
+description = "Gradle daemon 进程日志。Gradle 后台进程运行时产生的日志，可安全删除。"
+evidence = '这是工具产生的历史日志目录，仅用于事后排查；工具会按需新建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.nuget-packages"
+name = "NuGet Packages"
+category = "DevToolCache"
+safety = "Caution"
+path = '{USER}\.nuget\packages'
+description = "NuGet 包缓存（global packages 目录）。.NET 项目还原时会重新下载，可能耗时较长。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.nuget-http-cache"
+name = "NuGet HTTP Cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{LOCAL}\NuGet\v3-cache'
+description = "NuGet HTTP 下载临时缓存。仅缓存下载过程的临时文件，不影响已解压到 global packages 的包。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.npm-cache"
+name = "npm Cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{ROAMING}\npm-cache'
+description = "npm 包缓存。Node.js 项目安装依赖时会重新下载。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.pip-cache"
+name = "pip Cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{LOCAL}\pip\cache'
+description = "Python pip 下载缓存。下次安装 Python 包时会重新下载。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.maven-repository"
+name = "Maven Repository"
+category = "DevToolCache"
+safety = "Caution"
+path = '{USER}\.m2\repository'
+description = "Maven 本地仓库。Java 项目构建时会重新下载依赖，可能耗时较长。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.jetbrains-caches"
+name = "JetBrains Caches"
+category = "DevToolCache"
+safety = "Safe"
+resolver = "children-subdirs"
+description = "IntelliJ 系列产品（IDEA/PyCharm/DataGrip 等）的缓存、索引和日志。删除后下次启动会重建索引，大型项目可能耗时数分钟。"
+evidence = '这是 IDE 的缓存/索引/日志目录；删除后下次启动会重建索引（大型项目耗时数分钟），项目文件与个人设置不在这些子目录内。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{LOCAL}\JetBrains'
+subs = "caches,index,log,tmp"
+
+[[rule]]
+id = "devtools.vs-code-cache"
+name = "VS Code Cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{ROAMING}\Code\Cache'
+description = "Visual Studio Code 缓存（VSCache 子目录）。包含扩展和编辑器的临时数据，删除后自动重建。"
+evidence = '这是 IDE 的缓存/索引/日志目录；删除后下次启动会重建索引（大型项目耗时数分钟），项目文件与个人设置不在这些子目录内。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.vs-code-cacheddata"
+name = "VS Code CachedData"
+category = "DevToolCache"
+safety = "Safe"
+path = '{ROAMING}\Code\CachedData'
+description = "Visual Studio Code CacheData 子目录。包含 WebView 缓存数据，删除后自动重建。"
+evidence = '这是 IDE 的缓存/索引/日志目录；删除后下次启动会重建索引（大型项目耗时数分钟），项目文件与个人设置不在这些子目录内。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.vs-code-gpucache"
+name = "VS Code GPUCache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{ROAMING}\Code\GPUCache'
+description = "Visual Studio Code GPU 着色器缓存。删除后界面渲染略慢，会自动重建。"
+evidence = '这是 IDE 的缓存/索引/日志目录；删除后下次启动会重建索引（大型项目耗时数分钟），项目文件与个人设置不在这些子目录内。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.vs-code-logs"
+name = "VS Code logs"
+category = "DevToolCache"
+safety = "Safe"
+path = '{ROAMING}\Code\logs'
+description = "Visual Studio Code 日志文件。记录扩展运行日志、错误日志等。"
+evidence = '这是工具产生的历史日志目录，仅用于事后排查；工具会按需新建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.vs-code-workspacestorage"
+name = "VS Code workspaceStorage"
+category = "DevToolCache"
+safety = "Safe"
+path = '{ROAMING}\Code\User\workspaceStorage'
+description = "VS Code 工作区临时存储。包含每个项目的撤销历史和临时状态。删除影响：未保存的撤销历史会丢失，已保存的代码不受影响。"
+evidence = '这是 IDE 的缓存/索引/日志目录；删除后下次启动会重建索引（大型项目耗时数分钟），项目文件与个人设置不在这些子目录内。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.vs-code-extension-cache-all-extensions"
+name = "VS Code Extension Cache (all extensions)"
+category = "DevToolCache"
+safety = "Safe"
+resolver = "children-subdir"
+description = "VS Code 各扩展的 cache 子目录（覆盖 cpptools、Java、C# 等）。删除后扩展会重建缓存。"
+evidence = '这是 IDE 的缓存/索引/日志目录；删除后下次启动会重建索引（大型项目耗时数分钟），项目文件与个人设置不在这些子目录内。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{USER}\.vscode\extensions'
+sub = "cache"
+
+[[rule]]
+id = "devtools.cargo-cache-rust"
+name = "Cargo Cache (Rust)"
+category = "DevToolCache"
+safety = "Safe"
+path = '{USER}\.cargo\registry\cache'
+description = "Rust Cargo 包缓存。下次构建 Rust 项目时会重新下载依赖。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.conda-pkgs"
+name = "Conda pkgs"
+category = "DevToolCache"
+safety = "Caution"
+path = '{USER}\.conda\pkgs'
+description = "Conda 包缓存。下次安装 Python 包时会重新下载。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.yarn-cache"
+name = "Yarn Cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{LOCAL}\Yarn\Cache'
+description = "Yarn 包缓存。Node.js 项目安装依赖时会重新下载。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.pnpm-store"
+name = "pnpm store"
+category = "DevToolCache"
+safety = "Safe"
+path = '{USER}\.pnpm-store'
+description = "pnpm 内容寻址存储。pnpm 全局包存储，删除后所有依赖项目需要重新安装。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.bun-install-cache"
+name = "Bun install cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{USER}\.bun\install\cache'
+description = "Bun 包安装缓存。Bun 运行时下载的包缓存，可安全删除。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.go-mod-cache"
+name = "Go mod cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{USER}\go\pkg\mod'
+description = "Go modules 缓存。Go 项目构建时会重新下载依赖。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.android-build-cache"
+name = "Android build-cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{USER}\.android\build-cache'
+description = "Android 构建中间产物缓存（.gradle/caches/transforms 等）。下次构建会重新生成。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.docker-desktop-logs"
+name = "Docker Desktop logs"
+category = "DevToolCache"
+safety = "Safe"
+path = '{LOCAL}\Docker\log'
+description = "Docker Desktop 日志文件。"
+evidence = '这是工具产生的历史日志目录，仅用于事后排查；工具会按需新建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "devtools.docker-desktop-cache"
+name = "Docker Desktop cache"
+category = "DevToolCache"
+safety = "Caution"
+resolver = "parent-subdirs"
+description = "Docker Desktop 临时下载与缓存。仅清理客户端缓存，不会删除 WSL 镜像和容器数据。"
+evidence = '这是容器工具的客户端缓存/临时目录；不影响 WSL 镜像、容器与卷数据。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{LOCAL}\Docker'
+subs = "cache,tmp"
+
+[[rule]]
+id = "devtools.postman-cache"
+name = "Postman Cache"
+category = "DevToolCache"
+safety = "Safe"
+path = '{ROAMING}\Postman\Cache'
+description = "Postman API 客户端缓存。删除后收藏的请求和环境变量不受影响。"
+evidence = '这是包管理器的下载/解压缓存目录；删除后下次构建或安装会重新下载，已安装的包与项目源码不在其中。'
+verified_at = "2026-11-05"

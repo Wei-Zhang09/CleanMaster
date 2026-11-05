@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(33, result.Rules.Count);
+        Assert.Equal(57, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -75,7 +75,28 @@ public class RuleCatalogTests
         ("system.update.windows-old", "Windows.old", CleanCategory.WindowsUpdate, CleanSafety.Caution, @"{SYSTEMDRIVE}\Windows.old", Array.Empty<string>(), true, -1),
         ("browser.inetcache", "INetCache (IE/Edge legacy)", CleanCategory.BrowserCache, CleanSafety.Safe, @"{LOCAL}\Microsoft\Windows\INetCache", Array.Empty<string>(), true, -1),
         ("browser.opera.cache", "Opera Cache", CleanCategory.BrowserCache, CleanSafety.Safe, @"{LOCAL}\Opera Software\Opera Stable\Cache", Array.Empty<string>(), true, -1),
-        ("browser.webcache", "WebCache", CleanCategory.BrowserCache, CleanSafety.Caution, @"{LOCAL}\Microsoft\Windows\WebCache", Array.Empty<string>(), true, -1)
+        ("browser.webcache", "WebCache", CleanCategory.BrowserCache, CleanSafety.Caution, @"{LOCAL}\Microsoft\Windows\WebCache", Array.Empty<string>(), true, -1),
+        ("devtools.gradle-caches", "Gradle Caches", CleanCategory.DevToolCache, CleanSafety.Safe, @"{USER}\.gradle\caches", Array.Empty<string>(), true, -1),
+        ("devtools.gradle-daemon-logs", "Gradle Daemon Logs", CleanCategory.DevToolCache, CleanSafety.Safe, @"{USER}\.gradle\daemon", Array.Empty<string>(), true, -1),
+        ("devtools.nuget-packages", "NuGet Packages", CleanCategory.DevToolCache, CleanSafety.Caution, @"{USER}\.nuget\packages", Array.Empty<string>(), true, -1),
+        ("devtools.nuget-http-cache", "NuGet HTTP Cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{LOCAL}\NuGet\v3-cache", Array.Empty<string>(), true, -1),
+        ("devtools.npm-cache", "npm Cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{ROAMING}\npm-cache", Array.Empty<string>(), true, -1),
+        ("devtools.pip-cache", "pip Cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{LOCAL}\pip\cache", Array.Empty<string>(), true, -1),
+        ("devtools.maven-repository", "Maven Repository", CleanCategory.DevToolCache, CleanSafety.Caution, @"{USER}\.m2\repository", Array.Empty<string>(), true, -1),
+        ("devtools.vs-code-cache", "VS Code Cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{ROAMING}\Code\Cache", Array.Empty<string>(), true, -1),
+        ("devtools.vs-code-cacheddata", "VS Code CachedData", CleanCategory.DevToolCache, CleanSafety.Safe, @"{ROAMING}\Code\CachedData", Array.Empty<string>(), true, -1),
+        ("devtools.vs-code-gpucache", "VS Code GPUCache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{ROAMING}\Code\GPUCache", Array.Empty<string>(), true, -1),
+        ("devtools.vs-code-logs", "VS Code logs", CleanCategory.DevToolCache, CleanSafety.Safe, @"{ROAMING}\Code\logs", Array.Empty<string>(), true, -1),
+        ("devtools.vs-code-workspacestorage", "VS Code workspaceStorage", CleanCategory.DevToolCache, CleanSafety.Safe, @"{ROAMING}\Code\User\workspaceStorage", Array.Empty<string>(), true, -1),
+        ("devtools.cargo-cache-rust", "Cargo Cache (Rust)", CleanCategory.DevToolCache, CleanSafety.Safe, @"{USER}\.cargo\registry\cache", Array.Empty<string>(), true, -1),
+        ("devtools.conda-pkgs", "Conda pkgs", CleanCategory.DevToolCache, CleanSafety.Caution, @"{USER}\.conda\pkgs", Array.Empty<string>(), true, -1),
+        ("devtools.yarn-cache", "Yarn Cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{LOCAL}\Yarn\Cache", Array.Empty<string>(), true, -1),
+        ("devtools.pnpm-store", "pnpm store", CleanCategory.DevToolCache, CleanSafety.Safe, @"{USER}\.pnpm-store", Array.Empty<string>(), true, -1),
+        ("devtools.bun-install-cache", "Bun install cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{USER}\.bun\install\cache", Array.Empty<string>(), true, -1),
+        ("devtools.go-mod-cache", "Go mod cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{USER}\go\pkg\mod", Array.Empty<string>(), true, -1),
+        ("devtools.android-build-cache", "Android build-cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{USER}\.android\build-cache", Array.Empty<string>(), true, -1),
+        ("devtools.docker-desktop-logs", "Docker Desktop logs", CleanCategory.DevToolCache, CleanSafety.Safe, @"{LOCAL}\Docker\log", Array.Empty<string>(), true, -1),
+        ("devtools.postman-cache", "Postman Cache", CleanCategory.DevToolCache, CleanSafety.Safe, @"{ROAMING}\Postman\Cache", Array.Empty<string>(), true, -1),
     };
 
     [Fact]

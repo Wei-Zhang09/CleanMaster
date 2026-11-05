@@ -29,7 +29,22 @@ public static class RuleResolvers
         ["firefox-profile-subdir"] = new Entry(
             FirefoxProfileSubdir,
             new[] { "profiles_root", "sub" },
-            "枚举 Firefox Profiles 下每个 profile 的指定子目录（如 cache2）")
+            "枚举 Firefox Profiles 下每个 profile 的指定子目录（如 cache2）"),
+
+        ["children-subdir"] = new Entry(
+            ChildrenSubdir,
+            new[] { "parent", "sub" },
+            "枚举某个父目录下每个子目录的指定孙目录（如 VS Code 各扩展的 cache）"),
+
+        ["children-subdirs"] = new Entry(
+            ChildrenSubdirs,
+            new[] { "parent", "subs" },
+            "枚举某个父目录下每个子目录的多个孙目录（如 JetBrains 各版本 IDE 的 caches/index/log/tmp）"),
+
+        ["parent-subdirs"] = new Entry(
+            ParentSubdirs,
+            new[] { "parent", "subs" },
+            "枚举单个父目录下的多个直接子目录（如 Docker 的 cache/tmp）")
     };
 
     public static IReadOnlyCollection<string> Names => Registry.Keys;
@@ -111,6 +126,78 @@ public static class RuleResolvers
             if (Directory.Exists(candidate)) yield return candidate;
         }
     }
+
+    /// <summary>parent 下每个子目录的 sub 孙目录（如 VS Code 各扩展的 cache）。</summary>
+    private static IEnumerable<string> ChildrenSubdir(IReadOnlyDictionary<string, string> args)
+    {
+        var parent = args.GetValueOrDefault("parent", "");
+        var sub = args.GetValueOrDefault("sub", "");
+
+        if (string.IsNullOrEmpty(parent) || string.IsNullOrEmpty(sub) || !Directory.Exists(parent))
+            yield break;
+
+        string[] children;
+        try { children = Directory.GetDirectories(parent); }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("RuleResolvers.ChildrenSubdir", ex);
+            yield break;
+        }
+
+        foreach (var child in children)
+        {
+            var candidate = Path.Combine(child, sub);
+            if (Directory.Exists(candidate)) yield return candidate;
+        }
+    }
+
+    /// <summary>parent 下每个子目录的多个孙目录（如 JetBrains 各版本 IDE 的 caches/index/log/tmp）。</summary>
+    private static IEnumerable<string> ChildrenSubdirs(IReadOnlyDictionary<string, string> args)
+    {
+        var parent = args.GetValueOrDefault("parent", "");
+        var subs = SplitSubs(args.GetValueOrDefault("subs", ""));
+
+        if (string.IsNullOrEmpty(parent) || subs.Length == 0 || !Directory.Exists(parent))
+            yield break;
+
+        string[] children;
+        try { children = Directory.GetDirectories(parent); }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("RuleResolvers.ChildrenSubdirs", ex);
+            yield break;
+        }
+
+        foreach (var child in children)
+        {
+            foreach (var sub in subs)
+            {
+                var candidate = Path.Combine(child, sub);
+                if (Directory.Exists(candidate)) yield return candidate;
+            }
+        }
+    }
+
+    /// <summary>单个 parent 下的多个直接子目录（如 Docker 的 cache/tmp）。</summary>
+    private static IEnumerable<string> ParentSubdirs(IReadOnlyDictionary<string, string> args)
+    {
+        var parent = args.GetValueOrDefault("parent", "");
+        var subs = SplitSubs(args.GetValueOrDefault("subs", ""));
+
+        if (string.IsNullOrEmpty(parent) || subs.Length == 0 || !Directory.Exists(parent))
+            yield break;
+
+        foreach (var sub in subs)
+        {
+            var candidate = Path.Combine(parent, sub);
+            if (Directory.Exists(candidate)) yield return candidate;
+        }
+    }
+
+    private static string[] SplitSubs(string value)
+        => string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static bool IsNonProfileDirectory(string name)
         => name.Equals("Snapshots", StringComparison.OrdinalIgnoreCase)

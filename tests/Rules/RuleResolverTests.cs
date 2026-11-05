@@ -30,7 +30,10 @@ public class RuleResolverTests
         ("browser.edge.code-cache", "Edge Code Cache (all profiles)", CleanCategory.BrowserCache, CleanSafety.Safe, "chromium-profile-subdir", @"sub=Code Cache;user_data={LOCAL}\Microsoft\Edge\User Data"),
         ("browser.edge.gpu-cache", "Edge GPUCache (all profiles)", CleanCategory.BrowserCache, CleanSafety.Safe, "chromium-profile-subdir", @"sub=GPUCache;user_data={LOCAL}\Microsoft\Edge\User Data"),
         ("browser.firefox.cache2", "Firefox Cache2", CleanCategory.BrowserCache, CleanSafety.Safe, "firefox-profile-subdir", @"profiles_root={LOCAL}\Mozilla\Firefox\Profiles;sub=cache2"),
-        ("browser.vivaldi.cache", "Vivaldi Cache (all profiles)", CleanCategory.BrowserCache, CleanSafety.Safe, "chromium-profile-subdir", @"sub=Cache;user_data={LOCAL}\Vivaldi\User Data")
+        ("browser.vivaldi.cache", "Vivaldi Cache (all profiles)", CleanCategory.BrowserCache, CleanSafety.Safe, "chromium-profile-subdir", @"sub=Cache;user_data={LOCAL}\Vivaldi\User Data"),
+        ("devtools.jetbrains-caches", "JetBrains Caches", CleanCategory.DevToolCache, CleanSafety.Safe, "children-subdirs", @"parent={LOCAL}\JetBrains;subs=caches,index,log,tmp"),
+        ("devtools.vs-code-extension-cache-all-extensions", "VS Code Extension Cache (all extensions)", CleanCategory.DevToolCache, CleanSafety.Safe, "children-subdir", @"parent={USER}\.vscode\extensions;sub=cache"),
+        ("devtools.docker-desktop-cache", "Docker Desktop cache", CleanCategory.DevToolCache, CleanSafety.Caution, "parent-subdirs", @"parent={LOCAL}\Docker;subs=cache,tmp"),
     };
 
     [Fact]

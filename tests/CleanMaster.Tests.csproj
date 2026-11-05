@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CleanMaster.csproj" />
+    <ProjectReference Include="..\tools\CleanMaster.Cli\CleanMaster.Cli.csproj" />
   </ItemGroup>
 
 </Project>

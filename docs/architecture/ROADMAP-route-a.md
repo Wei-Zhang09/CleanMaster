@@ -13,7 +13,7 @@
 | 1 | FIX-1 `SupportedOSPlatformVersion` 元数据修正 | 极低 | — | ✅ 已核查，决定不改（NETSDK1135 / CsWinRT 需 unsafe），理由入 ADR-001 | csproj 声明与 .NET 9 实际支持范围一致；build/test 绿 |
 | 2 | BASE-1 性能基线 | 低 | — | ✅ 完成，数字见 `docs/perf/baseline.md` | 有可复跑脚本 + 真实数字（扫描吞吐/峰值内存/冷启动） |
 | 3 | STO-1 按分配大小统计 | 中 | — | ✅ 完成，列表仍显逻辑大小，可回收/已释放按实际占用 | 稀疏/压缩文件可回收量不再高估；有单测覆盖 |
-| 4 | CLI-1 引擎 CLI 子命令 | 中 | — | ⏳ 下一个 | `--dry-run --json` 可跑通真实扫描，GUI 与 CLI 共用同一 service |
+| 4 | CLI-1 引擎 CLI 子命令 | 中 | — | ✅ 完成：`tools/CleanMaster.Cli`，只读、免提权、`--json`，8 个 e2e 用例 | `--dry-run --json` 可跑通真实扫描，GUI 与 CLI 共用同一 service |
 | 5 | PF-1 扫描性能优化 | 中 | BASE-1（已完成） | ✅ 完成：全盘扫描 10.3×、大文件夹扫描 13.9×，数字见 `docs/perf/baseline.md` | 相对基线有可复现的耗时/内存改进 |
 | 6 | RC-6 规则外置（TOML + evidence + 构建期校验） | **最高** | STO-1、CLI-1 | ⏳ 最后做 | 120 条规则等价迁移，快照测试锁定覆盖，规则可被非开发者审计 |
 

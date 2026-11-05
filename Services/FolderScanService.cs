@@ -140,9 +140,21 @@ public class FolderScanService : IFolderScanService
         int count = 0;
         try
         {
-            foreach (var file in Directory.EnumerateFiles(path, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }))
+            // DirectoryInfo.EnumerateFiles 返回的 FileInfo 已由目录扫描带出大小，
+            // 取 Length 不再为每个文件额外 stat（旧写法 Directory.EnumerateFiles + new FileInfo 是每次一次）。
+            var dir = new DirectoryInfo(path);
+            var options = new EnumerationOptions
             {
-                try { size += new FileInfo(file).Length; count++; } catch (Exception ex) { Debug.WriteLine($"GetDirectoryInfo: {ex.Message}"); }
+                IgnoreInaccessible = true,
+                RecurseSubdirectories = true,
+                AttributesToSkip = FileAttributes.ReparsePoint,
+                MatchType = MatchType.Simple
+            };
+
+            foreach (var file in dir.EnumerateFiles("*", options))
+            {
+                try { size += file.Length; count++; }
+                catch (Exception ex) { Debug.WriteLine($"GetDirectoryInfo: {ex.Message}"); }
             }
         }
         catch (Exception ex) { CleanMaster.App.LogError("GetDirectoryInfo", ex); }

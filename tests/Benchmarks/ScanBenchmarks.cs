@@ -136,8 +136,12 @@ public class ScanBenchmarks : IDisposable
         var service = new ScanService();
         var (files, bytes) = await CountTreeAsync(target);
 
+        List<CleanMaster.Models.LargeFileItem>? captured = null;
         _results.Add(Measure("全盘大文件扫描", $"真实目录 {target}", files, bytes,
-            () => service.FindLargeFilesAsync(target, minSizeBytes: 50 * 1024 * 1024).GetAwaiter().GetResult()));
+            () => captured = service.FindLargeFilesAsync(target, minSizeBytes: 50 * 1024 * 1024).GetAwaiter().GetResult()));
+
+        // 结果条数/总大小：用来核对"提速后没有漏扫"（与独立统计对比）
+        Console.WriteLine($"BENCH | 大文件结果 | count={captured?.Count} | totalBytes={captured?.Sum(f => f.SizeBytes)}");
     }
 
     [Fact]

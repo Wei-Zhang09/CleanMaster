@@ -409,8 +409,6 @@ public class ScanService : IScanService
     {
         return await Task.Run(() =>
         {
-            var files = new List<LargeFileItem>();
-
             // Use drive-relative skip paths so the filter works on any selected drive.
             // Previously these were hard-coded to C:\ and silently passed on other drives.
             var driveRoot = Path.GetPathRoot(drive) ?? drive;
@@ -425,84 +423,120 @@ public class ScanService : IScanService
                 Path.Combine(driveRoot, "Program Files (x86)")
             };
 
+            var results = new List<LargeFileItem>();
+            var sync = new object();
+
             try
             {
-                foreach (var file in EnumerateFilesRecursive(drive))
+                var root = new DirectoryInfo(drive);
+                if (!root.Exists) return new List<LargeFileItem>();
+
+                // 顶层目录并行、子树内顺序遍历：目录枚举是 I/O 密集，多线程能把等待叠起来；
+                // 但线程数限制在 CPU 核数，避免小目录爆炸成上万次线程切换。
+                var topDirs = new List<DirectoryInfo>();
+                try
                 {
-                    ct.ThrowIfCancellationRequested();
-
-                    var isInSkipDir = skipDirs.Any(d => file.StartsWith(d + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-                                                       || file.StartsWith(d, StringComparison.OrdinalIgnoreCase) && file.Length == d.Length);
-                    if (isInSkipDir) continue;
-
-                    try
+                    foreach (var sub in root.EnumerateDirectories("*", DirEnumOptions))
                     {
-                        var fi = new FileInfo(file);
-                        if (fi.Length >= minSizeBytes)
-                        {
-                            var ext = fi.Extension.ToLower();
-                            var (safety, fileType, fileDesc) = GetFileInfo(ext, fi.FullName);
-
-                            files.Add(new LargeFileItem
-                            {
-                                FileName = fi.Name,
-                                FullPath = fi.FullName,
-                                SizeBytes = fi.Length,
-                                LastModified = fi.LastWriteTime,
-                                Extension = fi.Extension,
-                                SafetyHint = safety,
-                                FileType = fileType,
-                                FileDesc = fileDesc
-                            });
-                        }
+                        if (skipDirs.Contains(sub.FullName)) continue;
+                        topDirs.Add(sub);
                     }
-                    catch (Exception ex) { Debug.WriteLine($"FindLargeFilesAsync: {ex.Message}"); }
+                }
+                catch (Exception ex) { Debug.WriteLine($"FindLargeFilesAsync-topDirs: {ex.Message}"); }
+
+                // 给定路径本身的散装文件
+                CollectLargeFilesIn(root, minSizeBytes, results);
+
+                if (topDirs.Count > 0)
+                {
+                    var options = new ParallelOptions
+                    {
+                        CancellationToken = ct,
+                        MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount)
+                    };
+
+                    Parallel.ForEach(topDirs, options, topDir =>
+                    {
+                        var local = new List<LargeFileItem>();
+                        CollectLargeFiles(topDir, minSizeBytes, skipDirs, local, ct);
+                        if (local.Count == 0) return;
+                        lock (sync) { results.AddRange(local); }
+                    });
                 }
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception ex) { CleanMaster.App.LogError("FindLargeFilesAsync", ex); }
-            return files.OrderByDescending(f => f.SizeBytes).Take(500).ToList();
+
+            return results.OrderByDescending(f => f.SizeBytes).Take(500).ToList();
         }, ct);
     }
 
-    /// <summary>
-    /// 健壮地递归枚举目录下的所有文件。与 Directory.EnumerateFiles(RecurseSubdirectories=true)
-    /// 不同，这里每个目录单独 try-catch：单个目录枚举失败（如文件在枚举期间被删除、权限变化）
-    /// 不会中断整个扫描，避免"Could not find file"异常导致扫描结果为空。
-    /// </summary>
-    private static IEnumerable<string> EnumerateFilesRecursive(string root)
+    // 目录枚举参数：跳过系统项与 reparse point（junction/symlink），与旧实现保持同一语义。
+    private static readonly EnumerationOptions FileEnumOptions = new()
     {
-        // 枚举当前目录的文件（不递归）
-        string[] files;
+        IgnoreInaccessible = true,
+        RecurseSubdirectories = false,
+        AttributesToSkip = FileAttributes.System | FileAttributes.ReparsePoint,
+        MatchType = MatchType.Simple
+    };
+
+    private static readonly EnumerationOptions DirEnumOptions = new()
+    {
+        IgnoreInaccessible = true,
+        RecurseSubdirectories = false,
+        AttributesToSkip = FileAttributes.System | FileAttributes.ReparsePoint,
+        MatchType = MatchType.Simple
+    };
+
+    /// <summary>
+    /// 递归收集大文件。关键点：用 <see cref="DirectoryInfo.EnumerateFiles(string, EnumerationOptions)"/>
+    /// 拿到的 <see cref="FileInfo"/> 已带目录扫描返回的大小/时间，取 Length 不再触发额外系统调用；
+    /// 旧实现走 Directory.GetFiles(只要名字) + new FileInfo(每文件一次 stat)，这是 7.7k 文件/秒的主因。
+    /// </summary>
+    private static void CollectLargeFiles(
+        DirectoryInfo dir, long minSizeBytes, HashSet<string> skipDirs, List<LargeFileItem> sink, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        CollectLargeFilesIn(dir, minSizeBytes, sink);
+
+        DirectoryInfo[] subs;
+        try { subs = dir.GetDirectories("*", DirEnumOptions); }
+        catch (Exception ex) { Debug.WriteLine($"CollectLargeFiles-dirs: {ex.Message}"); return; }
+
+        foreach (var sub in subs)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (skipDirs.Contains(sub.FullName)) continue;
+            CollectLargeFiles(sub, minSizeBytes, skipDirs, sink, ct);
+        }
+    }
+
+    private static void CollectLargeFilesIn(DirectoryInfo dir, long minSizeBytes, List<LargeFileItem> sink)
+    {
         try
         {
-            files = Directory.GetFiles(root, "*", new EnumerationOptions
+            foreach (var fi in dir.EnumerateFiles("*", FileEnumOptions))
             {
-                IgnoreInaccessible = true,
-                RecurseSubdirectories = false,
-                AttributesToSkip = FileAttributes.System
-            });
-        }
-        catch { yield break; }
+                if (fi.Length < minSizeBytes) continue;
 
-        foreach (var f in files) yield return f;
+                var ext = fi.Extension;
+                var (safety, fileType, fileDesc) = GetFileInfo(ext, fi.FullName);
 
-        // 递归子目录（跳过 reparse point 防循环）
-        string[] dirs;
-        try
-        {
-            dirs = Directory.GetDirectories(root, "*", new EnumerationOptions
-            {
-                IgnoreInaccessible = true,
-                RecurseSubdirectories = false,
-                AttributesToSkip = FileAttributes.System | FileAttributes.ReparsePoint
-            });
+                sink.Add(new LargeFileItem
+                {
+                    FileName = fi.Name,
+                    FullPath = fi.FullName,
+                    SizeBytes = fi.Length,
+                    LastModified = fi.LastWriteTime,
+                    Extension = ext,
+                    SafetyHint = safety,
+                    FileType = fileType,
+                    FileDesc = fileDesc
+                });
+            }
         }
-        catch { yield break; }
-
-        foreach (var d in dirs)
-        {
-            foreach (var f in EnumerateFilesRecursive(d)) yield return f;
-        }
+        catch (Exception ex) { Debug.WriteLine($"CollectLargeFilesIn: {ex.Message}"); }
     }
 
     private static (string safety, string type, string desc) GetFileInfo(string ext, string fullPath)

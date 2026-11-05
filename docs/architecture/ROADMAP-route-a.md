@@ -15,7 +15,7 @@
 | 3 | STO-1 按分配大小统计 | 中 | — | ✅ 完成，列表仍显逻辑大小，可回收/已释放按实际占用 | 稀疏/压缩文件可回收量不再高估；有单测覆盖 |
 | 4 | CLI-1 引擎 CLI 子命令 | 中 | — | ✅ 完成：`tools/CleanMaster.Cli`，只读、免提权、`--json`，8 个 e2e 用例 | `--dry-run --json` 可跑通真实扫描，GUI 与 CLI 共用同一 service |
 | 5 | PF-1 扫描性能优化 | 中 | BASE-1（已完成） | ✅ 完成：全盘扫描 10.3×、大文件夹扫描 13.9×，数字见 `docs/perf/baseline.md` | 相对基线有可复现的耗时/内存改进 |
-| 6 | RC-6 规则外置（TOML + evidence + 构建期校验） | **最高** | STO-1、CLI-1 | ⏳ 最后做 | 120 条规则等价迁移，快照测试锁定覆盖，规则可被非开发者审计 |
+| 6 | RC-6 规则外置（TOML + evidence + 构建期校验） | **最高** | STO-1、CLI-1 | ✅ 完成：119/124 数据化，剩余 5 条为设计使然（见下节） | 120 条规则等价迁移，快照测试锁定覆盖，规则可被非开发者审计 |
 
 RC-6 放最后的原因：它要动规则库、扫描引擎、测试快照三层，且必须先用 BASE-1 证明「当前规则规模下的性能与正确性基线」，否则迁移后无法判断是否退化；CLI-1 提供迁移期的机器可读回归手段（逐规则比对新旧输出）。
 
@@ -40,6 +40,29 @@ MangoDisk 用 `CreateProcessWithTokenW` 把卸载器放到 explorer 令牌下跑
 结论：校验 + 拒绝 + 说明，比"想办法让它跑起来"更诚实也更安全。
 
 明确不抄：把服务当启动项一键禁用、计划任务全量暴露、注册表整键事务删除、批量卸载、静默卸载默认开启。
+
+## RC-6 结果：规则外置完成（119/124 数据化）
+
+| 项 | 结果 |
+|---|---|
+| 规则总数 | 124（指纹断言，未变） |
+| 已数据化 | **119 条**（Rules/Catalog 下 10 个 TOML 文件） |
+| 留在代码 | 5 条，均为设计使然，见下 |
+| 解析器 | 5 个：chromium-profile-subdir、firefox-profile-subdir、children-subdir、children-subdirs、parent-subdirs |
+| 占位符 | 11 个：LOCAL/ROAMING/USER/SYSTEMDRIVE/WINDIR/PROGRAMFILES/PROGRAMFILESX86/PROGRAMDATA/DOCUMENTS/RECENT/TEMP |
+
+**留在代码的 5 条及原因**：
+1. `Recycle Bin` —— 删除走 `SHEmptyRecycleBin` 特例，不是路径删除，数据模型表达不了。
+2. `GetGameCacheRules` 生成的游戏缓存规则 —— 按"已安装的游戏"动态生成规则（一条数据只能表达一条规则，无法表达"每个已装游戏各一条"）。
+3. `GetElectronCacheRules` 生成的 Electron 应用缓存 —— 同上，按启发式指纹发现已装 Electron 应用后逐个生成。
+
+这三处属于"规则工厂"而非"规则"，将来若要数据化需要引入"发现器 + 规则模板"两层模型，当前收益不足以支撑。
+
+**等价性保障（三道闸）**：
+- `RuleSnapshotTests`：121 条规则的 名称/分类/安全等级 逐条锁定（迁移中被它抓出过一次 UWP LocalCache 安全等级写错）
+- `RuleDefinitionFingerprintTests`：124 条规则的定义指纹 + 已迁移条数断言（防止"以为迁完了"）
+- 黄金表：`CatalogRules_MatchLockedGoldenTable`（98 条静态路径）+ `ResolverRules_MatchLockedGoldenTable`（19 条 resolver 规则的解析器名 + 参数签名）
+- 运行时：每批用 `CleanMaster.Cli scan --json` 核对分类/条目数与迁移前一致
 
 ## 明确不做
 

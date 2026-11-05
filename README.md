@@ -51,6 +51,10 @@ $v = dotnet msbuild CleanMaster.csproj -getProperty:Version
 
 版本号在 `CleanMaster.csproj` 的 `<Version>` 中定义（单一来源），打包时通过 `/DAppVersion` 传入。
 
+## 架构决策记录
+
+- `docs/architecture/ADR-001-deprecate-win10-fork.md`：废弃 CleanMaster-Win10 独立分支，主分支为唯一产品线（含 0xC0000602 的根因核对）。
+
 ## 许可证
 
 本项目采用 [GNU General Public License v3.0](LICENSE)。

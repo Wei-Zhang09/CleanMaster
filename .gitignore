@@ -47,8 +47,10 @@ installer/
 # Test coverage output
 coverage/
 
-# Local docs working folder
-docs/
+# Local docs working folder — 架构决策与性能基线要进版本库，其余草稿仍忽略
+docs/*
+!docs/architecture/
+!docs/perf/
 
 # Hermes agent working files
 .hermes/

@@ -1,0 +1,17 @@
+﻿{
+    "measured_at":  "2026-11-05 16:19:48",
+    "dll":  "bin\\Release\\net9.0-windows\\CleanMaster.dll",
+    "mode":  "dotnet host (no UAC, no apphost manifest)",
+    "runs":  3,
+    "samples_ms":  [
+                       2084,
+                       1175,
+                       1115
+                   ],
+    "median_ms":  1175,
+    "min_ms":  1115,
+    "max_ms":  2084,
+    "os":  "Microsoft Windows 11 家庭版 中文版",
+    "cpu":  "12th Gen Intel(R) Core(TM) i7-12700H",
+    "ram_gb":  15.6
+}

@@ -65,7 +65,7 @@ public class ScanService : IScanService
                 ProgressChanged?.Invoke(progress);
             });
 
-            var result = await Task.Run(() => ScanCategory(group.Key, group.ToList(), ruleProgress), ct);
+            var result = await Task.Run(() => ScanCategory(group.Key, group.ToList(), ruleProgress, ct), ct);
 
             if (result.Items.Count > 0)
             {
@@ -81,7 +81,7 @@ public class ScanService : IScanService
         return results.OrderByDescending(r => r.TotalSize).ToList();
     }
 
-    private ScanCategoryResult ScanCategory(CleanCategory category, List<CleanupRule> rules, IProgress<string>? ruleProgress = null)
+    private ScanCategoryResult ScanCategory(CleanCategory category, List<CleanupRule> rules, IProgress<string>? ruleProgress = null, CancellationToken ct = default)
     {
         var result = new ScanCategoryResult
         {
@@ -103,7 +103,7 @@ public class ScanService : IScanService
 
                     if (Directory.Exists(path))
                     {
-                        ScanDirectory(path, rule, result, ResolveSoftwareName(rule), ResolveFileType(rule));
+                        ScanDirectory(path, rule, result, ResolveSoftwareName(rule), ResolveFileType(rule), ct);
                     }
                     else if (File.Exists(path))
                     {
@@ -151,7 +151,7 @@ public class ScanService : IScanService
         return result;
     }
 
-    private void ScanDirectory(string path, CleanupRule rule, ScanCategoryResult result, string softwareName = "", string fileType = "")
+    private void ScanDirectory(string path, CleanupRule rule, ScanCategoryResult result, string softwareName = "", string fileType = "", CancellationToken ct = default)
     {
         try
         {
@@ -170,7 +170,7 @@ public class ScanService : IScanService
                                 foreach (var sub in Directory.EnumerateDirectories(path, pattern,
                                     new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = false }))
                                 {
-                                    AddDirectoryItem(rule, result, sub, softwareName, fileType, $"{rule.Name} - {Path.GetFileName(sub)}");
+                                    AddDirectoryItem(rule, result, sub, softwareName, fileType, $"{rule.Name} - {Path.GetFileName(sub)}", ct);
                                 }
                             }
                             catch (Exception ex) { CleanMaster.App.LogError("ScanDirectory-dirs-glob", ex); }
@@ -181,7 +181,7 @@ public class ScanService : IScanService
                             var subPath = Path.Combine(path, pattern);
                             if (Directory.Exists(subPath))
                             {
-                                AddDirectoryItem(rule, result, subPath, softwareName, fileType, $"{rule.Name} - {pattern}");
+                                AddDirectoryItem(rule, result, subPath, softwareName, fileType, $"{rule.Name} - {pattern}", ct);
                             }
                             else if (File.Exists(subPath))
                             {
@@ -209,7 +209,7 @@ public class ScanService : IScanService
             }
             else
             {
-                AddDirectoryItem(rule, result, path, softwareName, fileType, rule.Name);
+                AddDirectoryItem(rule, result, path, softwareName, fileType, rule.Name, ct);
             }
         }
         catch (UnauthorizedAccessException ex)
@@ -220,9 +220,9 @@ public class ScanService : IScanService
         catch (Exception ex) { CleanMaster.App.LogError("ScanDirectory", ex); }
     }
 
-    private static void AddDirectoryItem(CleanupRule rule, ScanCategoryResult result, string path, string softwareName, string fileType, string displayName)
+    private static void AddDirectoryItem(CleanupRule rule, ScanCategoryResult result, string path, string softwareName, string fileType, string displayName, CancellationToken ct = default)
     {
-        var sizes = FileSystemUtils.GetDirectorySizes(path);
+        var sizes = FileSystemUtils.GetDirectorySizes(path, -1, ct);
         if (sizes.Logical <= 0) return;
         result.Items.Add(new CleanableItem
         {

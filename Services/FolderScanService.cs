@@ -77,7 +77,7 @@ public class FolderScanService : IFolderScanService
 
                     ProgressChanged?.Invoke(dirInfo.Name);
 
-                    var (size, count) = GetDirectoryInfo(dir);
+                    var (size, count) = GetDirectoryInfo(dir, ct);
                     if (size >= minSizeBytes)
                     {
                         results.Add(new LargeFolderItem
@@ -112,7 +112,7 @@ public class FolderScanService : IFolderScanService
                             continue;
 
                         ProgressChanged?.Invoke(subDirInfo.Name);
-                        var (size, count) = GetDirectoryInfo(subDir);
+                        var (size, count) = GetDirectoryInfo(subDir, ct);
                         if (size >= minSizeBytes && !seenPaths.Contains(subDir))
                         {
                             results.Add(new LargeFolderItem
@@ -134,31 +134,74 @@ public class FolderScanService : IFolderScanService
         }, ct);
     }
 
-    private static (long size, int count) GetDirectoryInfo(string path)
+    // 目录枚举参数：跳过 reparse point，避免 junction 造成的目录环
+    private static readonly EnumerationOptions FileEnumOptions = new()
+    {
+        IgnoreInaccessible = true,
+        RecurseSubdirectories = false,
+        AttributesToSkip = FileAttributes.ReparsePoint,
+        MatchType = MatchType.Simple
+    };
+
+    private static readonly EnumerationOptions DirEnumOptions = new()
+    {
+        IgnoreInaccessible = true,
+        RecurseSubdirectories = false,
+        AttributesToSkip = FileAttributes.ReparsePoint,
+        MatchType = MatchType.Simple
+    };
+
+    /// <summary>
+    /// 统计目录大小与文件数。
+    ///
+    /// 为什么要手动递归而不是 RecurseSubdirectories=true：后者在枚举过程中遇到"文件/目录被删"
+    /// 会从 MoveNext 抛出，整个子树的统计直接归零（表现为"某个文件夹大小莫名其妙是 0"）。
+    /// 这里每个目录独立 try/catch，一个目录炸掉只丢它自己，兄弟目录照常统计。
+    /// 同时支持取消：以前只在顶层目录之间检查 ct，扫描大目录时点"取消"要等很久。
+    /// </summary>
+    private static (long size, int count) GetDirectoryInfo(string path, CancellationToken ct)
     {
         long size = 0;
         int count = 0;
-        try
-        {
-            // DirectoryInfo.EnumerateFiles 返回的 FileInfo 已由目录扫描带出大小，
-            // 取 Length 不再为每个文件额外 stat（旧写法 Directory.EnumerateFiles + new FileInfo 是每次一次）。
-            var dir = new DirectoryInfo(path);
-            var options = new EnumerationOptions
-            {
-                IgnoreInaccessible = true,
-                RecurseSubdirectories = true,
-                AttributesToSkip = FileAttributes.ReparsePoint,
-                MatchType = MatchType.Simple
-            };
+        Collect(path, ct, ref size, ref count);
+        return (size, count);
 
-            foreach (var file in dir.EnumerateFiles("*", options))
+        static void Collect(string dir, CancellationToken token, ref long totalSize, ref int totalCount)
+        {
+            token.ThrowIfCancellationRequested();
+
+            var info = new DirectoryInfo(dir);
+
+            // 当前目录的文件：DirectoryInfo.EnumerateFiles 返回的 FileInfo 已带大小，取 Length 无额外 stat
+            try
             {
-                try { size += file.Length; count++; }
-                catch (Exception ex) { Debug.WriteLine($"GetDirectoryInfo: {ex.Message}"); }
+                foreach (var file in info.EnumerateFiles("*", FileEnumOptions))
+                {
+                    token.ThrowIfCancellationRequested();
+                    try { totalSize += file.Length; totalCount++; }
+                    catch (Exception ex) { Debug.WriteLine($"GetDirectoryInfo-file: {ex.Message}"); }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 枚举中途失败（目录被删/权限变化）：丢掉本目录剩余条目，但不要连累兄弟目录
+                Debug.WriteLine($"GetDirectoryInfo-files: {ex.Message}");
+            }
+
+            DirectoryInfo[] subs;
+            try { subs = info.GetDirectories("*", DirEnumOptions); }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GetDirectoryInfo-dirs: {ex.Message}");
+                return;
+            }
+
+            foreach (var sub in subs)
+            {
+                token.ThrowIfCancellationRequested();
+                Collect(sub.FullName, token, ref totalSize, ref totalCount);
             }
         }
-        catch (Exception ex) { CleanMaster.App.LogError("GetDirectoryInfo", ex); }
-        return (size, count);
     }
 
     private static IEnumerable<string> GetDirectoriesSafe(string path)

@@ -73,3 +73,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\bench-coldstart.ps1 
 - `%LOCALAPPDATA%` 首次扫描可能命中冷缓存，耗时偏高；跨次对比时需注意。
 - 合成树的目录深度、文件大小分布与真实用户盘不同，只用于回归对比，不代表真实用户耗时。
 - 冷启动不含 UAC，也不含安装目录在机械盘/网络盘的情况。
+
+## ST-1 稳定性改动的性能代价（2026-11-05 补测）
+
+大文件夹扫描由 `DirectoryInfo.EnumerateFiles(RecurseSubdirectories=true)` 改为**手动递归 + 每目录独立 try/catch**，
+以换取"某个子目录读不了/被删时只丢它自己，不连累兄弟目录"，并补上取消支持。
+
+| 场景 | 优化前（原始） | PF-1 后 | ST-1 后 | 说明 |
+|---|---|---|---|---|
+| 大文件夹扫描 20k 文件 | 1,029 ms | 74 ms | **132 ms** | 手动递归每目录多一次 GetDirectories/EnumerateFiles 调用，绝对值仍比原始快 7.8× |
+
+结论：为 58 ms/20k 文件的代价换取"不再静默丢整个子树"是值得的；若将来这类目录规模更大，
+可再评估用 `FileSystemEnumerable` 自定义递归（一次遍历 + 自己维护栈）。

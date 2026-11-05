@@ -12,18 +12,18 @@ public static class FileSystemUtils
     /// 2. 并行遍历子目录, 大目录(如 JetBrains caches)扫描速度提升 3-5 倍
     /// 3. 当 maxDepth=-1 时全递归, 否则只下钻到指定深度
     /// </summary>
-    public static long GetDirectorySize(string path, int maxDepth = -1)
-        => GetDirectorySizes(path, maxDepth).Logical;
+    public static long GetDirectorySize(string path, int maxDepth = -1, CancellationToken ct = default)
+        => GetDirectorySizes(path, maxDepth, ct).Logical;
 
     /// <summary>计算目录实际占用（稀疏/压缩文件按真实分配量）。</summary>
-    public static long GetDirectoryAllocatedSize(string path, int maxDepth = -1)
-        => GetDirectorySizes(path, maxDepth).Allocated;
+    public static long GetDirectoryAllocatedSize(string path, int maxDepth = -1, CancellationToken ct = default)
+        => GetDirectorySizes(path, maxDepth, ct).Allocated;
 
     /// <summary>
     /// 一次遍历同时给出逻辑大小与实际占用。分开调两次会把目录树扫两遍，
     /// 清理工具扫描本身已是热点，这里必须合并。
     /// </summary>
-    public static (long Logical, long Allocated) GetDirectorySizes(string path, int maxDepth = -1)
+    public static (long Logical, long Allocated) GetDirectorySizes(string path, int maxDepth = -1, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return (0, 0);
 
@@ -32,7 +32,7 @@ public static class FileSystemUtils
 
         try
         {
-            return GetDirectorySizesCore(path, maxDepth, depth: 0);
+            return GetDirectorySizesCore(path, maxDepth, depth: 0, ct);
         }
         catch (Exception ex)
         {
@@ -41,8 +41,10 @@ public static class FileSystemUtils
         }
     }
 
-    private static (long Logical, long Allocated) GetDirectorySizesCore(string path, int maxDepth, int depth)
+    private static (long Logical, long Allocated) GetDirectorySizesCore(string path, int maxDepth, int depth, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
+
         long size = 0;
         long allocated = 0;
 
@@ -101,7 +103,7 @@ public static class FileSystemUtils
             // 单子目录场景不需要并行开销
             if (!IsReparsePoint(subDirs[0]))
             {
-                var sub = GetDirectorySizesCore(subDirs[0], maxDepth, depth + 1);
+                var sub = GetDirectorySizesCore(subDirs[0], maxDepth, depth + 1, ct);
                 size += sub.Logical;
                 allocated += sub.Allocated;
             }
@@ -119,7 +121,7 @@ public static class FileSystemUtils
             Parallel.ForEach(subDirs, options, (sub, state) =>
             {
                 if (IsReparsePoint(sub)) return;
-                var subSize = GetDirectorySizesCore(sub, maxDepth, depth + 1);
+                var subSize = GetDirectorySizesCore(sub, maxDepth, depth + 1, ct);
                 if (subSize.Logical > 0 || subSize.Allocated > 0)
                 {
                     lock (lockObj)

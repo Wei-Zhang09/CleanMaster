@@ -45,9 +45,20 @@ public sealed class RuleDefinition
 
     public string[] References { get; init; } = Array.Empty<string>();
 
+    /// <summary>
+    /// 命名解析器（路径在运行时算，如"枚举所有浏览器 profile"）。与 path/paths 互斥。
+    /// 解析器必须已在 <see cref="RuleResolvers"/> 注册，否则校验期报错。
+    /// </summary>
+    public string Resolver { get; init; } = "";
+
+    /// <summary>解析器参数（值里的占位符同样会被展开）。</summary>
+    public IReadOnlyDictionary<string, string> ResolverArgs { get; init; } = new Dictionary<string, string>();
+
     /// <summary>来源文件（相对路径），用于错误定位。</summary>
     public string Source { get; init; } = "";
 
     public IEnumerable<string> EffectivePaths =>
         Paths.Length > 0 ? Paths : string.IsNullOrEmpty(Path) ? Array.Empty<string>() : new[] { Path };
+
+    public bool UsesResolver => !string.IsNullOrWhiteSpace(Resolver);
 }

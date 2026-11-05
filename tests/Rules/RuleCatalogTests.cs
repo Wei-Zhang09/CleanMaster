@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(20, result.Rules.Count);
+        Assert.Equal(33, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -72,7 +72,10 @@ public class RuleCatalogTests
         ("system.update.datastore", "WU DataStore", CleanCategory.WindowsUpdate, CleanSafety.Caution, @"{SYSTEMDRIVE}\Windows\SoftwareDistribution\DataStore", Array.Empty<string>(), true, -1),
         ("system.update.delivery-optimization", "Delivery Optimization", CleanCategory.WindowsUpdate, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\SoftwareDistribution\DeliveryOptimization", Array.Empty<string>(), true, -1),
         ("system.update.download-cache", "WU Download Cache", CleanCategory.WindowsUpdate, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\SoftwareDistribution\Download", Array.Empty<string>(), true, -1),
-        ("system.update.windows-old", "Windows.old", CleanCategory.WindowsUpdate, CleanSafety.Caution, @"{SYSTEMDRIVE}\Windows.old", Array.Empty<string>(), true, -1)
+        ("system.update.windows-old", "Windows.old", CleanCategory.WindowsUpdate, CleanSafety.Caution, @"{SYSTEMDRIVE}\Windows.old", Array.Empty<string>(), true, -1),
+        ("browser.inetcache", "INetCache (IE/Edge legacy)", CleanCategory.BrowserCache, CleanSafety.Safe, @"{LOCAL}\Microsoft\Windows\INetCache", Array.Empty<string>(), true, -1),
+        ("browser.opera.cache", "Opera Cache", CleanCategory.BrowserCache, CleanSafety.Safe, @"{LOCAL}\Opera Software\Opera Stable\Cache", Array.Empty<string>(), true, -1),
+        ("browser.webcache", "WebCache", CleanCategory.BrowserCache, CleanSafety.Caution, @"{LOCAL}\Microsoft\Windows\WebCache", Array.Empty<string>(), true, -1)
     };
 
     [Fact]
@@ -81,11 +84,13 @@ public class RuleCatalogTests
         var catalog = RuleCatalogLoader.LoadEmbedded();
         Assert.True(catalog.IsValid, string.Join("\n", catalog.Errors));
 
-        Assert.Equal(Golden.Length, catalog.Rules.Count);
+        // 只校验静态路径规则；resolver 规则由 RuleResolverTests 的黄金表负责
+        var pathRules = catalog.Rules.Where(r => !r.UsesResolver).ToList();
+        Assert.Equal(Golden.Length, pathRules.Count);
 
         foreach (var expected in Golden)
         {
-            var actual = catalog.Rules.Single(r => r.Id == expected.Id);
+            var actual = pathRules.Single(r => r.Id == expected.Id);
 
             Assert.Equal(expected.Name, actual.Name);
             Assert.Equal(expected.Category, Enum.Parse<CleanCategory>(actual.Category, true));

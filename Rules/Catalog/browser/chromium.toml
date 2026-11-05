@@ -1,0 +1,177 @@
+# 浏览器缓存（RC-6 迁移批次 4，首个使用命名解析器的批次）
+#
+# Chromium 系浏览器（Edge/Chrome/Brave/Vivaldi）的缓存都在 User Data\<profile>\<子目录> 下，
+# profile 数量因用户而异，所以路径必须运行时枚举 —— 这里用 resolver + 参数表达，
+# 解析逻辑在 Rules/Data/RuleResolvers.cs（chromium-profile-subdir）。
+#
+# 不清理的内容：书签、密码、历史、Cookie、扩展、登录状态都在这条路径之外。
+
+[[rule]]
+id = "browser.edge.cache"
+name = "Edge Cache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Microsoft Edge 浏览器缓存（所有用户配置）。包含网页图片、脚本、样式等资源。删除后下次访问页面会重新从网络加载。"
+evidence = 'Cache 目录存放网页资源的本地副本，浏览器按 HTTP 缓存策略重建；不包含 Cookie、历史、书签与登录状态。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\Microsoft\Edge\User Data'
+sub = "Cache"
+
+[[rule]]
+id = "browser.edge.code-cache"
+name = "Edge Code Cache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Microsoft Edge JavaScript 代码缓存。Edge 编译后的 JS 代码缓存，删除后网页首次打开略慢，会自动重建。"
+evidence = 'Code Cache 是 V8 编译后的字节码缓存，浏览器会按需重新编译；删除只影响首次加载速度。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\Microsoft\Edge\User Data'
+sub = "Code Cache"
+
+[[rule]]
+id = "browser.edge.gpu-cache"
+name = "Edge GPUCache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Microsoft Edge GPU 着色器缓存。GPU 渲染网页时编译的着色器，删除后游戏/视频首帧渲染略慢。"
+evidence = 'GPUCache 存 GPU 着色器与图形管线缓存，属可重建的编译产物。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\Microsoft\Edge\User Data'
+sub = "GPUCache"
+
+[[rule]]
+id = "browser.chrome.cache"
+name = "Chrome Cache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Google Chrome 浏览器缓存（所有用户配置）。包含网页资源。删除后下次访问页面会重新加载。"
+evidence = 'Cache 目录存放网页资源的本地副本，浏览器按 HTTP 缓存策略重建；不包含 Cookie、历史、书签与登录状态。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\Google\Chrome\User Data'
+sub = "Cache"
+
+[[rule]]
+id = "browser.chrome.code-cache"
+name = "Chrome Code Cache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Google Chrome JavaScript 代码缓存。删除后网页首次打开略慢，会自动重建。"
+evidence = 'Code Cache 是 V8 编译后的字节码缓存，浏览器会按需重新编译；删除只影响首次加载速度。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\Google\Chrome\User Data'
+sub = "Code Cache"
+
+[[rule]]
+id = "browser.chrome.gpu-cache"
+name = "Chrome GPUCache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Google Chrome GPU 着色器缓存。删除后视频/游戏渲染略慢，会自动重建。"
+evidence = 'GPUCache 存 GPU 着色器与图形管线缓存，属可重建的编译产物。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\Google\Chrome\User Data'
+sub = "GPUCache"
+
+[[rule]]
+id = "browser.brave.cache"
+name = "Brave Cache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Brave 浏览器缓存。删除后网页资源会重新从网络加载。"
+evidence = '与 Chromium 系一致：Cache 目录为网页资源副本，可重建。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\BraveSoftware\Brave-Browser\User Data'
+sub = "Cache"
+
+[[rule]]
+id = "browser.brave.gpu-cache"
+name = "Brave GPUCache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Brave GPU 着色器缓存。删除后视频渲染略慢，会自动重建。"
+evidence = 'GPUCache 存 GPU 着色器与图形管线缓存，属可重建的编译产物。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\BraveSoftware\Brave-Browser\User Data'
+sub = "GPUCache"
+
+[[rule]]
+id = "browser.vivaldi.cache"
+name = "Vivaldi Cache (all profiles)"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "chromium-profile-subdir"
+description = "Vivaldi 浏览器缓存。删除后网页资源会重新加载。"
+evidence = '与 Chromium 系一致：Cache 目录为网页资源副本，可重建。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+user_data = '{LOCAL}\Vivaldi\User Data'
+sub = "Cache"
+
+[[rule]]
+id = "browser.firefox.cache2"
+name = "Firefox Cache2"
+category = "BrowserCache"
+safety = "Safe"
+resolver = "firefox-profile-subdir"
+description = "Firefox 浏览器缓存（cache2 子目录）。仅清理网页资源缓存，不影响书签、密码和历史记录。"
+evidence = 'cache2 是 Firefox 的网页资源缓存目录；书签、密码、历史在 profile 根目录的其他文件中，不在此路径内。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+profiles_root = '{LOCAL}\Mozilla\Firefox\Profiles'
+sub = "cache2"
+
+[[rule]]
+id = "browser.opera.cache"
+name = "Opera Cache"
+category = "BrowserCache"
+safety = "Safe"
+path = '{LOCAL}\Opera Software\Opera Stable\Cache'
+description = "Opera 浏览器缓存。删除后网页资源会重新加载。"
+evidence = 'Opera 单配置安装的固定缓存目录，属网页资源副本，可重建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "browser.inetcache"
+name = "INetCache (IE/Edge legacy)"
+category = "BrowserCache"
+safety = "Safe"
+path = '{LOCAL}\Microsoft\Windows\INetCache'
+description = "WinINet 缓存。IE 和旧版 Edge 兼容层使用的网页缓存，可安全删除。"
+evidence = 'INetCache 是 WinINet 的网页缓存目录，供 IE 与旧版 Edge 兼容层使用；被占用的文件会删除失败并被跳过。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "browser.webcache"
+name = "WebCache"
+category = "BrowserCache"
+safety = "Caution"
+path = '{LOCAL}\Microsoft\Windows\WebCache'
+description = "WinINet WebCache 数据库。可能包含 IE/Edge 历史记录索引。建议关闭浏览器后清理，否则可能被占用无法删除。"
+evidence = 'WebCache 目录里的数据库同时保存缓存索引与部分历史记录索引，删除后索引会重建但历史记录视图可能受影响，因此标 Caution 并提示关闭浏览器。'
+verified_at = "2026-11-05"

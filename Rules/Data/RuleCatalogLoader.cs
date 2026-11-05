@@ -155,12 +155,42 @@ public static class RuleCatalogLoader
 
         var path = GetString(table, "path", where, errors) ?? "";
         var paths = GetStringArray(table, "paths", where, errors);
+        var resolver = GetString(table, "resolver", where, errors) ?? "";
+        var resolverArgs = GetStringMap(table, "resolver_args", where, errors);
 
-        if (string.IsNullOrWhiteSpace(path) && paths.Length == 0)
-            errors.Add($"{where}: 必须提供 path 或 paths");
+        var hasStaticPath = !string.IsNullOrWhiteSpace(path) || paths.Length > 0;
+
+        if (!hasStaticPath && string.IsNullOrWhiteSpace(resolver))
+            errors.Add($"{where}: 必须提供 path、paths 或 resolver 三者之一");
+
+        if (!string.IsNullOrWhiteSpace(resolver) && hasStaticPath)
+            errors.Add($"{where}: resolver 与 path/paths 不能同时提供");
 
         if (!string.IsNullOrWhiteSpace(path) && paths.Length > 0)
             errors.Add($"{where}: path 与 paths 不能同时提供");
+
+        if (!string.IsNullOrWhiteSpace(resolver))
+        {
+            if (!RuleResolvers.IsKnown(resolver))
+            {
+                errors.Add($"{where}: 未注册的 resolver \"{resolver}\"（已注册：{string.Join(", ", RuleResolvers.Names)}）");
+            }
+            else
+            {
+                foreach (var required in RuleResolvers.RequiredArgs(resolver))
+                {
+                    if (!resolverArgs.ContainsKey(required) || string.IsNullOrWhiteSpace(resolverArgs[required]))
+                        errors.Add($"{where}: resolver \"{resolver}\" 缺少必需参数 {required}");
+                }
+
+                foreach (var (key, value) in resolverArgs)
+                {
+                    var unknownArgs = RuleTemplateResolver.FindUnknownPlaceholders(value);
+                    if (unknownArgs.Count > 0)
+                        errors.Add($"{where}: resolver_args.{key} 含未知占位符 {string.Join(", ", unknownArgs.Select(u => "{" + u + "}"))}");
+                }
+            }
+        }
 
         foreach (var template in paths.Length > 0 ? paths : new[] { path })
         {
@@ -208,6 +238,8 @@ public static class RuleCatalogLoader
             Evidence = evidence,
             VerifiedAt = verifiedAt,
             References = GetStringArray(table, "references", where, errors),
+            Resolver = resolver,
+            ResolverArgs = resolverArgs,
             Source = where
         };
     }
@@ -230,6 +262,33 @@ public static class RuleCatalogLoader
     public static CleanupRule ToCleanupRule(RuleDefinition definition)
     {
         var templates = definition.EffectivePaths.ToArray();
+
+        // resolver 规则：路径在扫描时由注册的解析器算出；参数里的占位符同样展开
+        if (definition.UsesResolver)
+        {
+            var resolverName = definition.Resolver;
+            var resolverArgs = definition.ResolverArgs.ToDictionary(
+                kv => kv.Key,
+                kv => RuleTemplateResolver.Resolve(kv.Value),
+                StringComparer.OrdinalIgnoreCase);
+
+            return new CleanupRule
+            {
+                Id = definition.Id,
+                Name = definition.Name,
+                PathTemplate = "resolver:" + resolverName,
+                Category = Enum.Parse<CleanCategory>(definition.Category, ignoreCase: true),
+                Safety = Enum.Parse<CleanSafety>(definition.Safety, ignoreCase: true),
+                Description = definition.Description ?? "",
+                SoftwareName = string.IsNullOrWhiteSpace(definition.Software) ? null : definition.Software,
+                FileType = string.IsNullOrWhiteSpace(definition.FileType) ? null : definition.FileType,
+                FilePatterns = definition.Patterns.Length > 0 ? definition.Patterns : null,
+                PatternsAreDirectories = definition.PatternsAreDirectories,
+                MaxDepth = definition.MaxDepth,
+                IsEnabled = definition.Enabled,
+                PathFactoryMulti = () => RuleResolvers.Resolve(resolverName, resolverArgs)
+            };
+        }
 
         return new CleanupRule
         {
@@ -290,6 +349,26 @@ public static class RuleCatalogLoader
 
         errors.Add($"{where}: 字段 {key} 期望字符串数组，实际 {raw.GetType().Name}");
         return Array.Empty<string>();
+    }
+
+    private static IReadOnlyDictionary<string, string> GetStringMap(
+        TomlTable table, string key, string where, List<string> errors)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!table.TryGetValue(key, out var raw) || raw == null) return result;
+
+        if (raw is not TomlTable nested)
+        {
+            errors.Add($"{where}: 字段 {key} 期望表（键值对），实际 {raw.GetType().Name}");
+            return result;
+        }
+
+        foreach (var (k, v) in nested)
+        {
+            if (v is string text) result[k] = text;
+            else errors.Add($"{where}: {key}.{k} 期望字符串，实际 {v?.GetType().Name ?? "null"}");
+        }
+        return result;
     }
 
     private static bool? GetBool(TomlTable table, string key, string where, List<string> errors)

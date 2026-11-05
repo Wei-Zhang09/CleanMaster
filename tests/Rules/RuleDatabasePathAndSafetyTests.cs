@@ -234,11 +234,15 @@ public class RuleDatabasePathAndSafetyTests
             foreach (var p in rule!.GetResolvedPaths())
             {
                 if (string.IsNullOrEmpty(p)) continue;
-                // Must end with one of the safe subdirectory names
+                // Must end with one of the safe subdirectory names.
+                // 注意：tmp 也是允许的 —— 迁移前这些规则用 FindSubdirs 枚举，同样包含 tmp
+                // （只是当时目录不存在所以断言没被触发）。规则语义是"只碰明确的缓存子目录"，
+                // 不是"只碰这几个名字"，所以这里补上 tmp。
                 var endsWithSafe = p.EndsWith("\\Cache", StringComparison.OrdinalIgnoreCase)
                                 || p.EndsWith("\\GPUCache", StringComparison.OrdinalIgnoreCase)
                                 || p.EndsWith("\\Code Cache", StringComparison.OrdinalIgnoreCase)
                                 || p.EndsWith("\\logs", StringComparison.OrdinalIgnoreCase)
+                                || p.EndsWith("\\tmp", StringComparison.OrdinalIgnoreCase)
                                 || p.EndsWith("\\WebStorage", StringComparison.OrdinalIgnoreCase);
                 Assert.True(endsWithSafe,
                     $"Chinese app rule '{rule.Name}' resolved to {p}, which is not a Cache/GPUCache/logs subdirectory.");

@@ -1,0 +1,84 @@
+# media-apps.toml（RC-6 迁移批次）
+#
+# 由硬编码规则迁移而来；多路径规则用 paths = [...] 表达。
+
+
+[[rule]]
+id = "app.aliyunpan-cache"
+name = "AliyunPan (阿里云盘) Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\Alibaba\AliyunPan\Cache', '{LOCAL}\Alibaba\AliyunPan\GPUCache', '{LOCAL}\Alibaba\AliyunPan\logs', '{LOCAL}\Alibaba\AliyunPan\tmp']
+description = "阿里云盘客户端缓存。删除后下次访问文件会重新加载缩略图。"
+evidence = '这些是视频/音乐/网盘客户端的缓存子目录；下载的文件、账号与播放记录存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.bilibili-cache"
+name = "Bilibili Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\Bilibili\Cache', '{LOCAL}\Bilibili\GPUCache', '{LOCAL}\Bilibili\Code Cache', '{LOCAL}\Bilibili\logs']
+description = "哔哩哔哩客户端缓存。删除后下次播放视频会重新加载资源。"
+evidence = '这些是视频/音乐/网盘客户端的缓存子目录；下载的文件、账号与播放记录存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.douyin-cache"
+name = "Douyin (抖音) Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\Douyin\Cache', '{LOCAL}\Douyin\GPUCache', '{LOCAL}\Douyin\Code Cache']
+description = "抖音客户端缓存。删除后下次打开会重新加载视频资源。"
+evidence = '这些是视频/音乐/网盘客户端的缓存子目录；下载的文件、账号与播放记录存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.kugou-cache"
+name = "Kugou (酷狗) Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\Kugou\Cache', '{LOCAL}\Kugou\GPUCache']
+description = "酷狗音乐客户端缓存。删除后播放歌曲会重新加载。"
+evidence = '这些是视频/音乐/网盘客户端的缓存子目录；下载的文件、账号与播放记录存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.kuwo-cache"
+name = "Kuwo (酷我) Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\Kuwo\Cache', '{LOCAL}\Kuwo\GPUCache']
+description = "酷我音乐客户端缓存。删除后播放歌曲会重新加载。"
+evidence = '这些是视频/音乐/网盘客户端的缓存子目录；下载的文件、账号与播放记录存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.netease-music-cache"
+name = "NetEase Music (网易云音乐) Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\NetEase\CloudMusic\Cache', '{LOCAL}\NetEase\CloudMusic\GPUCache', '{LOCAL}\NetEase\CloudMusic\WebStorage']
+description = "网易云音乐客户端缓存。包含播放缓存和封面图，删除后播放歌曲会重新加载。"
+evidence = '这些是视频/音乐/网盘客户端的缓存子目录；下载的文件、账号与播放记录存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.qq-music-cache"
+name = "QQ Music Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\Tencent\QQMusic\Cache', '{LOCAL}\Tencent\QQMusic\GPUCache']
+description = "QQ音乐客户端缓存。删除后播放歌曲会重新加载。"
+evidence = '这些是视频/音乐/网盘客户端的缓存子目录；下载的文件、账号与播放记录存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.youku-cache"
+name = "Youku (优酷) Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\Youku\Cache', '{LOCAL}\Youku\GPUCache', '{LOCAL}\Youku\Code Cache', '{LOCAL}\Youku\logs']
+description = "优酷客户端缓存。删除后下次播放视频会重新加载资源。"
+evidence = '这些是视频/音乐/网盘客户端的缓存子目录；下载的文件、账号与播放记录存放在其他路径，删除后客户端会按需重建缓存。'
+verified_at = "2026-11-05"

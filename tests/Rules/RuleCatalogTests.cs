@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(73, result.Rules.Count);
+        Assert.Equal(81, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -113,6 +113,14 @@ public class RuleCatalogTests
         ("app.wechat-cache", "WeChat Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Tencent\WeChat\Cache|{ROAMING}\Tencent\WeChat\GPUCache|{ROAMING}\Tencent\WeChat\Code Cache|{ROAMING}\Tencent\WeChat\logs|{ROAMING}\Tencent\WeChat\Temp", Array.Empty<string>(), true, -1),
         ("app.wegame-cache", "WeGame Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Tencent\WeGame\Cache|{ROAMING}\Tencent\WeGame\logs", Array.Empty<string>(), true, -1),
         ("app.iqiyi-cache", "iQiyi (爱奇艺) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\iqiyi\Cache|{LOCAL}\iqiyi\GPUCache|{LOCAL}\iqiyi\Code Cache|{LOCAL}\iqiyi\logs", Array.Empty<string>(), true, -1),
+        ("app.aliyunpan-cache", "AliyunPan (阿里云盘) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Alibaba\AliyunPan\Cache|{LOCAL}\Alibaba\AliyunPan\GPUCache|{LOCAL}\Alibaba\AliyunPan\logs|{LOCAL}\Alibaba\AliyunPan\tmp", Array.Empty<string>(), true, -1),
+        ("app.bilibili-cache", "Bilibili Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Bilibili\Cache|{LOCAL}\Bilibili\GPUCache|{LOCAL}\Bilibili\Code Cache|{LOCAL}\Bilibili\logs", Array.Empty<string>(), true, -1),
+        ("app.douyin-cache", "Douyin (抖音) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Douyin\Cache|{LOCAL}\Douyin\GPUCache|{LOCAL}\Douyin\Code Cache", Array.Empty<string>(), true, -1),
+        ("app.kugou-cache", "Kugou (酷狗) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Kugou\Cache|{LOCAL}\Kugou\GPUCache", Array.Empty<string>(), true, -1),
+        ("app.kuwo-cache", "Kuwo (酷我) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Kuwo\Cache|{LOCAL}\Kuwo\GPUCache", Array.Empty<string>(), true, -1),
+        ("app.netease-music-cache", "NetEase Music (网易云音乐) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\NetEase\CloudMusic\Cache|{LOCAL}\NetEase\CloudMusic\GPUCache|{LOCAL}\NetEase\CloudMusic\WebStorage", Array.Empty<string>(), true, -1),
+        ("app.qq-music-cache", "QQ Music Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Tencent\QQMusic\Cache|{LOCAL}\Tencent\QQMusic\GPUCache", Array.Empty<string>(), true, -1),
+        ("app.youku-cache", "Youku (优酷) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Youku\Cache|{LOCAL}\Youku\GPUCache|{LOCAL}\Youku\Code Cache|{LOCAL}\Youku\logs", Array.Empty<string>(), true, -1),
     };
 
     [Fact]

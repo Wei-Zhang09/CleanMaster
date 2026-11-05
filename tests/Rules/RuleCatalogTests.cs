@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(81, result.Rules.Count);
+        Assert.Equal(89, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -121,6 +121,14 @@ public class RuleCatalogTests
         ("app.netease-music-cache", "NetEase Music (网易云音乐) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\NetEase\CloudMusic\Cache|{LOCAL}\NetEase\CloudMusic\GPUCache|{LOCAL}\NetEase\CloudMusic\WebStorage", Array.Empty<string>(), true, -1),
         ("app.qq-music-cache", "QQ Music Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Tencent\QQMusic\Cache|{LOCAL}\Tencent\QQMusic\GPUCache", Array.Empty<string>(), true, -1),
         ("app.youku-cache", "Youku (优酷) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Youku\Cache|{LOCAL}\Youku\GPUCache|{LOCAL}\Youku\Code Cache|{LOCAL}\Youku\logs", Array.Empty<string>(), true, -1),
+        ("app.115-cache", "115 网盘 Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\115\Cache|{LOCAL}\115\GPUCache|{LOCAL}\115\logs", Array.Empty<string>(), true, -1),
+        ("app.baidu-netdisk-cache", "Baidu Netdisk (百度网盘) Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\BaiduNetdisk\Cache|{LOCAL}\BaiduNetdisk\GPUCache|{LOCAL}\BaiduNetdisk\logs|{LOCAL}\BaiduNetdisk\tmp", Array.Empty<string>(), true, -1),
+        ("app.directx", "DirectX 着色器缓存", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\D3DSCache", Array.Empty<string>(), true, -1),
+        ("app.discord-cache", "Discord Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\discord\Cache|{ROAMING}\discord\GPUCache|{ROAMING}\discord\Code Cache", Array.Empty<string>(), true, -1),
+        ("app.iconcache-db", "IconCache.db", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\IconCache.db", Array.Empty<string>(), true, -1),
+        ("app.notion-cache", "Notion Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Notion\Cache|{ROAMING}\Notion\GPUCache|{ROAMING}\Notion\Code Cache", Array.Empty<string>(), true, -1),
+        ("app.recent-documents", "最近文档记录", CleanCategory.AppCache, CleanSafety.Safe, @"{RECENT}", Array.Empty<string>(), true, -1),
+        ("app.thumbnail-cache", "缩略图缓存", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Microsoft\Windows\Explorer", new[] { "iconcache_*.db", "thumbcache_*.db" }, false, -1),
     };
 
     [Fact]

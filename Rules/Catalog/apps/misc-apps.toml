@@ -1,0 +1,86 @@
+# misc-apps.toml（RC-6 迁移批次）
+#
+# 由硬编码规则迁移而来；多路径规则用 paths = [...] 表达。
+
+
+[[rule]]
+id = "app.115-cache"
+name = "115 网盘 Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\115\Cache', '{LOCAL}\115\GPUCache', '{LOCAL}\115\logs']
+description = "115 网盘客户端缓存。删除后下次访问文件会重新加载缩略图。"
+evidence = '这些是应用缓存、缩略图/图标缓存或「最近访问」快捷方式目录；原始文件与配置不在其中，删除后系统或应用会按需重建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.baidu-netdisk-cache"
+name = "Baidu Netdisk (百度网盘) Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{LOCAL}\BaiduNetdisk\Cache', '{LOCAL}\BaiduNetdisk\GPUCache', '{LOCAL}\BaiduNetdisk\logs', '{LOCAL}\BaiduNetdisk\tmp']
+description = "百度网盘客户端缓存。删除后下次访问文件会重新加载缩略图，下载中的文件不会被删除。"
+evidence = '这些是应用缓存、缩略图/图标缓存或「最近访问」快捷方式目录；原始文件与配置不在其中，删除后系统或应用会按需重建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.directx"
+name = "DirectX 着色器缓存"
+category = "AppCache"
+safety = "Safe"
+path = '{LOCAL}\D3DSCache'
+description = "DirectX 着色器缓存。删除后游戏首次启动时编译着色器略慢，会自动重建。"
+evidence = '这些是应用缓存、缩略图/图标缓存或「最近访问」快捷方式目录；原始文件与配置不在其中，删除后系统或应用会按需重建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.discord-cache"
+name = "Discord Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{ROAMING}\discord\Cache', '{ROAMING}\discord\GPUCache', '{ROAMING}\discord\Code Cache']
+description = "Discord 桌面客户端缓存。删除后聊天和好友列表不受影响。"
+evidence = '这些是应用缓存、缩略图/图标缓存或「最近访问」快捷方式目录；原始文件与配置不在其中，删除后系统或应用会按需重建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.iconcache-db"
+name = "IconCache.db"
+category = "AppCache"
+safety = "Safe"
+path = '{LOCAL}\IconCache.db'
+description = "Windows 全局图标缓存。删除后桌面/开始菜单图标短暂显示异常，会自动重建。"
+evidence = '这些是应用缓存、缩略图/图标缓存或「最近访问」快捷方式目录；原始文件与配置不在其中，删除后系统或应用会按需重建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.notion-cache"
+name = "Notion Cache"
+category = "AppCache"
+safety = "Safe"
+paths = ['{ROAMING}\Notion\Cache', '{ROAMING}\Notion\GPUCache', '{ROAMING}\Notion\Code Cache']
+description = "Notion 桌面客户端缓存。删除后已同步的笔记不受影响。"
+evidence = '这些是应用缓存、缩略图/图标缓存或「最近访问」快捷方式目录；原始文件与配置不在其中，删除后系统或应用会按需重建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.recent-documents"
+name = "最近文档记录"
+category = "AppCache"
+safety = "Safe"
+path = '{RECENT}'
+description = "Windows 最近打开文件的快捷方式。删除后「最近访问」列表清空，不影响原文件。"
+evidence = '这些是应用缓存、缩略图/图标缓存或「最近访问」快捷方式目录；原始文件与配置不在其中，删除后系统或应用会按需重建。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.thumbnail-cache"
+name = "缩略图缓存"
+category = "AppCache"
+safety = "Safe"
+path = '{LOCAL}\Microsoft\Windows\Explorer'
+patterns = ["iconcache_*.db", "thumbcache_*.db"]
+patterns_are_directories = false
+description = "文件资源管理器缩略图缓存。删除后浏览图片/视频文件夹时会自动重建，首次浏览略慢。"
+evidence = '这些是应用缓存、缩略图/图标缓存或「最近访问」快捷方式目录；原始文件与配置不在其中，删除后系统或应用会按需重建。'
+verified_at = "2026-11-05"

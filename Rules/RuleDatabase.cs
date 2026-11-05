@@ -203,22 +203,6 @@ public static class RuleDatabase
             },
             new()
             {
-                Name = "Baidu Netdisk (百度网盘) Cache",
-                PathFactoryMulti = () => FindSubdirs(Path.Combine(local, @"BaiduNetdisk"), "Cache", "GPUCache", "logs", "tmp"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "百度网盘客户端缓存。删除后下次访问文件会重新加载缩略图，下载中的文件不会被删除。"
-            },
-            new()
-            {
-                Name = "115 网盘 Cache",
-                PathFactoryMulti = () => FindSubdirs(Path.Combine(local, @"115"), "Cache", "GPUCache", "logs"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "115 网盘客户端缓存。删除后下次访问文件会重新加载缩略图。"
-            },
-            new()
-            {
                 Name = "迅雷 cache",
                 PathFactoryMulti = () => FindSubdirs(
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -265,14 +249,6 @@ public static class RuleDatabase
             },
             new()
             {
-                Name = "Notion Cache",
-                PathFactoryMulti = () => FindSubdirs(Path.Combine(roaming, @"Notion"), "Cache", "GPUCache", "Code Cache"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "Notion 桌面客户端缓存。删除后已同步的笔记不受影响。"
-            },
-            new()
-            {
                 Name = "Slack Cache",
                 PathFactoryMulti = () =>
                 {
@@ -293,49 +269,6 @@ public static class RuleDatabase
                 Safety = CleanSafety.Safe,
                 Category = CleanCategory.AppCache,
                 Description = "Slack 桌面客户端缓存。删除后工作区数据会重新加载。"
-            },
-            new()
-            {
-                Name = "Discord Cache",
-                PathFactoryMulti = () => FindSubdirs(Path.Combine(roaming, @"discord"), "Cache", "GPUCache", "Code Cache"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "Discord 桌面客户端缓存。删除后聊天和好友列表不受影响。"
-            },
-            new()
-            {
-                Name = "缩略图缓存",
-                PathFactory = () => Path.Combine(local, @"Microsoft\Windows\Explorer"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "文件资源管理器缩略图缓存。删除后浏览图片/视频文件夹时会自动重建，首次浏览略慢。",
-                FilePatterns = new[] { "thumbcache_*.db", "iconcache_*.db" },
-                PatternsAreDirectories = false
-            },
-            new()
-            {
-                Name = "IconCache.db",
-                Path = "",  // will be filled by factory
-                PathFactory = () => Path.Combine(local, "IconCache.db"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "Windows 全局图标缓存。删除后桌面/开始菜单图标短暂显示异常，会自动重建。"
-            },
-            new()
-            {
-                Name = "最近文档记录",
-                PathFactory = () => Environment.GetFolderPath(Environment.SpecialFolder.Recent),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "Windows 最近打开文件的快捷方式。删除后「最近访问」列表清空，不影响原文件。"
-            },
-            new()
-            {
-                Name = "DirectX 着色器缓存",
-                PathFactory = () => Path.Combine(local, "D3DSCache"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "DirectX 着色器缓存。删除后游戏首次启动时编译着色器略慢，会自动重建。"
             }
         ];
     }

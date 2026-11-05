@@ -278,40 +278,7 @@ public static class RuleDatabase
     // ──────────────────────────────────────────────────────────────────
     private static List<CleanupRule> GetInstallerCacheRules() =>
     [
-        new()
-        {
-            Name = "System Package Cache",
-            Path = $@"{SystemDrive}ProgramData\Package Cache",
-            Safety = CleanSafety.Caution,
-            Category = CleanCategory.InstallerCache,
-            Description = "Visual Studio 等安装程序缓存。卸载或修复软件时可能需要这些文件，建议空间紧张时再清理。"
-        },
-        new()
-        {
-            Name = "User Package Cache",
-            PathFactory = () => Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Package Cache"),
-            Safety = CleanSafety.Caution,
-            Category = CleanCategory.InstallerCache,
-            Description = "用户级安装程序缓存（%LocalAppData%\\Package Cache）。修复或卸载软件时可能需要。"
-        },
-        new()
-        {
-            Name = "Windows Installer Patch Cache",
-            Path = $@"{SystemDrive}Windows\Installer\$PatchCache$",
-            Safety = CleanSafety.Caution,
-            Category = CleanCategory.InstallerCache,
-            Description = "Windows Installer 补丁缓存。清理后修复已安装软件可能需要原始安装包。"
-        },
-        new()
-        {
-            Name = "Downloaded Program Files",
-            Path = $@"{SystemDrive}Windows\Downloaded Program Files",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.InstallerCache,
-            Description = "IE/旧版 ActiveX 下载的程序文件。现代浏览器已不使用，可安全删除。"
-        }
+
     ];
 
     // ──────────────────────────────────────────────────────────────────
@@ -348,54 +315,7 @@ public static class RuleDatabase
 
         return
         [
-            new()
-            {
-                Name = "Huggingface Model Cache",
-                PathFactory = () => Path.Combine(user, @".cache\huggingface"),
-                Safety = CleanSafety.Caution,
-                Category = CleanCategory.AppCache,
-                Description = "Huggingface 模型缓存。下次使用会重新下载，可能数 GB。"
-            },
-            new()
-            {
-                Name = "PyTorch Model Cache",
-                PathFactory = () => Path.Combine(user, @".cache\torch"),
-                Safety = CleanSafety.Caution,
-                Category = CleanCategory.AppCache,
-                Description = "PyTorch 模型缓存。"
-            },
-            new()
-            {
-                Name = "Ollama Models",
-                PathFactory = () => Path.Combine(user, @".ollama\models"),
-                Safety = CleanSafety.Caution,
-                Category = CleanCategory.AppCache,
-                Description = "Ollama 本地模型文件。删除后需要重新下载（耗时长）。"
-            },
-            new()
-            {
-                Name = "Claude Code Cache",
-                PathFactory = () => Path.Combine(user, @".claude\cache"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "Claude Code CLI 缓存。"
-            },
-            new()
-            {
-                Name = "Gemini CLI Cache",
-                PathFactory = () => Path.Combine(user, @".gemini\cache"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "Gemini CLI 缓存。"
-            },
-            new()
-            {
-                Name = "Continue.dev Cache",
-                PathFactory = () => Path.Combine(user, @".continue\cache"),
-                Safety = CleanSafety.Safe,
-                Category = CleanCategory.AppCache,
-                Description = "Continue.dev AI 助手缓存。"
-            }
+
         ];
     }
 

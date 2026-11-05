@@ -1,0 +1,64 @@
+# ai-models.toml（RC-6 迁移批次）
+#
+# 由硬编码规则迁移而来。
+
+
+[[rule]]
+id = "app.claude-code-cache"
+name = "Claude Code Cache"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.claude\cache'
+description = "Claude Code CLI 缓存。"
+evidence = '这些是本地 AI 模型/CLI 工具的缓存目录；模型文件重新下载代价较高，删除前请确认（对应规则已标注安全等级）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.continue-dev-cache"
+name = "Continue.dev Cache"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.continue\cache'
+description = "Continue.dev AI 助手缓存。"
+evidence = '这些是本地 AI 模型/CLI 工具的缓存目录；模型文件重新下载代价较高，删除前请确认（对应规则已标注安全等级）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.gemini-cli-cache"
+name = "Gemini CLI Cache"
+category = "AppCache"
+safety = "Safe"
+path = '{USER}\.gemini\cache'
+description = "Gemini CLI 缓存。"
+evidence = '这些是本地 AI 模型/CLI 工具的缓存目录；模型文件重新下载代价较高，删除前请确认（对应规则已标注安全等级）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.huggingface-model-cache"
+name = "Huggingface Model Cache"
+category = "AppCache"
+safety = "Caution"
+path = '{USER}\.cache\huggingface'
+description = "Huggingface 模型缓存。下次使用会重新下载，可能数 GB。"
+evidence = '这些是本地 AI 模型/CLI 工具的缓存目录；模型文件重新下载代价较高，删除前请确认（对应规则已标注安全等级）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.ollama-models"
+name = "Ollama Models"
+category = "AppCache"
+safety = "Caution"
+path = '{USER}\.ollama\models'
+description = "Ollama 本地模型文件。删除后需要重新下载（耗时长）。"
+evidence = '这些是本地 AI 模型/CLI 工具的缓存目录；模型文件重新下载代价较高，删除前请确认（对应规则已标注安全等级）。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.pytorch-model-cache"
+name = "PyTorch Model Cache"
+category = "AppCache"
+safety = "Caution"
+path = '{USER}\.cache\torch'
+description = "PyTorch 模型缓存。"
+evidence = '这些是本地 AI 模型/CLI 工具的缓存目录；模型文件重新下载代价较高，删除前请确认（对应规则已标注安全等级）。'
+verified_at = "2026-11-05"

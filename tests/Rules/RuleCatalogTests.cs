@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(102, result.Rules.Count);
+        Assert.Equal(112, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -140,6 +140,16 @@ public class RuleCatalogTests
         ("app.windows-search-index", "Windows Search Index", CleanCategory.AppCache, CleanSafety.Caution, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Search\Data", Array.Empty<string>(), true, -1),
         ("app.windows", "Windows 通知缓存", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Microsoft\Windows\Notifications", Array.Empty<string>(), true, -1),
         ("app.appcompat-cache", "程序兼容性缓存 (AppCompat)", CleanCategory.AppCache, CleanSafety.Dangerous, @"{SYSTEMDRIVE}\Windows\AppCompat\Programs", Array.Empty<string>(), true, -1),
+        ("app.downloaded-program-files", "Downloaded Program Files", CleanCategory.InstallerCache, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Downloaded Program Files", Array.Empty<string>(), true, -1),
+        ("app.system-package-cache", "System Package Cache", CleanCategory.InstallerCache, CleanSafety.Caution, @"{SYSTEMDRIVE}\ProgramData\Package Cache", Array.Empty<string>(), true, -1),
+        ("app.user-package-cache", "User Package Cache", CleanCategory.InstallerCache, CleanSafety.Caution, @"{LOCAL}\Package Cache", Array.Empty<string>(), true, -1),
+        ("app.windows-installer-patch-cache", "Windows Installer Patch Cache", CleanCategory.InstallerCache, CleanSafety.Caution, @"{SYSTEMDRIVE}\Windows\Installer\$PatchCache$", Array.Empty<string>(), true, -1),
+        ("app.claude-code-cache", "Claude Code Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.claude\cache", Array.Empty<string>(), true, -1),
+        ("app.continue-dev-cache", "Continue.dev Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.continue\cache", Array.Empty<string>(), true, -1),
+        ("app.gemini-cli-cache", "Gemini CLI Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{USER}\.gemini\cache", Array.Empty<string>(), true, -1),
+        ("app.huggingface-model-cache", "Huggingface Model Cache", CleanCategory.AppCache, CleanSafety.Caution, @"{USER}\.cache\huggingface", Array.Empty<string>(), true, -1),
+        ("app.ollama-models", "Ollama Models", CleanCategory.AppCache, CleanSafety.Caution, @"{USER}\.ollama\models", Array.Empty<string>(), true, -1),
+        ("app.pytorch-model-cache", "PyTorch Model Cache", CleanCategory.AppCache, CleanSafety.Caution, @"{USER}\.cache\torch", Array.Empty<string>(), true, -1),
     };
 
     [Fact]

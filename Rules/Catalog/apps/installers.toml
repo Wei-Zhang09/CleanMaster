@@ -1,0 +1,44 @@
+# installers.toml（RC-6 迁移批次）
+#
+# 由硬编码规则迁移而来。
+
+
+[[rule]]
+id = "app.downloaded-program-files"
+name = "Downloaded Program Files"
+category = "InstallerCache"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Downloaded Program Files'
+description = "IE/旧版 ActiveX 下载的程序文件。现代浏览器已不使用，可安全删除。"
+evidence = '安装器缓存：安装包解压/补丁缓存，删除后重新安装或修复时可能需要重新下载，不影响已安装的程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.system-package-cache"
+name = "System Package Cache"
+category = "InstallerCache"
+safety = "Caution"
+path = '{SYSTEMDRIVE}\ProgramData\Package Cache'
+description = "Visual Studio 等安装程序缓存。卸载或修复软件时可能需要这些文件，建议空间紧张时再清理。"
+evidence = '安装器缓存：安装包解压/补丁缓存，删除后重新安装或修复时可能需要重新下载，不影响已安装的程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.user-package-cache"
+name = "User Package Cache"
+category = "InstallerCache"
+safety = "Caution"
+path = '{LOCAL}\Package Cache'
+description = "用户级安装程序缓存（%LocalAppData%\\Package Cache）。修复或卸载软件时可能需要。"
+evidence = '安装器缓存：安装包解压/补丁缓存，删除后重新安装或修复时可能需要重新下载，不影响已安装的程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.windows-installer-patch-cache"
+name = "Windows Installer Patch Cache"
+category = "InstallerCache"
+safety = "Caution"
+path = '{SYSTEMDRIVE}\Windows\Installer\$PatchCache$'
+description = "Windows Installer 补丁缓存。清理后修复已安装软件可能需要原始安装包。"
+evidence = '安装器缓存：安装包解压/补丁缓存，删除后重新安装或修复时可能需要重新下载，不影响已安装的程序。'
+verified_at = "2026-11-05"

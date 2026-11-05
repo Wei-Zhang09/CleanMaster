@@ -49,7 +49,10 @@ public enum UninstallOutcome
     RestartRequired,
 
     /// <summary>卸载器退出了，但拿不到登记项路径，无法验证。</summary>
-    Unverified
+    Unverified,
+
+    /// <summary>用户级安装的软件，但当前身份不是交互式桌面用户（用别的管理员账户提权），拒绝卸载。</summary>
+    WrongUserContext
 }
 
 public sealed record UninstallAttempt(
@@ -134,6 +137,13 @@ public class SoftwareService : ISoftwareService
     {
         "msiexec.exe", "rundll32.exe", "reg.exe", "regsvr32.exe", "wmic.exe"
     };
+
+    private readonly IUserContext _userContext;
+
+    public SoftwareService(IUserContext? userContext = null)
+    {
+        _userContext = userContext ?? DefaultUserContext.Instance;
+    }
 
     public List<InstalledSoftware> GetInstalledSoftware()
     {
@@ -671,6 +681,14 @@ public class SoftwareService : ISoftwareService
 
         if (ContainsSuspiciousCharacters(cmd))
             return new UninstallAttempt(UninstallOutcome.NotStarted, null, "Uninstall command contains suspicious characters");
+
+        // 用户级安装：卸载器只会清当前令牌对应的 HKCU。若当前身份不是桌面用户（用别的管理员账户提权），
+        // 它清的是那个管理员的配置，用户的数据原样留着 —— 直接拒绝并说明，比"卸了个寂寞"诚实。
+        if (_userContext.ShouldBlockUserScopeUninstall(software.RegistryHive))
+        {
+            return new UninstallAttempt(UninstallOutcome.WrongUserContext, null,
+                "当前以其他管理员账户运行，无法卸载该用户安装的软件");
+        }
 
         ProcessStartInfo psi;
         try

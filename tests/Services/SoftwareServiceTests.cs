@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CleanMaster.Services;
 using Microsoft.Win32;
+using Moq;
 
 namespace CleanMaster.Tests.Services;
 
@@ -180,6 +181,50 @@ public class SoftwareServiceTests
         Assert.True(allExited);
         Assert.True(sw.ElapsedMilliseconds >= 1000,
             $"应在子进程退出后才返回，实际只等了 {sw.ElapsedMilliseconds} ms");
+    }
+
+    [Fact]
+    public async Task Uninstall_UserScopeWithWrongIdentity_RefusedWithoutLaunching()
+    {
+        // 用另一个管理员账户提权：必须在启动卸载器之前就拒绝，绝不能"跑一遍再说"
+        var context = new Mock<IUserContext>();
+        context.Setup(c => c.ShouldBlockUserScopeUninstall("HKCU")).Returns(true);
+
+        var service = new SoftwareService(context.Object);
+        var software = new InstalledSoftware
+        {
+            Name = "UserScopedApp",
+            UninstallString = @"C:\Windows\System32\cmd.exe /c exit",
+            RegistryHive = "HKCU",
+            RegistryPath = @"Software\CleanMasterTests\NeverExists"
+        };
+
+        var attempt = await service.UninstallSoftwareAsync(software, default, TimeSpan.FromSeconds(5));
+
+        Assert.Equal(UninstallOutcome.WrongUserContext, attempt.Outcome);
+        Assert.Null(attempt.ExitCode);
+        context.Verify(c => c.ShouldBlockUserScopeUninstall("HKCU"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Uninstall_MachineScopeNotAffectedByIdentityCheck()
+    {
+        // 机器级安装不受身份校验影响：检查函数对 HKLM 返回 false，卸载流程照常往下走
+        var context = new Mock<IUserContext>();
+        context.Setup(c => c.ShouldBlockUserScopeUninstall("HKLM")).Returns(false);
+
+        var service = new SoftwareService(context.Object);
+        var software = new InstalledSoftware
+        {
+            Name = "MachineScopedApp",
+            UninstallString = @"C:\NonExistentPath\uninstall.exe"
+        };
+
+        var attempt = await service.UninstallSoftwareAsync(software, default, TimeSpan.FromSeconds(5));
+
+        // 走到"找不到卸载器"这一步，说明没有被身份校验拦下
+        Assert.Equal(UninstallOutcome.NotStarted, attempt.Outcome);
+        Assert.Contains("Cannot find uninstaller", attempt.Message);
     }
 
     /// <summary>造一个假的卸载器 bat + 一个 HKCU 登记项。bat 必须纯 ASCII。</summary>

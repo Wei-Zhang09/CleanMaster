@@ -205,6 +205,15 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
 
             switch (attempt.Outcome)
             {
+                case UninstallOutcome.WrongUserContext:
+                    CleanMaster.Views.AppDialog.Show(
+                        $"「{software.Name}」是这个用户自己安装的软件，而本程序现在是用另一个管理员账户运行的。\n\n" +
+                        "这种情况下卸载，卸载器清理的会是那个管理员账户的配置，你自己的软件和文件反而留在这里。\n\n" +
+                        "请用自己的账户登录 Windows 后重新打开清理大师，再卸载它。",
+                        "无法卸载", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    SoftwareStatus = "需要以本机用户身份运行";
+                    break;
+
                 case UninstallOutcome.VerifiedRemoved:
                     await HandleVerifiedRemovalAsync(software);
                     break;

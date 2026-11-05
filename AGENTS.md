@@ -24,6 +24,23 @@
    ```
 3. 输出文件名格式：`CleanMaster-Setup-v{版本号}.exe`
 
+### 发布到两个更新源（重要）
+
+程序内置双源更新：**Gitee 优先、GitHub 兜底**（`Services/UpdateService.cs`）。
+国内无代理时 GitHub 的资产直链（`release-assets.githubusercontent.com`）连得上但传不动，
+所以 Gitee 必须同步发布，否则国内用户点更新会下载失败。
+
+1. GitHub：push `v{版本号}` tag，CI 自动构建并发布（digest 由 GitHub 生成，无需手工填）。
+2. Gitee：在 https://gitee.com/zhang_we/clean-master/releases 新建 Release
+   - Tag 填 `{版本号}`（带不带 `v` 都能识别）
+   - 上传本地 `installer\CleanMaster-Setup-v{版本号}.exe`
+   - 说明里**必须**加一行 `SHA256: <安装包 sha256>`，客户端用它做校验
+     （Gitee 不提供 digest）：
+     ```powershell
+     (Get-FileHash installer\CleanMaster-Setup-v{版本号}.exe -Algorithm SHA256).Hash
+     ```
+3. 两个源的安装包可以是同一次构建的产物，但**只要字节不同，SHA256 就必须对应当前上传的那个文件**。
+
 ### 测试
 ```powershell
 dotnet test tests\CleanMaster.Tests.csproj -c Debug

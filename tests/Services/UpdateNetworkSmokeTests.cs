@@ -62,6 +62,38 @@ public class UpdateNetworkSmokeTests
         Assert.StartsWith("https://gitee.com/", info.DownloadUrl);
     }
 
+    /// <summary>
+    /// Gitee 全链路：模拟"旧版本客户端"（3.3.1）解析真实响应 → 从 Gitee 下载 → 校验。
+    /// 用模拟版本是因为测试程序集本身已是当前版本，直接 CheckForUpdateAsync 会得到"无更新"。
+    /// </summary>
+    [Fact]
+    public async Task GiteeFullChain_DownloadsAndVerifiesInstaller()
+    {
+        if (!Enabled) return;
+
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("CleanMaster-Updater-Test");
+        var json = await http.GetStringAsync("https://gitee.com/api/v5/repos/zhang_we/clean-master/releases/latest");
+
+        var info = UpdateService.ParseRelease(json, UpdateSource.Gitee, currentVersion: "3.3.1");
+        Assert.NotNull(info);
+
+        var service = new UpdateService();
+        var path = await service.DownloadAsync(info!);
+
+        Assert.True(File.Exists(path));
+        var size = new FileInfo(path).Length;
+        Assert.True(size > 10 * 1024 * 1024, $"安装包应大于 10MB，实际 {size}");
+
+        // 校验通过（若发布说明里带了 SHA256）后文件必须仍可读
+        using var fs = File.OpenRead(path);
+        Assert.Equal(size, fs.Length);
+
+        Console.WriteLine($"GITEE_CHAIN | version={info.Version} | file={info.FileName} | bytes={size} | sha_from_release={(string.IsNullOrEmpty(info.Sha256) ? "(未提供)" : info.Sha256[..12] + "...")}");
+
+        try { File.Delete(path); } catch { }
+    }
+
     private static async Task<UpdateInfo?> LatestReleaseAssetAsync()
     {
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };

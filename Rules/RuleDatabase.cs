@@ -319,66 +319,7 @@ public static class RuleDatabase
     // ──────────────────────────────────────────────────────────────────
     private static List<CleanupRule> GetCrashDumpRules() =>
     [
-        new()
-        {
-            Name = "Crash Dumps",
-            PathFactory = () => Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "CrashDumps"),
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.CrashDumps,
-            Description = "应用程序崩溃转储文件。包含崩溃时的内存快照，普通用户可安全删除。"
-        },
-        new()
-        {
-            Name = "Windows Error Reporting (root)",
-            Path = $@"{SystemDrive}ProgramData\Microsoft\Windows\WER",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.CrashDumps,
-            Description = "Windows 错误报告根目录临时文件。",
-            FilePatterns = new[] { "*.dmp", "*.tmp", "*.cab", "*.wer" },
-            PatternsAreDirectories = false
-        },
-        new()
-        {
-            Name = "WER ReportArchive",
-            Path = $@"{SystemDrive}ProgramData\Microsoft\Windows\WER\ReportArchive",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.CrashDumps,
-            Description = "Windows 错误报告归档。"
-        },
-        new()
-        {
-            Name = "WER ReportQueue",
-            Path = $@"{SystemDrive}ProgramData\Microsoft\Windows\WER\ReportQueue",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.CrashDumps,
-            Description = "Windows 错误报告队列。"
-        },
-        new()
-        {
-            Name = "LiveKernelReports",
-            Path = $@"{SystemDrive}Windows\LiveKernelReports",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.CrashDumps,
-            Description = "实时内核错误报告。"
-        },
-        new()
-        {
-            Name = "MEMORY.DMP",
-            PathFactory = () => $@"{SystemDrive}Windows\MEMORY.DMP",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.CrashDumps,
-            Description = "系统崩溃时的完整内存转储文件，用于调试分析。"
-        },
-        new()
-        {
-            Name = "Minidump",
-            Path = $@"{SystemDrive}Windows\Minidump",
-            Safety = CleanSafety.Safe,
-            Category = CleanCategory.CrashDumps,
-            Description = "系统崩溃时的小型转储文件。"
-        }
+
     ];
 
     // ──────────────────────────────────────────────────────────────────

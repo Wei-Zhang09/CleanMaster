@@ -1,0 +1,76 @@
+# crash-reports.toml（RC-6 迁移批次）
+#
+# 由硬编码规则迁移而来。
+
+
+[[rule]]
+id = "app.crash-dumps"
+name = "Crash Dumps"
+category = "CrashDumps"
+safety = "Safe"
+path = '{LOCAL}\CrashDumps'
+description = "应用程序崩溃转储文件。包含崩溃时的内存快照，普通用户可安全删除。"
+evidence = '崩溃转储与 Windows 错误报告是故障发生时的诊断快照；删除后历史诊断信息丢失，但不影响系统运行与已安装程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.livekernelreports"
+name = "LiveKernelReports"
+category = "CrashDumps"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\LiveKernelReports'
+description = "实时内核错误报告。"
+evidence = '崩溃转储与 Windows 错误报告是故障发生时的诊断快照；删除后历史诊断信息丢失，但不影响系统运行与已安装程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.memory-dmp"
+name = "MEMORY.DMP"
+category = "CrashDumps"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\MEMORY.DMP'
+description = "系统崩溃时的完整内存转储文件，用于调试分析。"
+evidence = '崩溃转储与 Windows 错误报告是故障发生时的诊断快照；删除后历史诊断信息丢失，但不影响系统运行与已安装程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.minidump"
+name = "Minidump"
+category = "CrashDumps"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\Minidump'
+description = "系统崩溃时的小型转储文件。"
+evidence = '崩溃转储与 Windows 错误报告是故障发生时的诊断快照；删除后历史诊断信息丢失，但不影响系统运行与已安装程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wer-reportarchive"
+name = "WER ReportArchive"
+category = "CrashDumps"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER\ReportArchive'
+description = "Windows 错误报告归档。"
+evidence = '崩溃转储与 Windows 错误报告是故障发生时的诊断快照；删除后历史诊断信息丢失，但不影响系统运行与已安装程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.wer-reportqueue"
+name = "WER ReportQueue"
+category = "CrashDumps"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER\ReportQueue'
+description = "Windows 错误报告队列。"
+evidence = '崩溃转储与 Windows 错误报告是故障发生时的诊断快照；删除后历史诊断信息丢失，但不影响系统运行与已安装程序。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.windows-error-reporting-root"
+name = "Windows Error Reporting (root)"
+category = "CrashDumps"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER'
+patterns = ["*.cab", "*.dmp", "*.tmp", "*.wer"]
+patterns_are_directories = false
+description = "Windows 错误报告根目录临时文件。"
+evidence = '崩溃转储与 Windows 错误报告是故障发生时的诊断快照；删除后历史诊断信息丢失，但不影响系统运行与已安装程序。'
+verified_at = "2026-11-05"

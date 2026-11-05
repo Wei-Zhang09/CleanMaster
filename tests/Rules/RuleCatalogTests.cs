@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(89, result.Rules.Count);
+        Assert.Equal(96, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -129,6 +129,13 @@ public class RuleCatalogTests
         ("app.notion-cache", "Notion Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{ROAMING}\Notion\Cache|{ROAMING}\Notion\GPUCache|{ROAMING}\Notion\Code Cache", Array.Empty<string>(), true, -1),
         ("app.recent-documents", "最近文档记录", CleanCategory.AppCache, CleanSafety.Safe, @"{RECENT}", Array.Empty<string>(), true, -1),
         ("app.thumbnail-cache", "缩略图缓存", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Microsoft\Windows\Explorer", new[] { "iconcache_*.db", "thumbcache_*.db" }, false, -1),
+        ("app.crash-dumps", "Crash Dumps", CleanCategory.CrashDumps, CleanSafety.Safe, @"{LOCAL}\CrashDumps", Array.Empty<string>(), true, -1),
+        ("app.livekernelreports", "LiveKernelReports", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\LiveKernelReports", Array.Empty<string>(), true, -1),
+        ("app.memory-dmp", "MEMORY.DMP", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\MEMORY.DMP", Array.Empty<string>(), true, -1),
+        ("app.minidump", "Minidump", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\Minidump", Array.Empty<string>(), true, -1),
+        ("app.wer-reportarchive", "WER ReportArchive", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER\ReportArchive", Array.Empty<string>(), true, -1),
+        ("app.wer-reportqueue", "WER ReportQueue", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER\ReportQueue", Array.Empty<string>(), true, -1),
+        ("app.windows-error-reporting-root", "Windows Error Reporting (root)", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER", new[] { "*.cab", "*.dmp", "*.tmp", "*.wer" }, false, -1),
     };
 
     [Fact]

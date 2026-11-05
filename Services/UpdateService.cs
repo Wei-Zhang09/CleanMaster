@@ -3,68 +3,146 @@ using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using CleanMaster.Services.Interfaces;
 
 namespace CleanMaster.Services;
 
+/// <summary>更新源。Gitee 面向国内用户（直连可用），GitHub 作为兜底与国际发布。</summary>
+public enum UpdateSource
+{
+    Gitee,
+    GitHub
+}
+
+/// <summary>检查更新时的网络/解析失败。与"无更新"（返回 null）区分开，界面才能如实提示。</summary>
+public class UpdateCheckException : Exception
+{
+    public UpdateCheckException(string message) : base(message) { }
+}
+
 public class UpdateService : IUpdateService
 {
-    private const string ReleasesUrl = "https://api.github.com/repos/Wei-Zhang09/CleanMaster/releases/latest";
+    // Gitee：国内直连可用，主力更新源（公开仓库无需 token）
+    private const string GiteeOwnerRepo = "zhang_we/clean-master";
+    private const string GiteeApi = "https://gitee.com/api/v5/repos/" + GiteeOwnerRepo + "/releases/latest";
+    private const string GiteeReleasePage = "https://gitee.com/" + GiteeOwnerRepo + "/releases/tag/";
+
+    // GitHub：兜底（无梯子时通常只有 API 能通，下载会被掐断）
+    private const string GitHubApi = "https://api.github.com/repos/Wei-Zhang09/CleanMaster/releases/latest";
 
     private static readonly HttpClient _http = new()
     {
-        Timeout = TimeSpan.FromSeconds(30)
+        Timeout = TimeSpan.FromSeconds(20)
     };
+
+    /// <summary>发布说明里可写一行 <c>SHA256: &lt;64 位十六进制&gt;</c>；Gitee 不提供 digest，靠它做校验。</summary>
+    private static readonly Regex BodySha256 = new(
+        @"SHA-?256\s*[:：]\s*([0-9a-fA-F]{64})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static string CurrentVersion =>
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
 
+    /// <summary>
+    /// 检查更新：**两个源都查**，取版本更高者；任一源可用即可。
+    /// 全部失败时抛 <see cref="UpdateCheckException"/>，让界面显示"网络不可用"而不是谎报"已是最新"。
+    /// </summary>
     public async Task<UpdateInfo?> CheckForUpdateAsync()
     {
-        try
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("CleanMaster-Updater");
+
+        var found = new List<UpdateInfo>();
+        var errors = new List<string>();
+
+        var sources = new[]
         {
-            _http.DefaultRequestHeaders.UserAgent.ParseAdd("CleanMaster-Updater");
-            var json = await _http.GetStringAsync(ReleasesUrl);
-            using var doc = JsonDocument.Parse(json);
+            (Source: UpdateSource.Gitee, Url: GiteeApi),
+            (Source: UpdateSource.GitHub, Url: GitHubApi)
+        };
 
-            var tagName = doc.RootElement.GetProperty("tag_name").GetString() ?? "";
-            var latest = ParseVersion(tagName);
-            if (latest == null) return null; // tag 不是 vX.Y.Z 格式，跳过
-
-            var current = ParseVersion(CurrentVersion);
-            if (current == null || !IsNewer(latest, current)) return null;
-
-            // 找 .exe 安装包资产
-            var assets = doc.RootElement.GetProperty("assets");
-            foreach (var asset in assets.EnumerateArray())
+        foreach (var (source, url) in sources)
+        {
+            try
             {
-                var name = asset.GetProperty("name").GetString() ?? "";
-                if (!name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) continue;
-
-                var downloadUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
-                var size = asset.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0;
-                var digest = asset.TryGetProperty("digest", out var dg) ? dg.GetString() ?? "" : "";
-
-                return new UpdateInfo
-                {
-                    Version = latest,
-                    TagName = tagName,
-                    DownloadUrl = downloadUrl,
-                    FileName = name,
-                    SizeBytes = size,
-                    Sha256 = ExtractSha256(digest),
-                    ReleasePageUrl = doc.RootElement.GetProperty("html_url").GetString() ?? "",
-                    Notes = doc.RootElement.TryGetProperty("body", out var body) ? body.GetString() ?? "" : ""
-                };
+                var json = await _http.GetStringAsync(url);
+                var info = ParseRelease(json, source, CurrentVersion);
+                App.Log($"[UPD] {source} -> {(info == null ? "no update" : info.Version)}");
+                if (info != null) found.Add(info);
             }
+            catch (Exception ex)
+            {
+                errors.Add($"{source}: {ex.Message}");
+                App.Log($"[UPD] {source} 检查失败: {ex.Message}");
+            }
+        }
 
-            return null; // 有新版但无 exe 资产
-        }
-        catch (Exception ex)
-        {
-            App.LogError("CheckForUpdateAsync", ex);
+        if (found.Count > 0)
+            return found.OrderByDescending(i => i.Version, VersionComparer.Instance).First();
+
+        // 两个源都失败才算失败；都通但都没新版本 → 返回 null（界面显示"已是最新"）
+        if (errors.Count == sources.Length)
+            throw new UpdateCheckException("无法连接更新服务器：" + string.Join(" | ", errors));
+
+        return null;
+    }
+
+    /// <summary>
+    /// 解析单个源的 release JSON。纯函数，便于用真实响应做单测。
+    /// 兼容 GitHub（有 digest/html_url/size）与 Gitee（无 digest、size 可能缺失、tag 常不带 v）。
+    /// </summary>
+    public static UpdateInfo? ParseRelease(string json, UpdateSource source, string currentVersion)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        var tagName = root.TryGetProperty("tag_name", out var tag) ? tag.GetString() ?? "" : "";
+        var latest = ParseVersion(tagName);
+        if (latest == null) return null;                                   // tag 不是 X.Y.Z，跳过
+
+        var current = ParseVersion(currentVersion);
+        if (current == null || !IsNewer(latest, current)) return null;      // 没有更新
+
+        var notes = root.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() ?? "" : "";
+        var bodySha = ExtractBodySha256(notes);
+
+        if (!root.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
             return null;
+
+        foreach (var asset in assets.EnumerateArray())
+        {
+            var name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+            if (!name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var url = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() ?? "" : "";
+            if (string.IsNullOrEmpty(url)) continue;
+
+            var size = asset.TryGetProperty("size", out var sz) && sz.ValueKind == JsonValueKind.Number
+                ? sz.GetInt64()
+                : 0;
+
+            var digest = asset.TryGetProperty("digest", out var dg) ? dg.GetString() ?? "" : "";
+            var sha = ExtractSha256(digest);
+            if (string.IsNullOrEmpty(sha)) sha = bodySha;
+
+            var pageUrl = root.TryGetProperty("html_url", out var hu)
+                ? hu.GetString() ?? ""
+                : source == UpdateSource.Gitee ? GiteeReleasePage + tagName : "";
+
+            return new UpdateInfo
+            {
+                Version = latest,
+                TagName = tagName,
+                Source = source,
+                DownloadUrl = url,
+                FileName = name,
+                SizeBytes = size,
+                Sha256 = sha,
+                ReleasePageUrl = pageUrl,
+                Notes = notes
+            };
         }
+
+        return null; // 有新版但没有 exe 资产
     }
 
     public async Task<string> DownloadAsync(UpdateInfo info, IProgress<double>? progress = null, CancellationToken ct = default)
@@ -136,13 +214,6 @@ public class UpdateService : IUpdateService
         }
     }
 
-    private static string UniquePath(string dir, string fileName, string suffix)
-    {
-        var name = Path.GetFileNameWithoutExtension(fileName);
-        var ext = Path.GetExtension(fileName);
-        return Path.Combine(dir, $"{name}-{DateTime.Now:HHmmss}{suffix}{ext}");
-    }
-
     public void InstallAndRestart(string installerPath)
     {
         // 静默安装（Inno Setup 原生 /VERYSILENT + /NORESTART）。
@@ -161,6 +232,13 @@ public class UpdateService : IUpdateService
         Environment.Exit(0);
     }
 
+    private static string UniquePath(string dir, string fileName, string suffix)
+    {
+        var name = Path.GetFileNameWithoutExtension(fileName);
+        var ext = Path.GetExtension(fileName);
+        return Path.Combine(dir, $"{name}-{DateTime.Now:HHmmss}{suffix}{ext}");
+    }
+
     private static async Task<string> ComputeSha256Async(string path, CancellationToken ct)
     {
         using var sha = SHA256.Create();
@@ -169,15 +247,24 @@ public class UpdateService : IUpdateService
         return Convert.ToHexString(hash);
     }
 
+    /// <summary>从 GitHub 的 digest（"sha256:xxx"）取十六进制部分；空值返回空串。</summary>
     private static string ExtractSha256(string digest)
     {
-        // digest 形如 "sha256:9d37eaf4..."，取冒号后部分
+        if (string.IsNullOrWhiteSpace(digest)) return "";
         var idx = digest.IndexOf(':');
-        return idx >= 0 ? digest[(idx + 1)..] : digest;
+        return (idx >= 0 ? digest[(idx + 1)..] : digest).Trim();
     }
 
-    /// <summary>从 tag 解析版本号，仅接受 vX.Y.Z 或 X.Y.Z 格式。</summary>
-    private static string? ParseVersion(string tag)
+    /// <summary>从发布说明里取 <c>SHA256: &lt;hex&gt;</c>（Gitee 没有 digest，用这个兜底）。</summary>
+    public static string ExtractBodySha256(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return "";
+        var m = BodySha256.Match(notes);
+        return m.Success ? m.Groups[1].Value : "";
+    }
+
+    /// <summary>从 tag 解析版本号，接受 vX.Y.Z 或 X.Y.Z（Gitee 的 tag 常不带 v）。</summary>
+    public static string? ParseVersion(string tag)
     {
         var t = tag.Trim().TrimStart('v', 'V');
         var parts = t.Split('.');
@@ -190,7 +277,7 @@ public class UpdateService : IUpdateService
     }
 
     /// <summary>判断 latest 是否严格大于 current（按 X.Y.Z 数值比较）。</summary>
-    private static bool IsNewer(string latest, string current)
+    public static bool IsNewer(string latest, string current)
     {
         var l = latest.Split('.').Select(int.Parse).ToArray();
         var c = current.Split('.').Select(int.Parse).ToArray();
@@ -200,5 +287,23 @@ public class UpdateService : IUpdateService
             if (l[i] < c[i]) return false;
         }
         return false;
+    }
+
+    private sealed class VersionComparer : IComparer<string>
+    {
+        public static readonly VersionComparer Instance = new();
+
+        public int Compare(string? x, string? y)
+        {
+            if (x == null || y == null) return 0;
+            var a = x.Split('.').Select(int.Parse).ToArray();
+            var b = y.Split('.').Select(int.Parse).ToArray();
+            for (var i = 0; i < Math.Min(3, Math.Min(a.Length, b.Length)); i++)
+            {
+                var diff = a[i].CompareTo(b[i]);
+                if (diff != 0) return diff;
+            }
+            return 0;
+        }
     }
 }

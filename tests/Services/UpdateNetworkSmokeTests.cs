@@ -1,4 +1,4 @@
-using CleanMaster.Services;
+﻿using CleanMaster.Services;
 
 namespace CleanMaster.Tests.Services;
 
@@ -41,6 +41,25 @@ public class UpdateNetworkSmokeTests
         Assert.Equal(info.SizeBytes, fs.Length);
 
         try { File.Delete(path); } catch { }
+    }
+
+    /// <summary>Gitee 源：验证国内 API 可达 + 真实响应能被解析（不需要有更新版本）。</summary>
+    [Fact]
+    public async Task GiteeLatestRelease_IsReachableAndParsable()
+    {
+        if (!Enabled) return;
+
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("CleanMaster-Updater-Test");
+        var json = await http.GetStringAsync("https://gitee.com/api/v5/repos/zhang_we/clean-master/releases/latest");
+
+        // 用一个极低版本当"当前版本"，确保能解析出 UpdateInfo 而不是 null
+        var info = UpdateService.ParseRelease(json, UpdateSource.Gitee, currentVersion: "0.0.1");
+
+        Assert.NotNull(info);
+        Assert.Equal(UpdateSource.Gitee, info!.Source);
+        Assert.EndsWith(".exe", info.FileName, StringComparison.OrdinalIgnoreCase);
+        Assert.StartsWith("https://gitee.com/", info.DownloadUrl);
     }
 
     private static async Task<UpdateInfo?> LatestReleaseAssetAsync()

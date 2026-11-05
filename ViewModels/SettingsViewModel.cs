@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Diagnostics;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -147,6 +148,33 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
             {
                 PendingUpdate = null;
                 if (!silent) UpdateStatusText = "已是最新版本";
+            }
+        }
+        catch (UpdateCheckException ex)
+        {
+            // 网络不通 ≠ 没有新版本。必须如实告知，否则用户永远不知道有新版本。
+            UpdateStatusText = "检查更新失败（网络不可用）";
+            App.LogError("CheckForUpdateAsync-network", ex);
+
+            if (!silent)
+            {
+                var open = CleanMaster.Views.AppDialog.Show(
+                    "无法连接更新服务器。\n\n" +
+                    "常见原因：网络无法访问 Gitee / GitHub（公司或校园网限制、需要代理）。\n\n" +
+                    "是否打开下载页面，手动下载最新版本？",
+                    "检查更新失败", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+
+                if (open == System.Windows.MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo("https://gitee.com/zhang_we/clean-master/releases")
+                        {
+                            UseShellExecute = true
+                        });
+                    }
+                    catch (Exception openEx) { App.LogError("OpenReleasePage", openEx); }
+                }
             }
         }
         catch (Exception ex)

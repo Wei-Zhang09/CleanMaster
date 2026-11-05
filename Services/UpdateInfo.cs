@@ -1,8 +1,9 @@
-namespace CleanMaster.Services;
+﻿namespace CleanMaster.Services;
 
 /// <summary>远程更新信息（来自 GitHub Release）。</summary>
 public class UpdateInfo
 {
+    public UpdateSource Source { get; set; }           // 来自哪个源（Gitee / GitHub）
     public string Version { get; set; } = "";          // 如 "2.5.0"
     public string TagName { get; set; } = "";          // 如 "v2.5.0"
     public string DownloadUrl { get; set; } = "";      // 安装包下载直链

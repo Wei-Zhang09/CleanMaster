@@ -193,7 +193,7 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
     /// "by @user in #123" 后缀，只保留最多 6 条可读的更新条目。
     /// 目标用户是普通用户，弹窗里不应该出现英文标题和一串链接。
     /// </summary>
-    private static string CleanNotes(string notes)
+    public static string CleanNotes(string notes)
     {
         if (string.IsNullOrWhiteSpace(notes)) return "";
 
@@ -206,7 +206,13 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
             // GitHub 自动生成的部分，直接丢弃
             if (line.StartsWith("**Full Changelog**", StringComparison.OrdinalIgnoreCase)) continue;
             if (line.StartsWith("Full Changelog", StringComparison.OrdinalIgnoreCase)) continue;
-            if (line.StartsWith("##", StringComparison.Ordinal)) continue;
+            if (line.StartsWith("#", StringComparison.Ordinal)) continue;
+
+            // 发布说明里为校验而写的 SHA256 行不该出现在用户看的更新内容里
+            if (System.Text.RegularExpressions.Regex.IsMatch(
+                    line, @"^SHA-?256\s*[:：]\s*[0-9a-fA-F]{64}$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                continue;
 
             // 去掉列表符号
             line = line.TrimStart('*', '-', ' ');

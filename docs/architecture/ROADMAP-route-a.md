@@ -46,7 +46,7 @@ MangoDisk 用 `CreateProcessWithTokenW` 把卸载器放到 explorer 令牌下跑
 | 项 | 结果 |
 |---|---|
 | 规则总数 | 124（指纹断言，未变） |
-| 已数据化 | **119 条**（Rules/Catalog 下 10 个 TOML 文件） |
+| 已数据化 | **119 条**（Rules/Catalog 下 13 个 TOML 文件） |
 | 留在代码 | 5 条，均为设计使然，见下 |
 | 解析器 | 5 个：chromium-profile-subdir、firefox-profile-subdir、children-subdir、children-subdirs、parent-subdirs |
 | 占位符 | 11 个：LOCAL/ROAMING/USER/SYSTEMDRIVE/WINDIR/PROGRAMFILES/PROGRAMFILESX86/PROGRAMDATA/DOCUMENTS/RECENT/TEMP |

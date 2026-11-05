@@ -1,0 +1,72 @@
+# windows-cache.toml（RC-6 迁移批次）
+#
+# 由硬编码规则迁移而来。
+
+
+[[rule]]
+id = "app.font-cache"
+name = "Font Cache"
+category = "AppCache"
+safety = "Safe"
+path = '{SYSTEMDRIVE}\Windows\ServiceProfiles\LocalService\AppData\Local\FontCache'
+description = "Windows 字体缓存。删除后会自动重建。"
+evidence = '这些是 Windows 系统缓存/索引目录；系统会按需重建，删除不影响已安装程序与用户文件。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.windows-search-index"
+name = "Windows Search Index"
+category = "AppCache"
+safety = "Caution"
+path = '{SYSTEMDRIVE}\ProgramData\Microsoft\Search\Data'
+description = "Windows 搜索索引数据。删除后索引会重建（搜索会暂时变慢）。"
+evidence = '这些是 Windows 系统缓存/索引目录；系统会按需重建，删除不影响已安装程序与用户文件。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.windows"
+name = "Windows 通知缓存"
+category = "AppCache"
+safety = "Safe"
+path = '{LOCAL}\Microsoft\Windows\Notifications'
+description = "Windows 通知中心缓存。包含通知图标和临时数据，不影响通知历史记录本身。"
+evidence = '这些是 Windows 系统缓存/索引目录；系统会按需重建，删除不影响已安装程序与用户文件。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.appcompat-cache"
+name = "程序兼容性缓存 (AppCompat)"
+category = "AppCache"
+safety = "Dangerous"
+path = '{SYSTEMDRIVE}\Windows\AppCompat\Programs'
+description = "兼容性数据库 (.sdb)。删除可能破坏已注册的程序兼容性设置，谨慎操作。"
+evidence = '这些是 Windows 系统缓存/索引目录；系统会按需重建，删除不影响已安装程序与用户文件。'
+verified_at = "2026-11-05"
+
+[[rule]]
+id = "app.edge-webview2-cache"
+name = "Edge WebView2 Cache"
+category = "AppCache"
+safety = "Safe"
+resolver = "children-subdirs"
+description = "WebView2 用户数据缓存（所有 profile 的 Cache/Code Cache/GPUCache/Service Worker）。"
+evidence = 'WebView2 是嵌入应用的浏览器内核，其缓存目录可重建；不包含应用自身数据。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{LOCAL}\Microsoft\EdgeWebView\User Data'
+subs = "Cache,Code Cache,GPUCache,Service Worker"
+
+[[rule]]
+id = "app.uwp-localcache"
+name = "UWP/Store 应用 LocalCache"
+category = "AppCache"
+safety = "Safe"
+resolver = "children-subdir"
+description = "UWP/Store 应用的 LocalCache（每个应用包下的 LocalCache\\Local）。"
+evidence = 'UWP 应用的 LocalCache 存放缓存数据，系统会重建；但个别应用可能把离线内容放在此目录，故标 Caution。'
+verified_at = "2026-11-05"
+
+[rule.resolver_args]
+parent = '{LOCAL}\Packages'
+sub = 'LocalCache\Local'

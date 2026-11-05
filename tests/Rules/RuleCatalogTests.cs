@@ -21,7 +21,7 @@ public class RuleCatalogTests
 
         Assert.True(result.IsValid, "规则目录存在校验错误：\n" + string.Join("\n", result.Errors));
         Assert.Empty(result.Warnings);            // 试点规则都写了 evidence
-        Assert.Equal(96, result.Rules.Count);
+        Assert.Equal(102, result.Rules.Count);
         Assert.All(result.Rules, r => Assert.False(string.IsNullOrWhiteSpace(r.Id)));
     }
 
@@ -136,6 +136,10 @@ public class RuleCatalogTests
         ("app.wer-reportarchive", "WER ReportArchive", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER\ReportArchive", Array.Empty<string>(), true, -1),
         ("app.wer-reportqueue", "WER ReportQueue", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER\ReportQueue", Array.Empty<string>(), true, -1),
         ("app.windows-error-reporting-root", "Windows Error Reporting (root)", CleanCategory.CrashDumps, CleanSafety.Safe, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Windows\WER", new[] { "*.cab", "*.dmp", "*.tmp", "*.wer" }, false, -1),
+        ("app.font-cache", "Font Cache", CleanCategory.AppCache, CleanSafety.Safe, @"{SYSTEMDRIVE}\Windows\ServiceProfiles\LocalService\AppData\Local\FontCache", Array.Empty<string>(), true, -1),
+        ("app.windows-search-index", "Windows Search Index", CleanCategory.AppCache, CleanSafety.Caution, @"{SYSTEMDRIVE}\ProgramData\Microsoft\Search\Data", Array.Empty<string>(), true, -1),
+        ("app.windows", "Windows 通知缓存", CleanCategory.AppCache, CleanSafety.Safe, @"{LOCAL}\Microsoft\Windows\Notifications", Array.Empty<string>(), true, -1),
+        ("app.appcompat-cache", "程序兼容性缓存 (AppCompat)", CleanCategory.AppCache, CleanSafety.Dangerous, @"{SYSTEMDRIVE}\Windows\AppCompat\Programs", Array.Empty<string>(), true, -1),
     };
 
     [Fact]

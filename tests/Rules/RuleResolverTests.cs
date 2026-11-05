@@ -34,6 +34,8 @@ public class RuleResolverTests
         ("devtools.jetbrains-caches", "JetBrains Caches", CleanCategory.DevToolCache, CleanSafety.Safe, "children-subdirs", @"parent={LOCAL}\JetBrains;subs=caches,index,log,tmp"),
         ("devtools.vs-code-extension-cache-all-extensions", "VS Code Extension Cache (all extensions)", CleanCategory.DevToolCache, CleanSafety.Safe, "children-subdir", @"parent={USER}\.vscode\extensions;sub=cache"),
         ("devtools.docker-desktop-cache", "Docker Desktop cache", CleanCategory.DevToolCache, CleanSafety.Caution, "parent-subdirs", @"parent={LOCAL}\Docker;subs=cache,tmp"),
+        ("app.edge-webview2-cache", "Edge WebView2 Cache", CleanCategory.AppCache, CleanSafety.Safe, "children-subdirs", @"parent={LOCAL}\Microsoft\EdgeWebView\User Data;subs=Cache,Code Cache,GPUCache,Service Worker"),
+        ("app.uwp-localcache", "UWP/Store 应用 LocalCache", CleanCategory.AppCache, CleanSafety.Safe, "children-subdir", @"parent={LOCAL}\Packages;sub=LocalCache\Local"),
     };
 
     [Fact]

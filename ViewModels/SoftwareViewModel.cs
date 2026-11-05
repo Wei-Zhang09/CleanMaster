@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Data;
@@ -171,50 +172,94 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
 
         try
         {
-            // Use process-exit-aware overload instead of fixed 3s delay.
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(30));
-            var (started, exitCode, message) = await _softwareService.UninstallSoftwareAsync(software, cts.Token);
+            var attempt = await _softwareService.UninstallSoftwareAsync(software, cts.Token);
 
-            if (!started)
+            if (attempt.Outcome == UninstallOutcome.NotStarted)
             {
-                CleanMaster.Views.AppDialog.Show($"卸载程序无法启动：{message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CleanMaster.Views.AppDialog.Show($"卸载程序无法启动：{attempt.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 SoftwareStatus = "卸载失败";
                 return;
             }
 
-            // Uninstaller exited (or wait cancelled). Brief delay to let file handles release.
-            await Task.Delay(1500);
-
-            var leftovers = _softwareService.ScanLeftovers(software);
-
-            if (leftovers.LeftoverFolders.Count > 0 || leftovers.LeftoverRegistryKeys.Count > 0)
+            if (attempt.Outcome == UninstallOutcome.Cancelled)
             {
-                var leftoverMsg = $"卸载程序已结束。\n\n发现残留文件和注册表项：\n";
-                foreach (var folder in leftovers.LeftoverFolders.Take(5))
-                    leftoverMsg += $"  文件：{folder}\n";
-                if (leftovers.LeftoverFolders.Count > 5)
-                    leftoverMsg += $"  ...等 {leftovers.LeftoverFolders.Count} 个目录\n";
-                foreach (var reg in leftovers.LeftoverRegistryKeys.Take(3))
-                    leftoverMsg += $"  注册表：{reg}\n";
-
-                leftoverMsg += $"\n残留大小：{leftovers.LeftoverSizeText}";
-                leftoverMsg += "\n\n是否自动清理这些残留？（推荐清理）";
-
-                var cleanupConfirm = CleanMaster.Views.AppDialog.Show(leftoverMsg, "清理残留", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (cleanupConfirm == MessageBoxResult.Yes)
-                {
-                    _softwareService.CleanupLeftovers(leftovers);
-                    CleanMaster.Views.AppDialog.Show($"已清理 {leftovers.LeftoverSizeText} 残留文件和注册表", "清理完成", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+                CleanMaster.Views.AppDialog.Show(
+                    "卸载已被取消或等待超时。\n\n软件可能处于「部分卸载」状态，建议重新卸载一次。",
+                    "卸载已取消", MessageBoxButton.OK, MessageBoxImage.Warning);
+                SoftwareStatus = "卸载已取消";
+                return;
             }
-            else
+
+            // 卸载器还在跑子进程时不要扫残留：会把"正在被删除"的文件当成残留，用户一清理就和卸载器抢文件。
+            if (attempt.DescendantsStillRunning)
             {
-                CleanMaster.Views.AppDialog.Show("卸载完成，未发现残留文件。", "卸载完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                CleanMaster.Views.AppDialog.Show(
+                    "卸载程序已经退出，但它启动的后台进程仍在运行。\n\n请等一两分钟后再刷新软件列表确认；" +
+                    "如果软件仍然存在，重启电脑后重新卸载一次。",
+                    "卸载仍在进行", MessageBoxButton.OK, MessageBoxImage.Warning);
+                SoftwareStatus = "卸载仍在进行";
+                await RefreshSoftwareListAsync();
+                return;
             }
+
+            switch (attempt.Outcome)
+            {
+                case UninstallOutcome.VerifiedRemoved:
+                    await HandleVerifiedRemovalAsync(software);
+                    break;
+
+                case UninstallOutcome.RestartRequired:
+                    CleanMaster.Views.AppDialog.Show(
+                        $"「{software.Name}」需要重启电脑才能完成卸载。\n\n" +
+                        "重启后请回到软件管理页刷新，确认它是否已经消失。",
+                        "需要重启", MessageBoxButton.OK, MessageBoxImage.Information);
+                    SoftwareStatus = "等待重启完成卸载";
+                    break;
+
+                case UninstallOutcome.StillRegistered:
+                    // 不扫残留、不清残留：软件还登记在系统里，清文件等于破坏已装软件。
+                    var openSettings = CleanMaster.Views.AppDialog.Show(
+                        $"卸载程序已经结束，但系统里仍然登记着「{software.Name}」。\n\n" +
+                        "常见原因：\n" +
+                        "  • 卸载被取消，或弹窗被直接关掉\n" +
+                        "  • 卸载器被权限/UAC 拦截\n" +
+                        "  • 卸载器只删了文件，没清注册信息\n\n" +
+                        "是否打开 Windows 设置里的「应用」列表，用系统自带卸载再试一次？",
+                        "卸载未完成", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+                    if (openSettings == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            Process.Start(new ProcessStartInfo("ms-settings:appsfeatures") { UseShellExecute = true });
+                        }
+                        catch (Exception ex)
+                        {
+                            CleanMaster.App.LogError("OpenAppsSettings", ex);
+                        }
+                    }
+                    SoftwareStatus = "卸载未完成";
+                    break;
+
+                default: // Unverified
+                    CleanMaster.Views.AppDialog.Show(
+                        $"卸载程序已经结束，但无法确认「{software.Name}」是否真的被移除（缺少注册表登记路径）。\n\n" +
+                        "请刷新列表确认；如果软件还在，重启后再卸载一次。",
+                        "卸载结果未知", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    SoftwareStatus = "卸载结果未知";
+                    break;
+            }
+
+            // 刷新列表会把状态栏改成"已加载 N 个软件"，卸载结论会被冲掉。
+            // 先把结论存下来，刷新完再写回，用户才看得到刚才到底卸没卸掉。
+            var outcomeStatus = SoftwareStatus;
 
             InstalledSoftware.Clear();
             SoftwareStatus = "";
             await LoadInstalledSoftwareAsync();
+
+            if (!string.IsNullOrEmpty(outcomeStatus)) SoftwareStatus = outcomeStatus;
         }
         catch (Exception ex)
         {
@@ -225,6 +270,52 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
         {
             IsUninstalling = false;
         }
+    }
+
+    /// <summary>确认卸载后：扫残留 → 询问清理 → 刷新列表。</summary>
+    private async Task HandleVerifiedRemovalAsync(InstalledSoftware software)
+    {
+        // 给文件句柄一点释放时间（卸载器刚退出时仍可能有句柄未关闭）
+        await Task.Delay(800);
+
+        var leftovers = _softwareService.ScanLeftovers(software);
+
+        if (leftovers.LeftoverFolders.Count == 0 && leftovers.LeftoverRegistryKeys.Count == 0)
+        {
+            CleanMaster.Views.AppDialog.Show($"「{software.Name}」已卸载完成，未发现残留文件。",
+                "卸载完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            SoftwareStatus = "卸载完成";
+            return;
+        }
+
+        var leftoverMsg = $"「{software.Name}」已卸载完成。\n\n发现残留文件和注册表项：\n";
+        foreach (var folder in leftovers.LeftoverFolders.Take(5))
+            leftoverMsg += $"  文件：{folder}\n";
+        if (leftovers.LeftoverFolders.Count > 5)
+            leftoverMsg += $"  ...等 {leftovers.LeftoverFolders.Count} 个目录\n";
+        foreach (var reg in leftovers.LeftoverRegistryKeys.Take(3))
+            leftoverMsg += $"  注册表：{reg}\n";
+
+        leftoverMsg += $"\n残留大小：{leftovers.LeftoverSizeText}";
+        leftoverMsg += "\n\n是否自动清理这些残留？（推荐清理）";
+
+        var cleanupConfirm = CleanMaster.Views.AppDialog.Show(leftoverMsg, "清理残留", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (cleanupConfirm == MessageBoxResult.Yes)
+        {
+            _softwareService.CleanupLeftovers(leftovers);
+            CleanMaster.Views.AppDialog.Show($"已清理 {leftovers.LeftoverSizeText} 残留文件和注册表",
+                "清理完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        SoftwareStatus = "卸载完成";
+    }
+
+    /// <summary>卸载流程中途需要刷新列表时复用（清空后重载）。</summary>
+    private async Task RefreshSoftwareListAsync()
+    {
+        InstalledSoftware.Clear();
+        SoftwareStatus = "";
+        await LoadInstalledSoftwareAsync();
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)

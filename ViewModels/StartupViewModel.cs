@@ -103,14 +103,13 @@ public class StartupViewModel : INotifyPropertyChanged, IDisposable
                 {
                     var item = list[i];
                     var iconPath = _softwareService.GetStartupItemIconPath(item);
-                    if (!string.IsNullOrEmpty(iconPath))
+                    var signature = _softwareService.GetStartupItemSignature(item);
+                    var captured = item;
+                    App.Current?.Dispatcher?.BeginInvoke(new Action(() =>
                     {
-                        var captured = item;
-                        App.Current?.Dispatcher?.BeginInvoke(new Action(() =>
-                        {
-                            captured.IconPath = iconPath;
-                        }));
-                    }
+                        if (!string.IsNullOrEmpty(iconPath)) captured.IconPath = iconPath;
+                        captured.SignatureStatus = signature;
+                    }));
                 }
             });
         }

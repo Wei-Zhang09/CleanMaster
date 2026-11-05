@@ -501,9 +501,30 @@
                                         <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
                                         <TextBlock Text="{Binding Command}" FontSize="10" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="450"/>
                                     </StackPanel>
-                                    <Border Grid.Column="2" CornerRadius="3" Padding="6,2" Background="#F1F5F9" VerticalAlignment="Center" Margin="12,0">
-                                        <TextBlock Text="{Binding Source}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                    </Border>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+                                        <Border CornerRadius="3" Padding="6,2" Background="#F1F5F9">
+                                            <TextBlock Text="{Binding Source}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </Border>
+                                        <!-- 数字签名：未签名给醒目底色。只表示"有没有签名"，不代表安全与否。 -->
+                                        <Border CornerRadius="3" Padding="6,2" Margin="6,0,0,0">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Setter Property="Background" Value="#F1F5F9"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SignatureStatus}" Value="Signed">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding SignatureStatus}" Value="Unsigned">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="Background" Value="#FEF3C7"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding SignatureText}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </Border>
+                                    </StackPanel>
                                     <Button Grid.Column="3" Padding="12,5" FontSize="11"
                                             Command="{Binding DataContext.Startup.ToggleStartupCommand, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
                                             CommandParameter="{Binding}">

@@ -18,7 +18,47 @@ public class InstalledSoftware
     public DateTime? InstallDate { get; set; }
     public bool IsSelected { get; set; }
 
+    /// <summary>注册表根："HKLM" 或 "HKCU"。用于卸载后回读验证。</summary>
+    public string RegistryHive { get; set; } = "";
+
+    /// <summary>卸载登记项的完整注册表路径（含子键名），卸载后据此判断软件是否真的消失。</summary>
+    public string RegistryPath { get; set; } = "";
+
     public string SizeText => EstimatedSize > 0 ? ByteSizeFormatter.Format(EstimatedSize) : "未知";
+}
+
+/// <summary>
+/// 卸载结果。不能再只用"卸载器进程是否退出"当成功依据：
+/// 卸载器可能被 UAC 拒掉、闪退、或用户中途关掉弹窗，退出码照样是 0。
+/// </summary>
+public enum UninstallOutcome
+{
+    /// <summary>卸载命令无效或进程起不来。</summary>
+    NotStarted,
+
+    /// <summary>等待被取消 / 超时。</summary>
+    Cancelled,
+
+    /// <summary>卸载登记项已消失 —— 真的卸载了。</summary>
+    VerifiedRemoved,
+
+    /// <summary>卸载器退出了，但注册表里还登记着这个软件。</summary>
+    StillRegistered,
+
+    /// <summary>卸载器要求重启才能完成（3010 / 1641）。</summary>
+    RestartRequired,
+
+    /// <summary>卸载器退出了，但拿不到登记项路径，无法验证。</summary>
+    Unverified
+}
+
+public sealed record UninstallAttempt(
+    UninstallOutcome Outcome,
+    int? ExitCode,
+    string Message,
+    bool DescendantsStillRunning = false)
+{
+    public bool Started => Outcome != UninstallOutcome.NotStarted;
 }
 
 public class StartupItem : INotifyPropertyChanged
@@ -33,6 +73,37 @@ public class StartupItem : INotifyPropertyChanged
         set { _isEnabled = value; OnPropertyChanged(); }
     }
     public string Source { get; set; } = "";
+
+    /// <summary>注册表里的原始值名（可能带历史 Disabled_ 前缀）；启动文件夹项为文件名。</summary>
+    public string ValueName { get; set; } = "";
+
+    /// <summary>旧机制（改值名 / 改 .lnk 后缀）造成的禁用，迁移期仍要能识别。</summary>
+    public bool IsLegacyDisabled { get; set; }
+
+    private string _signatureStatus = "";
+    /// <summary>数字签名状态（延迟解析）：Signed / Unsigned / Unknown。</summary>
+    public string SignatureStatus
+    {
+        get => _signatureStatus;
+        set
+        {
+            if (_signatureStatus == value) return;
+            _signatureStatus = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SignatureText));
+            OnPropertyChanged(nameof(HasNoSignature));
+        }
+    }
+
+    public string SignatureText => SignatureStatus switch
+    {
+        "Signed" => "有签名",
+        "Unsigned" => "无签名",
+        _ => ""
+    };
+
+    /// <summary>未签名项给 UI 上醒目提示用。</summary>
+    public bool HasNoSignature => SignatureStatus == "Unsigned";
 
     private string _iconPath = "";
     public string IconPath
@@ -71,12 +142,12 @@ public class SoftwareService : ISoftwareService
 
         var paths = new[]
         {
-            (@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", Registry.LocalMachine),
-            (@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall", Registry.LocalMachine),
-            (@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", Registry.CurrentUser)
+            (@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", Registry.LocalMachine, "HKLM"),
+            (@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall", Registry.LocalMachine, "HKLM"),
+            (@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", Registry.CurrentUser, "HKCU")
         };
 
-        foreach (var (path, root) in paths)
+        foreach (var (path, root, hive) in paths)
         {
             try
             {
@@ -157,7 +228,9 @@ public class SoftwareService : ISoftwareService
                             UninstallString = uninstallStr,
                             IconPath = iconPath,
                             EstimatedSize = size,
-                            InstallDate = installDate
+                            InstallDate = installDate,
+                            RegistryHive = hive,
+                            RegistryPath = path + "\\" + subKeyName
                         });
                     }
                     catch (Exception ex) { CleanMaster.App.LogError("GetInstalledSoftware", ex); }
@@ -234,17 +307,22 @@ public class SoftwareService : ISoftwareService
                     // 剥离所有历史遗留的 "Disabled_" 前缀，得到规范化显示名。
                     // 早期版本反复禁用/启用在注册表里堆积出 Disabled_Disabled_... 脏键，
                     // 只剥一层会导致启用/禁用时按错名找备份，反复切换最终报"需要管理员权限"。
-                    var isDisabled = name.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase);
+                    var isLegacyDisabled = name.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase);
                     var displayName = name;
                     while (displayName.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
                         displayName = displayName.Substring("Disabled_".Length);
 
+                    // 新机制：读任务管理器同一份 StartupApproved 状态（RunOnce 不支持，只能看旧机制）。
+                    var approval = StartupApproval.Read(source, displayName);
+
                     items.Add(new StartupItem
                     {
                         Name = displayName,
+                        ValueName = name,
                         Command = command,
                         Location = path,
-                        IsEnabled = !isDisabled,
+                        IsEnabled = !isLegacyDisabled && approval != StartupApprovalState.Disabled,
+                        IsLegacyDisabled = isLegacyDisabled,
                         Source = source,
                         // 图标延迟加载, 加快列表呈现
                         IconPath = ""
@@ -254,7 +332,8 @@ public class SoftwareService : ISoftwareService
             catch (Exception ex) { CleanMaster.App.LogError("GetStartupItems", ex); }
         }
 
-        // Startup folder (always enabled)
+        // 启动文件夹：同样走 StartupApproved\StartupFolder（任务管理器也是这么管的）。
+        // 历史版本用改名 .lnk -> .lnk.disabled 的方式禁用，这里仍要识别出来。
         try
         {
             var startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
@@ -262,35 +341,34 @@ public class SoftwareService : ISoftwareService
             {
                 foreach (var file in Directory.GetFiles(startupFolder))
                 {
-                    // Skip .disabled backups — they're handled separately below
-                    if (file.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
-                        continue;
+                    var fileName = Path.GetFileName(file);
+
+                    // desktop.ini 是文件夹的元数据文件，不是启动项（冒烟测试里真的被列出来过）
+                    if (fileName.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
+                    try
+                    {
+                        var attrs = File.GetAttributes(file);
+                        if (attrs.HasFlag(FileAttributes.Hidden) && attrs.HasFlag(FileAttributes.System)) continue;
+                    }
+                    catch { }
+
+                    var isLegacyDisabled = file.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+                    if (isLegacyDisabled) fileName = fileName.Substring(0, fileName.Length - ".disabled".Length);
+
+                    var approval = StartupApproval.Read("StartupFolder", fileName);
 
                     items.Add(new StartupItem
                     {
-                        Name = Path.GetFileNameWithoutExtension(file),
+                        Name = Path.GetFileNameWithoutExtension(fileName),
+                        ValueName = fileName,
                         Command = file,
                         Location = "Startup Folder",
-                        IsEnabled = true,
+                        IsEnabled = !isLegacyDisabled && approval != StartupApprovalState.Disabled,
+                        IsLegacyDisabled = isLegacyDisabled,
                         Source = "StartupFolder",
                         IconPath = ""
                     });
                 }
-            }
-
-            // Also check for .disabled files (previously disabled via this app)
-            var disabledFiles = Directory.GetFiles(startupFolder, "*.disabled");
-            foreach (var file in disabledFiles)
-            {
-                items.Add(new StartupItem
-                {
-                    Name = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(file)),
-                    Command = file,
-                    Location = "Startup Folder",
-                    IsEnabled = false,
-                    Source = "StartupFolder",
-                    IconPath = ""
-                });
             }
         }
         catch (Exception ex) { CleanMaster.App.LogError("GetStartupItems", ex); }
@@ -373,123 +451,195 @@ public class SoftwareService : ISoftwareService
     {
         try
         {
-            if (item.Source == "StartupFolder")
-            {
-                // 从启动文件夹 + 名称动态推导路径，不依赖 item.Command（切换后可能陈旧）。
-                var folder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-                var lnkPath = Path.Combine(folder, item.Name + ".lnk");
-                var disabledPath = lnkPath + ".disabled";
+            // 已经被旧机制禁用过的项，状态本来就是"禁用"，不需要再写一次。
+            if (item.IsLegacyDisabled) return true;
 
-                // 若 .lnk 不存在（可能已是被禁用状态），尝试 .lnk.disabled 也算成功场景由调用方决定。
-                if (!File.Exists(lnkPath)) return false;
-                if (File.Exists(disabledPath)) File.Delete(disabledPath);
-                File.Move(lnkPath, disabledPath);
-                return true;
-            }
+            // 支持 StartupApproved 的来源：写任务管理器同一份状态（内部会回读验证）。
+            if (StartupApproval.IsSupported(item.Source))
+                return StartupApproval.Write(item.Source, ResolveApprovalValueName(item), enabled: false);
 
-            var regInfo = ResolveStartupRegPath(item.Source);
-            if (regInfo == null) return false;
-
-            using var key = regInfo.Value.Root.OpenSubKey(regInfo.Value.Path, true);
-            if (key == null) return false;
-
-            // 用规范化干净名（无 Disabled_ 前缀）作为备份键，避免反复切换堆前缀。
-            var cleanName = item.Name;
-            while (cleanName.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
-                cleanName = cleanName.Substring("Disabled_".Length);
-
-            var existing = key.GetValue(cleanName);
-            if (existing == null) return false;
-
-            var backupName = "Disabled_" + cleanName;
-            key.SetValue(backupName, existing, key.GetValueKind(cleanName));
-            key.DeleteValue(cleanName, false);
-
-            // 清理历史遗留的多层前缀脏键（如 Disabled_Disabled_xxx），只保留单层备份键。
-            foreach (var candidate in key.GetValueNames().ToList())
-            {
-                if (!candidate.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase)) continue;
-                if (string.Equals(candidate, backupName, StringComparison.OrdinalIgnoreCase)) continue;
-                var stripped = candidate;
-                while (stripped.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
-                    stripped = stripped.Substring("Disabled_".Length);
-                if (string.Equals(stripped, cleanName, StringComparison.OrdinalIgnoreCase))
-                    key.DeleteValue(candidate, false);
-            }
-            return true;
+            // RunOnce 等没有审批键的来源：只能沿用旧的改名机制。
+            return LegacyDisable(item);
         }
         catch (Exception ex) { CleanMaster.App.LogError("DisableStartupItem", ex); }
         return false;
     }
 
-    /// <summary>
-    /// Restores a previously-disabled startup item.
-    /// </summary>
+    /// <summary>审批状态用的值名：注册表项用干净值名，启动文件夹用文件名。</summary>
+    private static string ResolveApprovalValueName(StartupItem item)
+    {
+        if (item.Source == "StartupFolder")
+            return item.ValueName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
+                ? item.ValueName[..^".disabled".Length]
+                : item.ValueName;
+
+        var name = string.IsNullOrEmpty(item.ValueName) ? item.Name : item.ValueName;
+        while (name.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
+            name = name.Substring("Disabled_".Length);
+        return name;
+    }
+
+    /// <summary>旧机制禁用：注册表改值名 / 启动文件夹改后缀。仅 RunOnce 与迁移路径使用。</summary>
+    private bool LegacyDisable(StartupItem item)
+    {
+        if (item.Source == "StartupFolder")
+        {
+            var folder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            var lnkPath = Path.Combine(folder, ResolveApprovalValueName(item));
+            var disabledPath = lnkPath + ".disabled";
+
+            if (!File.Exists(lnkPath)) return false;
+            if (File.Exists(disabledPath)) File.Delete(disabledPath);
+            File.Move(lnkPath, disabledPath);
+            return true;
+        }
+
+        var regInfo = ResolveStartupRegPath(item.Source);
+        if (regInfo == null) return false;
+
+        using var key = regInfo.Value.Root.OpenSubKey(regInfo.Value.Path, true);
+        if (key == null) return false;
+
+        var cleanName = ResolveApprovalValueName(item);
+        var existing = key.GetValue(cleanName);
+        if (existing == null) return false;
+
+        var backupName = "Disabled_" + cleanName;
+        key.SetValue(backupName, existing, key.GetValueKind(cleanName));
+        key.DeleteValue(cleanName, false);
+
+        // 清理历史遗留的多层前缀脏键（如 Disabled_Disabled_xxx），只保留单层备份键。
+        foreach (var candidate in key.GetValueNames().ToList())
+        {
+            if (!candidate.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.Equals(candidate, backupName, StringComparison.OrdinalIgnoreCase)) continue;
+            var stripped = candidate;
+            while (stripped.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
+                stripped = stripped.Substring("Disabled_".Length);
+            if (string.Equals(stripped, cleanName, StringComparison.OrdinalIgnoreCase))
+                key.DeleteValue(candidate, false);
+        }
+        return true;
+    }
+
     public bool EnableStartupItem(StartupItem item)
     {
         try
         {
-            if (item.Source == "StartupFolder")
+            // 旧机制禁用的项：先把名字/后缀还原（迁移），再保证审批状态为启用。
+            if (item.IsLegacyDisabled)
             {
-                // 从启动文件夹 + 名称动态推导 .lnk.disabled 路径，不依赖 item.Command。
-                var folder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-                var lnkPath = Path.Combine(folder, item.Name + ".lnk");
-                var disabledPath = lnkPath + ".disabled";
-
-                if (File.Exists(disabledPath))
-                {
-                    if (File.Exists(lnkPath)) File.Delete(lnkPath);
-                    File.Move(disabledPath, lnkPath);
-                    return true;
-                }
-                return false;
+                if (!LegacyRestore(item)) return false;
+                if (StartupApproval.IsSupported(item.Source))
+                    StartupApproval.Write(item.Source, ResolveApprovalValueName(item), enabled: true);
+                return true;
             }
 
-            var regInfo = ResolveStartupRegPath(item.Source);
-            if (regInfo == null) return false;
+            if (StartupApproval.IsSupported(item.Source))
+                return StartupApproval.Write(item.Source, ResolveApprovalValueName(item), enabled: true);
 
-            using var key = regInfo.Value.Root.OpenSubKey(regInfo.Value.Path, true);
-            if (key == null) return false;
-
-            // 用规范化干净名找备份键，与 DisableStartupItem 对齐。
-            var cleanName = item.Name;
-            while (cleanName.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
-                cleanName = cleanName.Substring("Disabled_".Length);
-
-            // 优先找单层备份键；找不到则扫描所有 Disabled_ 前缀键（容忍历史多层脏数据）。
-            string? backupKeyName = null;
-            object? backup = null;
-            var expected = "Disabled_" + cleanName;
-            if (key.GetValue(expected) != null)
-            {
-                backupKeyName = expected;
-                backup = key.GetValue(expected);
-            }
-            else
-            {
-                foreach (var candidate in key.GetValueNames())
-                {
-                    if (!candidate.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase)) continue;
-                    var stripped = candidate;
-                    while (stripped.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
-                        stripped = stripped.Substring("Disabled_".Length);
-                    if (string.Equals(stripped, cleanName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        backupKeyName = candidate;
-                        backup = key.GetValue(candidate);
-                        break;
-                    }
-                }
-            }
-
-            if (backupKeyName == null || backup == null) return false;
-
-            key.SetValue(cleanName, backup, key.GetValueKind(backupKeyName));
-            key.DeleteValue(backupKeyName, false);
-            return true;
+            // RunOnce：只存在旧机制，禁用状态即"值名带前缀"，还原即可。
+            return LegacyRestore(item);
         }
         catch (Exception ex) { CleanMaster.App.LogError("EnableStartupItem", ex); }
         return false;
+    }
+
+    /// <summary>旧机制还原：注册表改回原名 / 启动文件夹去掉 .disabled 后缀。</summary>
+    private bool LegacyRestore(StartupItem item)
+    {
+        if (item.Source == "StartupFolder")
+        {
+            var folder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            var lnkPath = Path.Combine(folder, ResolveApprovalValueName(item));
+            var disabledPath = lnkPath + ".disabled";
+
+            if (!File.Exists(disabledPath)) return false;
+            if (File.Exists(lnkPath)) File.Delete(lnkPath);
+            File.Move(disabledPath, lnkPath);
+            return true;
+        }
+
+        var regInfo = ResolveStartupRegPath(item.Source);
+        if (regInfo == null) return false;
+
+        using var key = regInfo.Value.Root.OpenSubKey(regInfo.Value.Path, true);
+        if (key == null) return false;
+
+        var cleanName = ResolveApprovalValueName(item);
+
+        // 优先找单层备份键；找不到则扫描所有 Disabled_ 前缀键（容忍历史多层脏数据）。
+        string? backupKeyName = null;
+        object? backup = null;
+        var expected = "Disabled_" + cleanName;
+        if (key.GetValue(expected) != null)
+        {
+            backupKeyName = expected;
+            backup = key.GetValue(expected);
+        }
+        else
+        {
+            foreach (var candidate in key.GetValueNames())
+            {
+                if (!candidate.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase)) continue;
+                var stripped = candidate;
+                while (stripped.StartsWith("Disabled_", StringComparison.OrdinalIgnoreCase))
+                    stripped = stripped.Substring("Disabled_".Length);
+                if (string.Equals(stripped, cleanName, StringComparison.OrdinalIgnoreCase))
+                {
+                    backupKeyName = candidate;
+                    backup = key.GetValue(candidate);
+                    break;
+                }
+            }
+        }
+
+        if (backupKeyName == null || backup == null) return false;
+
+        key.SetValue(cleanName, backup, key.GetValueKind(backupKeyName));
+        key.DeleteValue(backupKeyName, false);
+        return true;
+    }
+
+    private static readonly Dictionary<string, string> SignatureCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 启动项对应程序是否有数字签名（延迟解析，结果缓存）。
+    /// 只回答"有没有签名"，不回答"可不可信" —— 未签名不等于恶意，别对用户过度承诺。
+    /// </summary>
+    public string GetStartupItemSignature(StartupItem item)
+    {
+        var exe = ExtractExePath(item.Command);
+        if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return "Unknown";
+
+        var ext = Path.GetExtension(exe);
+        if (!ext.Equals(".exe", StringComparison.OrdinalIgnoreCase) &&
+            !ext.Equals(".dll", StringComparison.OrdinalIgnoreCase))
+            return "Unknown";
+
+        lock (SignatureCache)
+        {
+            if (SignatureCache.TryGetValue(exe, out var cached)) return cached;
+        }
+
+        string status;
+        try
+        {
+            status = AuthenticodeChecker.Check(exe) switch
+            {
+                SignatureState.Signed => "Signed",
+                SignatureState.Unsigned => "Unsigned",
+                _ => "Unknown"
+            };
+        }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("GetStartupItemSignature", ex);
+            status = "Unknown";
+        }
+
+        lock (SignatureCache) { SignatureCache[exe] = status; }
+        return status;
     }
 
     private static (RegistryKey Root, string Path)? ResolveStartupRegPath(string source)
@@ -506,42 +656,40 @@ public class SoftwareService : ISoftwareService
     }
 
     /// <summary>
-    /// Starts the uninstaller and awaits its exit. Returns the exit code (or null if start failed).
-    /// Caller controls the wait timeout via the cancellationToken.
+    /// 启动卸载器，等**整棵进程树**退出，再回读注册表确认软件是否真的消失。
+    /// 返回三态结果而不是"进程退出了就算成功"：卸载器被拒、闪退、用户中途关掉弹窗时退出码同样是 0。
     /// </summary>
-    public async Task<(bool Started, int? ExitCode, string Message)> UninstallSoftwareAsync(
-        InstalledSoftware software, CancellationToken ct = default)
+    public async Task<UninstallAttempt> UninstallSoftwareAsync(
+        InstalledSoftware software,
+        CancellationToken ct = default,
+        TimeSpan? descendantWaitTimeout = null)
     {
         if (string.IsNullOrEmpty(software.UninstallString))
-            return (false, null, "No uninstall command found");
+            return new UninstallAttempt(UninstallOutcome.NotStarted, null, "No uninstall command found");
 
         var cmd = software.UninstallString.Trim();
 
         if (ContainsSuspiciousCharacters(cmd))
-            return (false, null, "Uninstall command contains suspicious characters");
+            return new UninstallAttempt(UninstallOutcome.NotStarted, null, "Uninstall command contains suspicious characters");
 
+        ProcessStartInfo psi;
         try
         {
-            ProcessStartInfo psi;
-            string resolvedExe;
+            string? resolvedExe;
 
             if (cmd.StartsWith("\""))
             {
                 var endQuote = cmd.IndexOf('"', 1);
                 if (endQuote <= 0)
-                    return (false, null, "Invalid uninstall string format");
+                    return new UninstallAttempt(UninstallOutcome.NotStarted, null, "Invalid uninstall string format");
+
                 resolvedExe = cmd.Substring(1, endQuote - 1);
                 var args = cmd.Substring(endQuote + 1).Trim();
 
                 if (!IsAllowedInstallerExe(resolvedExe) && !File.Exists(resolvedExe))
-                    return (false, null, $"Uninstaller not found: {resolvedExe}");
+                    return new UninstallAttempt(UninstallOutcome.NotStarted, null, $"Uninstaller not found: {resolvedExe}");
 
-                psi = new ProcessStartInfo
-                {
-                    FileName = resolvedExe,
-                    Arguments = args,
-                    UseShellExecute = true
-                };
+                psi = new ProcessStartInfo { FileName = resolvedExe, Arguments = args, UseShellExecute = true };
             }
             else
             {
@@ -551,39 +699,87 @@ public class SoftwareService : ISoftwareService
 
                 resolvedExe = ResolveExecutablePath(exePath);
                 if (string.IsNullOrEmpty(resolvedExe))
-                    return (false, null, $"Cannot find uninstaller: {exePath}");
+                    return new UninstallAttempt(UninstallOutcome.NotStarted, null, $"Cannot find uninstaller: {exePath}");
 
-                psi = new ProcessStartInfo
-                {
-                    FileName = resolvedExe,
-                    Arguments = args,
-                    UseShellExecute = true
-                };
+                psi = new ProcessStartInfo { FileName = resolvedExe, Arguments = args, UseShellExecute = true };
             }
-
-            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            if (!process.Start()) return (false, null, "Failed to start uninstaller process");
-
-            try
-            {
-                await process.WaitForExitAsync(ct);
-                return (true, process.ExitCode, "Uninstaller exited");
-            }
-            catch (OperationCanceledException)
-            {
-                try { process.Kill(entireProcessTree: true); } catch { }
-                return (true, null, "Uninstaller execution was cancelled");
-            }
-        }
-        catch (Exception ex) when (ex.Message.Contains("Cannot find")
-                                 || ex.Message.Contains("Invalid")
-                                 || ex.Message.Contains("suspicious"))
-        {
-            return (false, null, ex.Message);
         }
         catch (Exception ex)
         {
-            return (false, null, $"Failed to start uninstaller: {ex.Message}");
+            return new UninstallAttempt(UninstallOutcome.NotStarted, null, $"Failed to start uninstaller: {ex.Message}");
+        }
+
+        using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+        if (!process.Start())
+            return new UninstallAttempt(UninstallOutcome.NotStarted, null, "Failed to start uninstaller process");
+
+        var pid = process.Id;
+        int exitCode;
+
+        try
+        {
+            await process.WaitForExitAsync(ct);
+            exitCode = process.ExitCode;
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { }
+            return new UninstallAttempt(UninstallOutcome.Cancelled, null, "Uninstaller execution was cancelled");
+        }
+
+        // 父进程退出 ≠ 卸载结束：很多卸载器 fork 子进程后立刻退出。
+        var descendantsRunning = false;
+        try
+        {
+            var wait = descendantWaitTimeout ?? TimeSpan.FromSeconds(90);
+            var allExited = await ProcessTree.WaitForDescendantsAsync(pid, wait, ct);
+            descendantsRunning = !allExited;
+        }
+        catch (OperationCanceledException)
+        {
+            return new UninstallAttempt(UninstallOutcome.Cancelled, exitCode, "Cancelled while waiting for uninstaller child processes");
+        }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("UninstallSoftwareAsync-waitTree", ex);
+        }
+
+        var registration = TryGetRegistrationState(software);
+
+        // 3010 = ERROR_SUCCESS_REBOOT_REQUIRED, 1641 = ERROR_SUCCESS_REBOOT_INITIATED
+        if (exitCode is 3010 or 1641)
+            return new UninstallAttempt(UninstallOutcome.RestartRequired, exitCode,
+                "卸载器要求重启系统才能完成卸载", descendantsRunning);
+
+        if (registration == false)
+            return new UninstallAttempt(UninstallOutcome.VerifiedRemoved, exitCode,
+                "已在注册表中确认该软件被移除", descendantsRunning);
+
+        if (registration == true)
+            return new UninstallAttempt(UninstallOutcome.StillRegistered, exitCode,
+                "卸载器已结束，但系统里仍登记着该软件", descendantsRunning);
+
+        return new UninstallAttempt(UninstallOutcome.Unverified, exitCode,
+            "卸载器已结束，但无法验证是否卸载完成", descendantsRunning);
+    }
+
+    /// <summary>
+    /// 回读卸载登记项。true = 仍登记着（软件还在），false = 已消失，null = 无法验证（没有登记路径）。
+    /// </summary>
+    public bool? TryGetRegistrationState(InstalledSoftware software)
+    {
+        if (string.IsNullOrEmpty(software.RegistryPath)) return null;
+
+        try
+        {
+            using var root = software.RegistryHive == "HKCU" ? Registry.CurrentUser : Registry.LocalMachine;
+            using var key = root.OpenSubKey(software.RegistryPath);
+            return key != null;
+        }
+        catch (Exception ex)
+        {
+            CleanMaster.App.LogError("TryGetRegistrationState", ex);
+            return null;
         }
     }
 

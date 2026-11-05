@@ -137,28 +137,9 @@ public static class RuleDatabase
     // ──────────────────────────────────────────────────────────────────
     //  App Cache (Chinese apps, Electron apps, etc.)
     // ──────────────────────────────────────────────────────────────────
-    private static List<CleanupRule> GetAppCacheRules()
-    {
-        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-        // Helper: returns all subdirectories matching the given name(s) under a parent.
-        IEnumerable<string> FindSubdirs(string parent, params string[] names)
-        {
-            if (!Directory.Exists(parent)) yield break;
-            foreach (var name in names)
-            {
-                var p = Path.Combine(parent, name);
-                if (Directory.Exists(p)) yield return p;
-            }
-        }
-
-        return
-        [
-
-        ];
-    }
+    // 说明：应用缓存规则已全部迁移到 Rules/Catalog/apps/*.toml（RC-6），此方法不再产出规则。
+    // 保留空方法是为了让 GetAllRules 的调用顺序与分组注释保持可读；迁移完成后可整体删除。
+    private static List<CleanupRule> GetAppCacheRules() => [];
 
     // ──────────────────────────────────────────────────────────────────
     //  Installer Cache

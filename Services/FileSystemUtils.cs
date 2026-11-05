@@ -15,10 +15,6 @@ public static class FileSystemUtils
     public static long GetDirectorySize(string path, int maxDepth = -1, CancellationToken ct = default)
         => GetDirectorySizes(path, maxDepth, ct).Logical;
 
-    /// <summary>计算目录实际占用（稀疏/压缩文件按真实分配量）。</summary>
-    public static long GetDirectoryAllocatedSize(string path, int maxDepth = -1, CancellationToken ct = default)
-        => GetDirectorySizes(path, maxDepth, ct).Allocated;
-
     /// <summary>
     /// 一次遍历同时给出逻辑大小与实际占用。分开调两次会把目录树扫两遍，
     /// 清理工具扫描本身已是热点，这里必须合并。

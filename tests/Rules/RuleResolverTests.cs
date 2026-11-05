@@ -192,7 +192,6 @@ public class RuleResolverTests
         foreach (var name in RuleResolvers.Names)
         {
             Assert.NotEmpty(RuleResolvers.RequiredArgs(name));
-            Assert.False(string.IsNullOrWhiteSpace(RuleResolvers.Describe(name)));
         }
     }
 }

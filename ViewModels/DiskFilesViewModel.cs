@@ -56,11 +56,6 @@ public class DiskFilesViewModel : INotifyPropertyChanged, IDisposable
         set { _selectedFileTypeFilter = value; OnPropertyChanged(); LargeFilesView?.Refresh(); }
     }
 
-    public ObservableCollection<string> FileTypeFilters { get; } = new()
-    {
-        "全部", "视频", "音频", "图片", "压缩包", "文档", "其他"
-    };
-
     private bool FilterLargeFile(object item)
     {
         if (item is not LargeFileItem file) return false;

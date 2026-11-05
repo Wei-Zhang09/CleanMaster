@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 
 namespace CleanMaster.Services;
 
@@ -8,7 +8,6 @@ public class CacheDiscovery
     public string AppName { get; set; } = "";
     public string Path { get; set; } = "";
     /// <summary>启发式发现一律标 Caution（保守策略：自动识别，请确认）。</summary>
-    public bool IsCaution => true;
 }
 
 /// <summary>

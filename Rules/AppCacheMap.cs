@@ -15,8 +15,6 @@ public class CachePathPattern
     /// <summary>含占位符的路径模板，如 "{ROAMING}\\Clash Verge\\cache"。</summary>
     public string Template { get; set; } = "";
 
-    /// <summary>是否只清理该路径下的文件（而非整个目录）。</summary>
-    public bool IsFile { get; set; }
 }
 
 /// <summary>

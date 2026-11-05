@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using CleanMaster.Services;
 using Microsoft.Win32.SafeHandles;
 
@@ -51,22 +51,6 @@ public class AllocatedSizeTests : IDisposable
         // 实际只写了 4KB，占用必须远小于逻辑大小
         Assert.True(info.Value.AllocatedBytes < logicalLength / 4,
             $"稀疏文件实际占用应远小于逻辑大小，实际 {info.Value.AllocatedBytes}");
-        Assert.True(info.Value.SavedByAllocation > 0);
-    }
-
-    [Fact]
-    public void SumAllocated_MixedFiles_ReportsBothTotals()
-    {
-        var normal = Path.Combine(_dir, "n.bin");
-        var sparse = Path.Combine(_dir, "s.bin");
-        File.WriteAllBytes(normal, new byte[16 * 1024]);
-        if (!TryCreateSparseFile(sparse, 8L * 1024 * 1024)) return;
-
-        var (allocated, logical, fallback) = AllocatedSizeReader.SumAllocated(new[] { normal, sparse });
-
-        Assert.Equal(0, fallback);
-        Assert.Equal(16 * 1024 + 8L * 1024 * 1024, logical);
-        Assert.True(allocated < logical, "稀疏文件应让实际占用小于逻辑大小");
     }
 
     [Fact]

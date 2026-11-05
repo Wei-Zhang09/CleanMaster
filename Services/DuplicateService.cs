@@ -12,8 +12,6 @@ public class DuplicateGroup
     public long FileSize => Files.FirstOrDefault()?.SizeBytes ?? 0;
     public long WastedSpace => FileSize * Math.Max(0, Files.Count - 1);
 
-    public string WastedSpaceText => ByteSizeFormatter.Format(WastedSpace);
-    public string FileSizeText => ByteSizeFormatter.Format(FileSize);
 }
 
 public class DuplicateFile

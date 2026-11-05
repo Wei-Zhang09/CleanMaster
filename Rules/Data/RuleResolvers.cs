@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 
 namespace CleanMaster.Rules.Data;
 
@@ -17,34 +17,29 @@ public static class RuleResolvers
 {
     public delegate IEnumerable<string> Resolver(IReadOnlyDictionary<string, string> args);
 
-    private sealed record Entry(Resolver Resolve, string[] RequiredArgs, string Description);
+    private sealed record Entry(Resolver Resolve, string[] RequiredArgs);
 
     private static readonly Dictionary<string, Entry> Registry = new(StringComparer.OrdinalIgnoreCase)
     {
         ["chromium-profile-subdir"] = new Entry(
             ChromiumProfileSubdir,
-            new[] { "user_data", "sub" },
-            "枚举 Chromium 系浏览器 User Data 下每个 profile 的指定子目录（Edge/Chrome/Brave/Vivaldi）"),
+            new[] { "user_data", "sub" }),
 
         ["firefox-profile-subdir"] = new Entry(
             FirefoxProfileSubdir,
-            new[] { "profiles_root", "sub" },
-            "枚举 Firefox Profiles 下每个 profile 的指定子目录（如 cache2）"),
+            new[] { "profiles_root", "sub" }),
 
         ["children-subdir"] = new Entry(
             ChildrenSubdir,
-            new[] { "parent", "sub" },
-            "枚举某个父目录下每个子目录的指定孙目录（如 VS Code 各扩展的 cache）"),
+            new[] { "parent", "sub" }),
 
         ["children-subdirs"] = new Entry(
             ChildrenSubdirs,
-            new[] { "parent", "subs" },
-            "枚举某个父目录下每个子目录的多个孙目录（如 JetBrains 各版本 IDE 的 caches/index/log/tmp）"),
+            new[] { "parent", "subs" }),
 
         ["parent-subdirs"] = new Entry(
             ParentSubdirs,
-            new[] { "parent", "subs" },
-            "枚举单个父目录下的多个直接子目录（如 Docker 的 cache/tmp）")
+            new[] { "parent", "subs" })
     };
 
     public static IReadOnlyCollection<string> Names => Registry.Keys;
@@ -54,9 +49,6 @@ public static class RuleResolvers
 
     public static IReadOnlyList<string> RequiredArgs(string name)
         => Registry.TryGetValue(name, out var entry) ? entry.RequiredArgs : Array.Empty<string>();
-
-    public static string Describe(string name)
-        => Registry.TryGetValue(name, out var entry) ? entry.Description : "(未注册)";
 
     /// <summary>执行解析器。未知名字或异常一律返回空集合（校验期已拦截，这里只做防御）。</summary>
     public static IEnumerable<string> Resolve(string name, IReadOnlyDictionary<string, string> args)

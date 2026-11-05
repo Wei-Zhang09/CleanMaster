@@ -100,16 +100,6 @@ public class SystemCleanupService : ISystemCleanupService
         );
     }
 
-    public async Task<SystemCleanupResult> ResetStoreCacheAsync(CancellationToken ct = default)
-    {
-        return await RunCommandWithUtf8Async(
-            "wsreset.exe",
-            "",
-            "应用商店缓存重置",
-            ct
-        );
-    }
-
     /// <summary>
     /// Runs a command via cmd.exe with UTF-8 code page (65001) to ensure correct encoding.
     /// </summary>

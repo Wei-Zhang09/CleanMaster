@@ -48,11 +48,6 @@ public class SoftwareViewModel : INotifyPropertyChanged, IDisposable
         set { _selectedSizeFilter = value; OnPropertyChanged(); SoftwareView?.Refresh(); }
     }
 
-    public ObservableCollection<string> SizeFilters { get; } = new()
-    {
-        "全部", "> 1 GB", "> 100 MB", "> 10 MB", "< 10 MB"
-    };
-
     private bool FilterSoftware(object item)
     {
         if (item is not InstalledSoftware software) return false;

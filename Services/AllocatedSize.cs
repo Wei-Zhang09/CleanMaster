@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Runtime.InteropServices;
 
 namespace CleanMaster.Services;
@@ -18,8 +18,6 @@ public readonly record struct FileSizeInfo(
     bool IsSparse,
     bool IsCompressed)
 {
-    /// <summary>逻辑大小与实际占用的差额（压缩/稀疏省下的部分），不为负。</summary>
-    public long SavedByAllocation => Math.Max(0, LogicalBytes - AllocatedBytes);
 }
 
 /// <summary>
@@ -74,32 +72,6 @@ public static class AllocatedSizeReader
         {
             return null;
         }
-    }
-
-    /// <summary>
-    /// 批量取"实际占用"之和。取不到的项目按逻辑大小计入（宁可高估也不漏算），
-    /// 调用方可以从返回值里知道有多少项退化成了逻辑大小。
-    /// </summary>
-    public static (long AllocatedBytes, long LogicalBytes, int FallbackCount) SumAllocated(IEnumerable<string> paths)
-    {
-        long allocated = 0, logical = 0;
-        var fallback = 0;
-
-        foreach (var path in paths)
-        {
-            var info = TryRead(path);
-            if (info == null)
-            {
-                try { allocated += new FileInfo(path).Length; } catch { }
-                fallback++;
-                continue;
-            }
-
-            allocated += info.Value.AllocatedBytes;
-            logical += info.Value.LogicalBytes;
-        }
-
-        return (allocated, logical, fallback);
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

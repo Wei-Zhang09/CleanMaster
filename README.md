@@ -55,25 +55,6 @@ $v = dotnet msbuild CleanMaster.csproj -getProperty:Version
 
 - `docs/architecture/ADR-001-deprecate-win10-fork.md`：废弃 CleanMaster-Win10 独立分支，主分支为唯一产品线（含 0xC0000602 的根因核对）。
 
-## 命令行（排查 / 回归用）
-
-`tools/CleanMaster.Cli` 是与 GUI 共用同一套 service 的**只读**命令行工具：不做任何删除，扫描与预览而已。
-它独立于主程序的 `requireAdministrator` 清单，可在普通命令行与 CI 里直接跑。
-
-```powershell
-dotnet build tools\CleanMaster.Cli\CleanMaster.Cli.csproj -c Release
-tools\CleanMaster.Cli\bin\Release\net9.0-windows\CleanMaster.Cli.exe --help
-
-# 常用
-CleanMaster.Cli.exe scan --json                     # 磁盘清理预览（等同 GUI 扫描）
-CleanMaster.Cli.exe largefiles D:\ --min-size 104857600 --json
-CleanMaster.Cli.exe duplicates D:\Downloads --min-size 1048576 --json
-CleanMaster.Cli.exe startup --json                  # 启动项 + 启用状态 + 数字签名
-CleanMaster.Cli.exe apps --json                     # 已安装软件 + 安装范围(HKLM/HKCU)
-```
-
-退出码：`0` 成功 / `1` 出错 / `2` 用法错误。`--json` 输出结构稳定，用于 e2e 断言与规则迁移前后对比。
-
 ## 许可证
 
 本项目采用 [GNU General Public License v3.0](LICENSE)。

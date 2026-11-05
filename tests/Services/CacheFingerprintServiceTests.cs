@@ -34,7 +34,6 @@ public class CacheFingerprintServiceTests : IDisposable
         Assert.NotEmpty(results);
         Assert.Contains(results, r => r.Path.EndsWith(@"\Cache"));
         Assert.Contains(results, r => r.Path.EndsWith(@"\GPUCache"));
-        Assert.All(results, r => Assert.True(r.IsCaution, "启发式发现应标 Caution"));
     }
 
     [Fact]

@@ -61,7 +61,6 @@ public sealed record UninstallAttempt(
     string Message,
     bool DescendantsStillRunning = false)
 {
-    public bool Started => Outcome != UninstallOutcome.NotStarted;
 }
 
 public class StartupItem : INotifyPropertyChanged
@@ -94,7 +93,6 @@ public class StartupItem : INotifyPropertyChanged
             _signatureStatus = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SignatureText));
-            OnPropertyChanged(nameof(HasNoSignature));
         }
     }
 
@@ -105,8 +103,6 @@ public class StartupItem : INotifyPropertyChanged
         _ => ""
     };
 
-    /// <summary>未签名项给 UI 上醒目提示用。</summary>
-    public bool HasNoSignature => SignatureStatus == "Unsigned";
 
     private string _iconPath = "";
     public string IconPath

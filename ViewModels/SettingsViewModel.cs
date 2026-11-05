@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -47,9 +47,8 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
     public string UpdateStatusText { get => _updateStatusText; set { _updateStatusText = value; OnPropertyChanged(); } }
 
     private UpdateInfo? _pendingUpdate;
-    public UpdateInfo? PendingUpdate { get => _pendingUpdate; set { _pendingUpdate = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasUpdate)); } }
+    public UpdateInfo? PendingUpdate { get => _pendingUpdate; set { _pendingUpdate = value; OnPropertyChanged(); } }
 
-    public bool HasUpdate => _pendingUpdate != null;
 
     public RelayCommand CheckUpdateCommand { get; }
 

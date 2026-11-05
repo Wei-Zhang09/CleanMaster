@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CleanMaster.Services;
 
@@ -98,11 +98,6 @@ public class CleanableItem : INotifyPropertyChanged
     /// </summary>
     public bool IsDangerous => Safety == CleanSafety.Dangerous;
 
-    /// <summary>
-    /// 是否需要二次确认 (Caution + Dangerous 都需要)。
-    /// </summary>
-    public bool RequiresConfirmation => Safety != CleanSafety.Safe;
-
     public bool IsDirectory { get; set; }
     public DateTime LastModified { get; set; }
 
@@ -163,12 +158,10 @@ public class ScanCategoryResult : INotifyPropertyChanged
     public bool IsExpanded
     {
         get => _isExpanded;
-        set { if (_isExpanded != value) { _isExpanded = value; OnPropertyChanged(); OnPropertyChanged(nameof(ExpandButtonText)); } }
+        set { if (_isExpanded != value) { _isExpanded = value; OnPropertyChanged(); } }
     }
 
     public string TotalSizeText => ByteSizeFormatter.Format(ReclaimableSize);
-
-    public string ExpandButtonText => IsExpanded ? "收起" : "展开";
 
     public event PropertyChangedEventHandler? PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
@@ -233,14 +226,6 @@ public class LargeFileItem : INotifyPropertyChanged
     }
 
     public string SizeText => ByteSizeFormatter.Format(SizeBytes);
-
-    public string SafetyColor => SafetyHint switch
-    {
-        "safe" => "#10B981",
-        "caution" => "#F59E0B",
-        "danger" => "#EF4444",
-        _ => "#64748B"
-    };
 
     public string SafetyText => SafetyHint switch
     {

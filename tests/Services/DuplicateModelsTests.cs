@@ -1,4 +1,4 @@
-using CleanMaster.Services;
+﻿using CleanMaster.Services;
 
 namespace CleanMaster.Tests.Services;
 
@@ -45,22 +45,6 @@ public class DuplicateModelsTests
         Assert.Equal(0, group.WastedSpace);
     }
 
-    [Theory]
-    [InlineData(1_500_000_000, 3, "2.79 GB")]  // 3 files, wasted = 3GB
-    [InlineData(500_000_000, 3, "953.7 MB")]    // 3 files, wasted = 1GB
-    [InlineData(10_000, 5, "39.1 KB")]          // 5 files, wasted = 40KB
-    [InlineData(500, 2, "500 B")]               // 2 files, wasted = 500B
-    public void DuplicateGroup_WastedSpaceText_FormatsCorrectly(long fileSize, int fileCount, string expected)
-    {
-        var files = Enumerable.Range(0, fileCount)
-            .Select(_ => new DuplicateFile { FileName = "f.txt", SizeBytes = fileSize })
-            .ToList();
-
-        var group = new DuplicateGroup { Files = files };
-
-        Assert.Equal(expected, group.WastedSpaceText);
-    }
-
     [Fact]
     public void DuplicateGroup_FileSize_ReturnsZero_WhenFilesIsEmpty()
     {
@@ -82,20 +66,6 @@ public class DuplicateModelsTests
         };
 
         Assert.Equal(1024, group.FileSize);
-    }
-
-    [Fact]
-    public void DuplicateGroup_FileSizeText_FormatsCorrectly()
-    {
-        var group = new DuplicateGroup
-        {
-            Files = new List<DuplicateFile>
-            {
-                new() { FileName = "file.txt", SizeBytes = 1_073_741_824 },
-            }
-        };
-
-        Assert.Equal("1.00 GB", group.FileSizeText);
     }
 
     #endregion

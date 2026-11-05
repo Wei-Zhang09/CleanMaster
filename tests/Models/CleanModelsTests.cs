@@ -1,4 +1,4 @@
-using CleanMaster.Models;
+﻿using CleanMaster.Models;
 
 namespace CleanMaster.Tests.Models;
 
@@ -236,26 +236,6 @@ public class DiskInfoTests
 
 public class LargeFileItemTests
 {
-    [Theory]
-    [InlineData("safe", "#10B981")]
-    [InlineData("caution", "#F59E0B")]
-    [InlineData("danger", "#EF4444")]
-    public void SafetyColor_KnownValues_ReturnsCorrectColor(string hint, string expected)
-    {
-        var item = new LargeFileItem { SafetyHint = hint };
-        Assert.Equal(expected, item.SafetyColor);
-    }
-
-    [Theory]
-    [InlineData("unknown")]
-    [InlineData("")]
-    [InlineData("other")]
-    public void SafetyColor_UnknownValues_ReturnsDefault(string hint)
-    {
-        var item = new LargeFileItem { SafetyHint = hint };
-        Assert.Equal("#64748B", item.SafetyColor);
-    }
-
     [Theory]
     [InlineData("safe", "可安全删除")]
     [InlineData("caution", "请确认后删除")]

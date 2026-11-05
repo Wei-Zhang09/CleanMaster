@@ -17,9 +17,6 @@
     <Compile Remove="tests\**" />
     <None Remove="tests\**" />
     <EmbeddedResource Remove="tests\**" />
-    <Compile Remove="tools\**" />
-    <None Remove="tools\**" />
-    <EmbeddedResource Remove="tools\**" />
   </ItemGroup>
 
   <!-- 规则目录（RC-6）：规则是数据，编译期嵌入程序集，发布时无需额外散落文件 -->

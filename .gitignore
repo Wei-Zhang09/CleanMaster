@@ -55,3 +55,6 @@ docs/*
 # Hermes agent working files
 .hermes/
 
+
+# 本地交接文档（不入库）
+HANDOVER.md

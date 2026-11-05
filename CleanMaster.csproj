@@ -3,13 +3,13 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
-    <Version>3.2.0</Version>
+    <Version>3.2.1</Version>
     <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Resources\Icons\bebb7fbb3f23d2157e1ecc8224686535.ico</ApplicationIcon>
+    <ApplicationIcon>Resources\Icons\app.ico</ApplicationIcon>
     <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
   </PropertyGroup>
 
@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Resources\Icons\bebb7fbb3f23d2157e1ecc8224686535.ico" />
+    <Resource Include="Resources\Icons\app.ico" />
     <Resource Include="Resources\QRCodes\7f09a53bd669d32db250c8ead9e924d4.jpg" />
     <Resource Include="Resources\QRCodes\24aeaa7d3f01dd052ae11d91cd29eac1.jpg" />
     <Resource Include="Resources\QRCodes\gzh.jpeg" />

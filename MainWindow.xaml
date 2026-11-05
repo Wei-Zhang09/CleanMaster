@@ -1,11 +1,11 @@
-<Window x:Class="CleanMaster.MainWindow"
+﻿<Window x:Class="CleanMaster.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="CleanMaster" Height="750" Width="1100"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgPrimaryBrush}"
         ResizeMode="CanResizeWithGrip"
-        Icon="Resources/Icons/bebb7fbb3f23d2157e1ecc8224686535.ico">
+        Icon="Resources/Icons/app.ico">
 
     <Grid>
         <Grid.ColumnDefinitions>

@@ -19,7 +19,7 @@
 
 - 分支 `main`，工作区干净，24 个提交（`16c6e63..248b757`），65 文件 +6658/−1599
 - `dotnet build` 0 错误 0 警告；`dotnet test` **450/450 通过**
-- 版本号仍是 **3.1.2**（未发版、未打 tag、未打包安装包）
+- 版本号 **3.2.1**；v3.2.0 已发布到 GitHub Releases，v3.2.1 补了图标与公众号信息（阿伟同学学AI）
 - 规则：124 条 = 119 条 TOML（`Rules/Catalog/` 13 个文件）+ 5 条代码；5 个命名解析器、11 个路径占位符
 - 新增 `tools/CleanMaster.Cli`：只读命令行（scan/largefiles/duplicates/startup/apps），免提权、`--json`、8 个 e2e 用例
 - 看板（`hermes kanban --board cleanmaster`）除 STARTUP-2 外全部 done
@@ -38,7 +38,7 @@
 ## 待办
 
 1. **STARTUP-2 高级启动项**（看板唯一未完成项）：服务/计划任务/打包应用启动项，折叠在「高级（不建议修改）」+ 二次确认 + 不提供一键全禁。**建议先出交互方案再写代码**（高风险区域）。
-2. **发版**：`CleanMaster.csproj` 的 `<Version>` 从 3.1.2 提到 3.2.0（本轮有功能新增），然后按 `AGENTS.md` 的发布流程 publish + `ISCC.exe /DAppVersion`。
+2. ~~发版~~：已完成。3.2.0 已由 CI 发布；3.2.1（新图标 + 公众号改为「阿伟同学学AI」）已本地打包 `installer/CleanMaster-Setup-v3.2.1.exe` 并推送 tag。
 3. 可选：把 `CleanMaster.Cli` 纳入安装包（当前只在源码树里，供排查与回归）。
 4. 可选：`CleanService` 的"已释放空间"对硬链接仍按 allocated 计（删硬链接实际不释放），未处理——缓存规则里硬链接罕见，属已知小偏差。
 

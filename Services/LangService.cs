@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CleanMaster.Services.Interfaces;
 
@@ -231,9 +231,9 @@ public class LangService : ILangService, INotifyPropertyChanged
         "OfficialWebsite" => "官方网站",
         "WebsiteTip" => "如官方网站无法访问，请通过抖音或B站联系作者获取最新地址。",
         "WechatOfficial" => "公众号",
-        "WechatOfficialName" => "AWe-software",
-        "WechatOfficialTip" => "关注公众号获取最新软件动态、使用技巧和问题解答。在微信搜索「AWe-software」即可找到我们。",
-        "WechatOfficialGuide" => "在微信中搜索「AWe-software」，或者扫描下方二维码关注我们",
+        "WechatOfficialName" => "阿伟同学学AI",
+        "WechatOfficialTip" => "关注公众号获取最新软件动态、使用技巧和问题解答。在微信搜索「阿伟同学学AI」即可找到我们。",
+        "WechatOfficialGuide" => "在微信中搜索「阿伟同学学AI」，或者扫描下方二维码关注我们",
         "PathNotExist" => "路径不存在或无法访问。",
         "OpenFolderError" => "无法打开目录: {0}",
 
@@ -423,9 +423,9 @@ public class LangService : ILangService, INotifyPropertyChanged
         "OfficialWebsite" => "Official Website",
         "WebsiteTip" => "If the official website is unreachable, contact the author via Douyin or Bilibili for the latest address.",
         "WechatOfficial" => "WeChat Official Account",
-        "WechatOfficialName" => "AWe-software",
-        "WechatOfficialTip" => "Follow our WeChat official account for the latest updates, tips, and support. Search 'AWe-software' in WeChat to find us.",
-        "WechatOfficialGuide" => "Search 'AWe-software' in WeChat, or scan the QR code below to follow us",
+        "WechatOfficialName" => "阿伟同学学AI",
+        "WechatOfficialTip" => "Follow our WeChat official account for the latest updates, tips, and support. Search '阿伟同学学AI' in WeChat to find us.",
+        "WechatOfficialGuide" => "Search '阿伟同学学AI' in WeChat, or scan the QR code below to follow us",
         _ => key
     };
 

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -76,8 +76,12 @@ public class UpdateService : IUpdateService
             }
         }
 
+        // 关键：**按优先级取第一个可用的源**，而不是"取版本最高的那个"。
+        // 反例：GitHub 有 3.4.2、Gitee 只有 3.4.1 时，若按版本取高会选 GitHub，
+        // 而国内用户根本下载不动 GitHub 资产 —— 明明 Gitee 上有能用的版本却更新失败。
+        // 因此 Gitee 有更新就用 Gitee；Gitee 没有（或没传）才回落 GitHub。
         if (found.Count > 0)
-            return found.OrderByDescending(i => i.Version, VersionComparer.Instance).First();
+            return found[0];
 
         // 两个源都失败才算失败；都通但都没新版本 → 返回 null（界面显示"已是最新"）
         if (errors.Count == sources.Length)
@@ -287,23 +291,5 @@ public class UpdateService : IUpdateService
             if (l[i] < c[i]) return false;
         }
         return false;
-    }
-
-    private sealed class VersionComparer : IComparer<string>
-    {
-        public static readonly VersionComparer Instance = new();
-
-        public int Compare(string? x, string? y)
-        {
-            if (x == null || y == null) return 0;
-            var a = x.Split('.').Select(int.Parse).ToArray();
-            var b = y.Split('.').Select(int.Parse).ToArray();
-            for (var i = 0; i < Math.Min(3, Math.Min(a.Length, b.Length)); i++)
-            {
-                var diff = a[i].CompareTo(b[i]);
-                if (diff != 0) return diff;
-            }
-            return 0;
-        }
     }
 }

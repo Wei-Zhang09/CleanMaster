@@ -39,6 +39,15 @@ public partial class App : Application
             base.OnStartup(e);
             DiagnosticLog("OnStartup base called");
 
+#if DEBUG
+            // 开发期预览进度窗外观：dotnet run -- --preview-update-progress
+            if (e.Args.Contains("--preview-update-progress"))
+            {
+                PreviewUpdateProgress();
+                return;
+            }
+#endif
+
             // [诊断点 2] 注册全局异常处理器 (放在 CompositionRoot 之前, 防止 DI 阶段崩溃丢失)
             EnsureGlobalExceptionHandlers();
 
@@ -285,4 +294,23 @@ public partial class App : Application
     {
         _logger.Error(context, ex);
     }
+
+#if DEBUG
+    /// <summary>仅 Debug：模拟一次下载进度，用来检查进度窗外观与动效。</summary>
+    private async void PreviewUpdateProgress()
+    {
+        var dialog = new Views.UpdateProgressDialog("3.4.2");
+        dialog.Show();
+        for (var i = 0; i <= 100; i += 2)
+        {
+            dialog.SetPercent(i);
+            dialog.SetStatus($"正在从 Gitee 下载 CleanMaster-Setup-v3.4.2.exe... {i}%");
+            await Task.Delay(90);
+        }
+        dialog.SetInstalling();
+        await Task.Delay(6000);
+        dialog.Close();
+        Shutdown();
+    }
+#endif
 }

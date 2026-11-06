@@ -235,21 +235,56 @@ public class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     private async Task DownloadAndInstallAsync(UpdateInfo update)
     {
-        UpdateStatusText = $"正在下载 v{update.Version}...";
+        var owner = System.Windows.Application.Current?.MainWindow;
+        var dialog = new CleanMaster.Views.UpdateProgressDialog(update.Version);
+        if (owner != null && owner.IsLoaded && !ReferenceEquals(owner, dialog))
+            dialog.Owner = owner;
+
         try
         {
-            var progress = new Progress<double>(p => UpdateStatusText = $"正在下载 v{update.Version}... {p:F0}%");
-            var installerPath = await _updateService.DownloadAsync(update, progress);
+            // 非阻塞显示 + 禁用主窗口 = 模态观感。
+            // 不能用 ShowDialog()：它会阻塞本线程，Progress 回调进不来，进度条会一直停在 0%。
+            dialog.Show();
+            if (owner != null) owner.IsEnabled = false;
+
+            UpdateStatusText = $"正在下载 v{update.Version}...";
+
+            var progress = new Progress<double>(p =>
+            {
+                dialog.SetPercent(p);
+                UpdateStatusText = $"正在下载 v{update.Version}... {p:F0}%";
+            });
+
+            var installerPath = await _updateService.DownloadAsync(update, progress, dialog.Token);
+
+            dialog.SetInstalling();
             UpdateStatusText = "下载完成，正在安装...";
-            _updateService.InstallAndRestart(installerPath);
+
+            // 让 100% 和"正在安装"停留一下，否则窗口一闪就没了
+            await Task.Delay(600);
+
+            dialog.MarkHandedOff();
+            _updateService.InstallAndRestart(installerPath); // 内部会结束当前进程
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatusText = "已取消更新";
+            dialog.SetFinished("已取消更新");
+            await Task.Delay(400);
         }
         catch (Exception ex)
         {
             UpdateStatusText = "更新失败";
             App.LogError("DownloadAndInstallAsync", ex);
+            dialog.SetFinished("更新失败");
+            dialog.CloseAndRestore();
             CleanMaster.Views.AppDialog.Show($"更新失败：{ex.Message}", "软件更新",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            return;
         }
+
+        if (!dialog.HandedOffToInstaller)
+            dialog.CloseAndRestore();
     }
 
     private async Task AnalyzeDiskSpaceAsync()

@@ -29,14 +29,14 @@ jobs:
       run: dotnet test --no-build --configuration Release --verbosity minimal --logger "trx;LogFileName=testresults.trx"
 
     - name: Upload test results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: test-results
         path: "**/testresults.trx"
 
     - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: coverage
@@ -64,7 +64,7 @@ jobs:
       run: dotnet publish CleanMaster.csproj -c Release -r win-x64 --self-contained true -o bin\Release\publish -p:DebugType=none
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: publish
         path: bin\Release\publish
